@@ -4,6 +4,12 @@
     "slug": "esp-control-ble",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#181825"
+    },
     "platforms": ["ios", "android"],
     "ios": {
       "bundleIdentifier": "com.yourname.espcontrolble",
