@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "ESP Control BLE",
+    "slug": "esp-control-ble",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "com.yourname.espcontrolble",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "L'app utilise le Bluetooth pour communiquer avec vos ESP32.",
+        "NSBluetoothPeripheralUsageDescription": "L'app utilise le Bluetooth pour communiquer avec vos ESP32."
+      }
+    },
+    "android": {
+      "package": "com.yourname.espcontrolble",
+      "permissions": [
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_ADVERTISE",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": ["central"],
+          "bluetoothAlwaysPermission": "L'app utilise le Bluetooth pour communiquer avec vos ESP32."
+        }
+      ]
+    ]
+  }
+}
