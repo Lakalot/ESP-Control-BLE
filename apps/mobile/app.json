@@ -4,6 +4,7 @@
     "slug": "esp-control-ble",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "esp-control-ble",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -12,14 +13,14 @@
     },
     "platforms": ["ios", "android"],
     "ios": {
-      "bundleIdentifier": "com.yourname.espcontrolble",
+      "bundleIdentifier": "com.amazing.espcontrolble",
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "L'app utilise le Bluetooth pour communiquer avec vos ESP32.",
         "NSBluetoothPeripheralUsageDescription": "L'app utilise le Bluetooth pour communiquer avec vos ESP32."
       }
     },
     "android": {
-      "package": "com.yourname.espcontrolble",
+      "package": "com.amazing.espcontrolble",
       "permissions": [
         "BLUETOOTH_SCAN",
         "BLUETOOTH_CONNECT",
