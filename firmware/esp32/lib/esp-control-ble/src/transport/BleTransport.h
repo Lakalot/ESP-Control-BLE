@@ -4,6 +4,7 @@
 #include "../protocol/CommandRegistry.h"
 #include "FrameCodec.h"
 #include <NimBLEDevice.h>
+#include <Preferences.h>
 
 class EcbCmdCallbacks;
 class EcbServerCallbacks;
@@ -24,6 +25,9 @@ private:
 
   static BleTransport* _instance;
   static void staticNotify(const uint8_t* data, uint16_t len);
+
+  char _serviceUuid[37]; // "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\0"
+  void loadOrCreateUuid();
 
   void sendNotify(const uint8_t* data, uint16_t len);
   void sendManifestChunk(uint16_t offset, uint8_t requestedLen);

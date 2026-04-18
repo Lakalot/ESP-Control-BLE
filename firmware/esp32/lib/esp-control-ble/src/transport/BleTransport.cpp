@@ -45,9 +45,37 @@ static EcbServerCallbacks s_serverCallbacks{nullptr};
 
 // ── BleTransport ───────────────────────────────────────────
 
+static void formatUuid(char* out, uint32_t a, uint16_t b, uint16_t c, uint16_t d, uint32_t e_hi, uint16_t e_lo) {
+  snprintf(out, 37, "%08lx-%04x-%04x-%04x-%08lx%04x",
+           (unsigned long)a, b, c, d, (unsigned long)e_hi, e_lo);
+}
+
+void BleTransport::loadOrCreateUuid() {
+  Preferences prefs;
+  prefs.begin("ecb", false);
+  String stored = prefs.getString("svc_uuid", "");
+  if (stored.length() == 36) {
+    memcpy(_serviceUuid, stored.c_str(), 37);
+    Serial.printf("[ECB] UUID loaded from NVS: %s\n", _serviceUuid);
+  } else {
+    uint32_t a    = esp_random();
+    uint16_t b    = (uint16_t)(esp_random() & 0xFFFF);
+    uint16_t c    = (uint16_t)((esp_random() & 0x0FFF) | 0x4000);
+    uint16_t d    = (uint16_t)((esp_random() & 0x3FFF) | 0x8000);
+    uint32_t e_hi = esp_random();
+    uint16_t e_lo = (uint16_t)(esp_random() & 0xFFFF);
+    formatUuid(_serviceUuid, a, b, c, d, e_hi, e_lo);
+    prefs.putString("svc_uuid", _serviceUuid);
+    Serial.printf("[ECB] UUID generated and saved: %s\n", _serviceUuid);
+  }
+  prefs.end();
+}
+
 void BleTransport::begin(const char* deviceName, AuthHandler* auth,
                           CommandRegistry* registry,
                           const uint8_t* manifest, uint16_t manifestLen) {
+  loadOrCreateUuid();
+
   _auth      = auth;
   _registry  = registry;
   _instance  = this;
@@ -62,7 +90,7 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   s_serverCallbacks = EcbServerCallbacks(this);
   server->setCallbacks(&s_serverCallbacks);
 
-  NimBLEService* service = server->createService(ECB_SERVICE_UUID);
+  NimBLEService* service = server->createService(_serviceUuid);
 
   NimBLECharacteristic* manifestChar = service->createCharacteristic(
     ECB_MANIFEST_CHAR_UUID,
@@ -93,7 +121,7 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   service->start();
 
   NimBLEAdvertising* advertising = NimBLEDevice::getAdvertising();
-  advertising->addServiceUUID(ECB_SERVICE_UUID);
+  advertising->addServiceUUID(_serviceUuid);
   advertising->setScanResponse(true);
   advertising->start();
 
