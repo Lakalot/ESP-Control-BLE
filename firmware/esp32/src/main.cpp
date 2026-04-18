@@ -12,6 +12,7 @@ static uint8_t ledB = 255;
 static uint8_t fanMode = 0;
 static int16_t temperatureCenti = 2350;
 static EspControl control("ESP32-Test", "1234");
+static esp_timer_handle_t tempTimer = nullptr;
 
 static void onTemperatureTick(void*) {
   temperatureCenti += 5;
@@ -101,7 +102,6 @@ void setup() {
 
   control.begin(ECB_MANIFEST_DATA, ECB_MANIFEST_LEN);
 
-  esp_timer_handle_t tempTimer;
   const esp_timer_create_args_t timerArgs = {
     .callback = onTemperatureTick,
     .arg      = nullptr,
