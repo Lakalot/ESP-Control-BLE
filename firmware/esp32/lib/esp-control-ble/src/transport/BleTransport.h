@@ -5,6 +5,9 @@
 #include "FrameCodec.h"
 #include <NimBLEDevice.h>
 
+class EcbCmdCallbacks;
+class EcbServerCallbacks;
+
 class BleTransport {
 public:
   void begin(const char* deviceName, AuthHandler* auth,
@@ -19,7 +22,6 @@ private:
   uint16_t _manifestLen = 0;
   bool _manifestChunked = false;
 
-  // Static instance for notify callback (no captures in function pointer)
   static BleTransport* _instance;
   static void staticNotify(const uint8_t* data, uint16_t len);
 

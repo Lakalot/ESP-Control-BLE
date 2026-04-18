@@ -40,6 +40,9 @@ public:
   }
 };
 
+static EcbCmdCallbacks    s_cmdCallbacks{nullptr};
+static EcbServerCallbacks s_serverCallbacks{nullptr};
+
 // ── BleTransport ───────────────────────────────────────────
 
 void BleTransport::begin(const char* deviceName, AuthHandler* auth,
@@ -56,7 +59,8 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   NimBLEDevice::setPower(ESP_PWR_LVL_P9);
 
   NimBLEServer* server = NimBLEDevice::createServer();
-  server->setCallbacks(new EcbServerCallbacks(this));
+  s_serverCallbacks = EcbServerCallbacks(this);
+  server->setCallbacks(&s_serverCallbacks);
 
   NimBLEService* service = server->createService(ECB_SERVICE_UUID);
 
@@ -83,7 +87,8 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
     ECB_CMD_CHAR_UUID,
     NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
   );
-  _cmdChar->setCallbacks(new EcbCmdCallbacks(this));
+  s_cmdCallbacks = EcbCmdCallbacks(this);
+  _cmdChar->setCallbacks(&s_cmdCallbacks);
 
   service->start();
 
