@@ -1,4 +1,4 @@
-import { ResponseFrame, ResponseStatus } from '../types/protocol.types';
+import { ResponseFrame, ResponseStatus } from '../../types/protocol.types';
 
 export class DecodeError extends Error {
   constructor(message: string) {

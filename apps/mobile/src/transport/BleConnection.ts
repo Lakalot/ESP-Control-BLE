@@ -1,5 +1,24 @@
 import { Device } from 'react-native-ble-plx';
+
+import type { IBleTransport } from './IBleTransport';
 import { bleManagerService } from './BleManager';
+
+function base64ToUint8Array(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
 
 const SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
 const MANIFEST_CHAR_UUID = '12345678-1234-1234-1234-123456789abd';
@@ -8,12 +27,18 @@ const CMD_CHAR_UUID = '12345678-1234-1234-1234-123456789abe';
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_BASE_DELAY_MS = 1000;
 
-export class BleConnection {
+export class BleConnection implements IBleTransport {
   private device: Device | null = null;
   private reconnectAttempts = 0;
   private onDisconnectCallback: (() => void) | null = null;
+  private disconnectSubscription: { remove(): void } | null = null;
+  private notifySubscription: { remove(): void } | null = null;
+  private intentionalDisconnect = false;
 
-  async connect(deviceId: string): Promise<Device> {
+  async connect(deviceId: string): Promise<void> {
+    // Nettoyer toute souscription précédente
+    this.cleanup();
+
     const manager = bleManagerService.getPlxManager();
     const device = await manager.connectToDevice(deviceId, {
       requestMTU: 512,
@@ -21,13 +46,14 @@ export class BleConnection {
     await device.discoverAllServicesAndCharacteristics();
     this.device = device;
     this.reconnectAttempts = 0;
+    this.intentionalDisconnect = false;
 
-    device.onDisconnected((_error, _dev) => {
+    this.disconnectSubscription = device.onDisconnected((_error, _dev) => {
       this.device = null;
-      this.handleUnexpectedDisconnect(deviceId);
+      if (!this.intentionalDisconnect) {
+        this.handleUnexpectedDisconnect(deviceId);
+      }
     });
-
-    return device;
   }
 
   private async handleUnexpectedDisconnect(deviceId: string): Promise<void> {
@@ -52,10 +78,19 @@ export class BleConnection {
   }
 
   async disconnect(): Promise<void> {
+    this.intentionalDisconnect = true;
+    this.cleanup();
     if (!this.device) return;
     this.onDisconnectCallback = null;
     await this.device.cancelConnection();
     this.device = null;
+  }
+
+  private cleanup(): void {
+    this.notifySubscription?.remove();
+    this.notifySubscription = null;
+    this.disconnectSubscription?.remove();
+    this.disconnectSubscription = null;
   }
 
   async readManifest(): Promise<Uint8Array> {
@@ -65,12 +100,12 @@ export class BleConnection {
       MANIFEST_CHAR_UUID,
     );
     if (!char.value) throw new Error('Manifest vide');
-    return Uint8Array.from(Buffer.from(char.value, 'base64'));
+    return base64ToUint8Array(char.value);
   }
 
   async writeCommand(data: Uint8Array): Promise<void> {
     if (!this.device) throw new Error('Non connecté');
-    const b64 = Buffer.from(data).toString('base64');
+    const b64 = uint8ArrayToBase64(data);
     await this.device.writeCharacteristicWithResponseForService(
       SERVICE_UUID,
       CMD_CHAR_UUID,
@@ -78,24 +113,39 @@ export class BleConnection {
     );
   }
 
-  subscribeToNotifications(
+  subscribe(
     onData: (data: Uint8Array) => void,
     onError: (error: Error) => void,
   ): () => void {
     if (!this.device) throw new Error('Non connecté');
-    const sub = this.device.monitorCharacteristicForService(
+    // Nettoyer l'ancienne souscription aux notifications
+    this.notifySubscription?.remove();
+    this.notifySubscription = this.device.monitorCharacteristicForService(
       SERVICE_UUID,
       CMD_CHAR_UUID,
       (error, char) => {
         if (error) {
-          onError(error);
+          // Ignorer les erreurs si la déconnexion est intentionnelle
+          if (!this.intentionalDisconnect) {
+            onError(error);
+          }
           return;
         }
         if (!char?.value) return;
-        onData(Uint8Array.from(Buffer.from(char.value, 'base64')));
+        onData(base64ToUint8Array(char.value));
       },
     );
-    return () => sub.remove();
+    return () => {
+      this.notifySubscription?.remove();
+      this.notifySubscription = null;
+    };
+  }
+
+  subscribeToNotifications(
+    onData: (data: Uint8Array) => void,
+    onError: (error: Error) => void,
+  ): () => void {
+    return this.subscribe(onData, onError);
   }
 
   getDevice(): Device | null {

@@ -1,7 +1,9 @@
 import { create } from 'zustand';
+
 import { CmdId, ParsedManifest } from '../types/manifest.types';
 
-type Value = number | boolean | null;
+export type XYValue = { x: number; y: number };
+export type Value = number | boolean | string | XYValue | null;
 
 interface DeviceStore {
   manifest: ParsedManifest | null;

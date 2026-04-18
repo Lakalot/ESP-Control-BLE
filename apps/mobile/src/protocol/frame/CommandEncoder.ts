@@ -1,4 +1,4 @@
-import { CommandFrame } from '../types/protocol.types';
+import { CommandFrame } from '../../types/protocol.types';
 
 function xorChecksum(bytes: Uint8Array): number {
   return bytes.reduce((acc, b) => acc ^ b, 0);

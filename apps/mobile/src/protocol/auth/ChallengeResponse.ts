@@ -9,19 +9,12 @@ export async function computeHmacResponse(
   combined.set(pinBytes);
   combined.set(challenge, pinBytes.length);
 
-  const hashHex = await Crypto.digestStringAsync(
+  const hashBuffer = await Crypto.digest(
     Crypto.CryptoDigestAlgorithm.SHA256,
-    Array.from(combined)
-      .map((b) => String.fromCharCode(b))
-      .join(''),
-    { encoding: Crypto.CryptoEncoding.HEX },
+    combined,
   );
 
-  const result = new Uint8Array(4);
-  for (let i = 0; i < 4; i++) {
-    result[i] = parseInt(hashHex.slice(i * 2, i * 2 + 2), 16);
-  }
-  return result;
+  return new Uint8Array(hashBuffer.slice(0, 4));
 }
 
 export function parseChallengeFrame(buffer: Uint8Array): Uint8Array {

@@ -1,15 +1,31 @@
 import React, { useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { StatusBar } from 'react-native';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import { useAuthStore } from '../src/store/authStore';
-import { bleManagerService } from '../src/ble/BleManager';
 import { useBleStore } from '../src/store/bleStore';
+import { bleManagerService } from '../src/transport/BleManager';
+import { palette } from '../src/ui/theme/ui';
 
 const Stack = createNativeStackNavigator();
 
+const navTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: palette.bg,
+    card: palette.panel,
+    border: palette.border,
+    text: palette.text,
+    primary: palette.accent,
+  },
+};
+
 export default function RootLayout() {
-  const loadFromSecureStore = useAuthStore((s) => s.loadFromSecureStore);
-  const setBleState = useBleStore((s) => s.setBleState);
+  const loadFromSecureStore = useAuthStore((state) => state.loadFromSecureStore);
+  const setBleState = useBleStore((state) => state.setBleState);
 
   useEffect(() => {
     loadFromSecureStore();
@@ -17,20 +33,38 @@ export default function RootLayout() {
       setBleState(state);
     });
     return unsubscribe;
-  }, []);
+  }, [loadFromSecureStore, setBleState]);
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: { backgroundColor: '#181825' },
-          headerTintColor: '#cdd6f4',
-          contentStyle: { backgroundColor: '#181825' },
-        }}
-      >
-        <Stack.Screen name="index" options={{ title: 'ESP32 Scanner' }} component={require('./index').default} />
-        <Stack.Screen name="control" options={{ title: 'Contrôle' }} component={require('./control/[deviceId]').default} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <StatusBar barStyle="light-content" backgroundColor={palette.bg} />
+      <NavigationContainer theme={navTheme}>
+        <Stack.Navigator
+          screenOptions={{
+            headerStyle: { backgroundColor: palette.panel },
+            headerShadowVisible: false,
+            headerTintColor: palette.text,
+            headerTitleStyle: {
+              color: palette.text,
+              fontWeight: '700',
+              fontSize: 18,
+            },
+            contentStyle: { backgroundColor: palette.bg },
+            animation: 'slide_from_right',
+          }}
+        >
+          <Stack.Screen
+            name="index"
+            options={{ title: 'ESP Control BLE' }}
+            component={require('./index').default}
+          />
+          <Stack.Screen
+            name="control"
+            options={{ title: 'Controle', headerBackTitle: 'Retour' }}
+            component={require('./control/[deviceId]').default}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

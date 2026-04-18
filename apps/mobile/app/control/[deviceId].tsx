@@ -1,18 +1,23 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useAutoRefresh } from '../../src/hooks/useAutoRefresh';
 import { useBle } from '../../src/hooks/useBle';
 import { useManifest } from '../../src/hooks/useManifest';
-import { CommandControl } from '../../src/components/CommandControl';
-import { BleDevice } from '../../src/types/ble.types';
+import type { BleDevice } from '../../src/types/ble.types';
+import { ManifestRenderer } from '../../src/ui/components/manifest/ManifestRenderer';
+import { palette, radius, shadows, withAlpha } from '../../src/ui/theme/ui';
+import { CmdType, NodeKind } from '../../src/types/manifest.types';
 
 type RouteParams = {
   deviceId: string;
@@ -20,48 +25,78 @@ type RouteParams = {
   device: BleDevice;
 };
 
-const CONNECTION_STATE_LABELS: Record<string, string> = {
-  idle: 'Déconnecté',
-  connecting: 'Connexion...',
-  authenticating: 'Authentification...',
-  ready: 'Connecté',
-  error: 'Erreur',
-};
-
-const CONNECTION_STATE_COLORS: Record<string, string> = {
-  idle: '#585b70',
-  connecting: '#f9e2af',
-  authenticating: '#fab387',
-  ready: '#a6e3a1',
-  error: '#f38ba8',
+const STATE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  idle: { label: 'Deconnecte', color: palette.subtle, bg: withAlpha(palette.subtle, 0.12) },
+  connecting: { label: 'Connexion', color: palette.warn, bg: withAlpha(palette.warn, 0.14) },
+  authenticating: {
+    label: 'Authentification',
+    color: palette.accentAlt,
+    bg: withAlpha(palette.accentAlt, 0.14),
+  },
+  ready: { label: 'Pret', color: palette.success, bg: withAlpha(palette.success, 0.14) },
+  error: { label: 'Erreur', color: palette.danger, bg: withAlpha(palette.danger, 0.14) },
 };
 
 export default function ControlScreen() {
   const route = useRoute();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const { device, pin } = route.params as RouteParams;
 
   const { connectionState, connectToDevice, sendCommand, disconnect } = useBle();
   const { manifest, commandValues, pendingCommands } = useManifest();
 
-  useEffect(() => {
-    connectToDevice(device, pin).catch((error: Error) => {
-      if (error.message === 'AUTH_FAIL') {
-        Alert.alert('Erreur', 'PIN incorrect. Réessayez.');
-      } else {
-        Alert.alert('Erreur', `Connexion échouée: ${error.message}`);
-      }
-    });
+  const isReady = connectionState === 'ready';
+  const commands = manifest?.commands ?? [];
+  const rootNodes = manifest?.rootNodes ?? [];
+  const config = STATE_CONFIG[connectionState] ?? STATE_CONFIG.idle;
 
+  const refreshableCommands = useMemo(
+    () =>
+      commands.filter(
+        (command) =>
+          (command.type === CmdType.READ_ONLY || command.type === CmdType.PROGRESS) &&
+          Boolean(command.options.refreshMs),
+      ),
+    [commands],
+  );
+
+  const sectionCount = useMemo(
+    () => manifest?.nodes.filter((node) => node.kind === NodeKind.SECTION).length ?? 0,
+    [manifest],
+  );
+
+  useAutoRefresh({
+    commands: refreshableCommands,
+    isReady,
+    sendCommand,
+    pin,
+  });
+
+  const showConnectionError = (error: Error) => {
+    if (error.message === 'AUTH_FAIL') {
+      Alert.alert('Erreur', 'PIN incorrect. Reessayez.');
+      return;
+    }
+
+    Alert.alert('Erreur', `Connexion echouee: ${error.message}`);
+  };
+
+  useEffect(() => {
+    connectToDevice(device, pin).catch(showConnectionError);
     return () => {
-      disconnect();
+      void disconnect();
     };
-  }, []);
+  }, [connectToDevice, device, disconnect, pin]);
 
   const handleCommand = (cmdId: number, payload: Uint8Array) => {
-    sendCommand(cmdId, payload, pin).catch((e: Error) =>
-      console.error('[ControlScreen] Erreur envoi commande:', e),
-    );
+    sendCommand(cmdId, payload, pin).catch((error: Error) => {
+      console.error('[ControlScreen] Command send failed:', error);
+    });
+  };
+
+  const handleRetry = () => {
+    connectToDevice(device, pin).catch(showConnectionError);
   };
 
   const handleDisconnect = async () => {
@@ -69,76 +104,330 @@ export default function ControlScreen() {
     navigation.goBack();
   };
 
+  const isLoading = connectionState === 'connecting' || connectionState === 'authenticating';
+
   return (
     <View style={styles.container}>
-      <View
-        style={[
-          styles.statusBar,
-          { backgroundColor: CONNECTION_STATE_COLORS[connectionState] ?? '#585b70' },
+      <View style={styles.orbA} />
+      <View style={styles.orbB} />
+
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 16) + 96 },
         ]}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.statusText}>
-          {CONNECTION_STATE_LABELS[connectionState] ?? connectionState}
-          {' — '}{device.name ?? device.id}
-        </Text>
+        <View style={[styles.heroCard, shadows.card]}>
+          <View style={styles.heroTopRow}>
+            <View style={[styles.statePill, { backgroundColor: config.bg }]}>
+              <View style={[styles.stateDot, { backgroundColor: config.color }]} />
+              <Text style={[styles.stateText, { color: config.color }]}>{config.label}</Text>
+            </View>
+
+            <View style={styles.heroActions}>
+              {manifest ? (
+                <View style={styles.versionChip}>
+                  <Text style={styles.versionChipText}>v{manifest.version}</Text>
+                </View>
+              ) : null}
+              <TouchableOpacity
+                style={styles.disconnectGhost}
+                onPress={handleDisconnect}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.disconnectGhostText}>Quitter</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Text style={styles.deviceName}>{device.name ?? 'ESP32'}</Text>
+          <Text style={styles.deviceId}>{device.id}</Text>
+
+          <View style={styles.heroStats}>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{sectionCount}</Text>
+              <Text style={styles.statLabel}>Sections</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{commands.length}</Text>
+              <Text style={styles.statLabel}>Commandes</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{refreshableCommands.length}</Text>
+              <Text style={styles.statLabel}>Auto</Text>
+            </View>
+          </View>
+
+          <View style={styles.heroHintCard}>
+            <Text style={styles.heroHintTitle}>UI pilotee par manifeste</Text>
+            <Text style={styles.heroHintText}>
+              Sections, grilles, barres d actions et variantes de cartes viennent maintenant du
+              firmware.
+            </Text>
+          </View>
+        </View>
+
+        {isLoading ? (
+          <View style={[styles.stateCard, shadows.card]}>
+            <ActivityIndicator color={palette.accentAlt} size="large" />
+            <Text style={styles.loadingText}>{config.label}...</Text>
+            <Text style={styles.loadingHint}>Connexion BLE et chargement du manifeste.</Text>
+          </View>
+        ) : connectionState === 'error' ? (
+          <View style={[styles.stateCard, shadows.card]}>
+            <Text style={styles.errorTitle}>Connexion perdue</Text>
+            <Text style={styles.errorHint}>
+              Verifiez l alimentation de l ESP32 puis relancez la connexion.
+            </Text>
+            <TouchableOpacity style={styles.retryButton} onPress={handleRetry} activeOpacity={0.85}>
+              <Text style={styles.retryText}>Reessayer</Text>
+            </TouchableOpacity>
+          </View>
+        ) : rootNodes.length === 0 ? (
+          <View style={[styles.stateCard, shadows.card]}>
+            <Text style={styles.emptyTitle}>Manifeste vide</Text>
+            <Text style={styles.emptyHint}>
+              L appareil est connecte, mais aucun noeud UI n a ete publie.
+            </Text>
+          </View>
+        ) : (
+          <ManifestRenderer
+            nodes={rootNodes}
+            commandValues={commandValues}
+            pendingCommands={pendingCommands}
+            onAction={handleCommand}
+          />
+        )}
+      </ScrollView>
+
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <TouchableOpacity
+          style={styles.disconnectButton}
+          onPress={handleDisconnect}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.disconnectText}>Deconnecter l appareil</Text>
+        </TouchableOpacity>
       </View>
-
-      {connectionState === 'connecting' || connectionState === 'authenticating' ? (
-        <View style={styles.center}>
-          <ActivityIndicator color="#89b4fa" size="large" />
-          <Text style={styles.loadingText}>
-            {CONNECTION_STATE_LABELS[connectionState]}
-          </Text>
-        </View>
-      ) : connectionState === 'error' ? (
-        <View style={styles.center}>
-          <Text style={styles.errorText}>Connexion perdue</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => connectToDevice(device, pin)}>
-            <Text style={styles.retryText}>Réessayer</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.list}>
-          {manifest?.commands.map((cmd) => (
-            <CommandControl
-              key={cmd.id}
-              command={cmd}
-              currentValue={commandValues[cmd.id] ?? null}
-              isPending={pendingCommands.has(cmd.id)}
-              onAction={handleCommand}
-            />
-          ))}
-        </ScrollView>
-      )}
-
-      <TouchableOpacity style={styles.disconnectBtn} onPress={handleDisconnect}>
-        <Text style={styles.disconnectText}>Déconnecter</Text>
-      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#181825' },
-  statusBar: { padding: 10, alignItems: 'center' },
-  statusText: { color: '#1e1e2e', fontWeight: '700', fontSize: 13 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: '#a6adc8', marginTop: 12, fontSize: 15 },
-  errorText: { color: '#f38ba8', fontSize: 16, marginBottom: 16 },
-  retryBtn: {
-    backgroundColor: '#89b4fa',
-    borderRadius: 8,
-    paddingVertical: 10,
+  container: {
+    flex: 1,
+    backgroundColor: palette.bg,
+  },
+  orbA: {
+    position: 'absolute',
+    top: -40,
+    right: -50,
+    width: 220,
+    height: 220,
+    borderRadius: radius.pill,
+    backgroundColor: withAlpha(palette.accent, 0.08),
+  },
+  orbB: {
+    position: 'absolute',
+    top: 220,
+    left: -70,
+    width: 180,
+    height: 180,
+    borderRadius: radius.pill,
+    backgroundColor: withAlpha(palette.accentAlt, 0.08),
+  },
+  scrollContent: {
+    padding: 18,
+    gap: 14,
+  },
+  heroCard: {
+    backgroundColor: palette.panel,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: radius.lg,
+    padding: 20,
+    gap: 18,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  heroActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  stateDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.pill,
+  },
+  stateText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  versionChip: {
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    backgroundColor: withAlpha(palette.accentAlt, 0.12),
+    borderWidth: 1,
+    borderColor: withAlpha(palette.accentAlt, 0.25),
+  },
+  versionChipText: {
+    color: palette.accentAlt,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  disconnectGhost: {
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: withAlpha(palette.white, 0.04),
+  },
+  disconnectGhostText: {
+    color: palette.muted,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  deviceName: {
+    color: palette.text,
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  deviceId: {
+    color: palette.muted,
+    fontSize: 13,
+  },
+  heroStats: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: palette.panelInset,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+  },
+  statValue: {
+    color: palette.text,
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  statLabel: {
+    color: palette.muted,
+    fontSize: 12,
+  },
+  heroHintCard: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: withAlpha(palette.white, 0.06),
+    backgroundColor: withAlpha(palette.white, 0.02),
+    padding: 14,
+    gap: 6,
+  },
+  heroHintTitle: {
+    color: palette.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  heroHintText: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  stateCard: {
+    minHeight: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.panel,
+    paddingHorizontal: 24,
+    gap: 10,
+  },
+  loadingText: {
+    color: palette.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  loadingHint: {
+    color: palette.muted,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  errorTitle: {
+    color: palette.danger,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  errorHint: {
+    color: palette.muted,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 21,
+  },
+  retryButton: {
+    marginTop: 6,
+    backgroundColor: palette.accentAlt,
+    borderRadius: radius.pill,
+    paddingVertical: 12,
     paddingHorizontal: 24,
   },
-  retryText: { color: '#1e1e2e', fontWeight: '700' },
-  list: { padding: 16 },
-  disconnectBtn: {
-    margin: 16,
-    padding: 14,
-    backgroundColor: '#313244',
-    borderRadius: 10,
-    alignItems: 'center',
+  retryText: {
+    color: palette.bg,
+    fontWeight: '800',
+    fontSize: 13,
   },
-  disconnectText: { color: '#f38ba8', fontWeight: '700' },
+  emptyTitle: {
+    color: palette.text,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  emptyHint: {
+    color: palette.muted,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 21,
+  },
+  bottomBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: withAlpha(palette.white, 0.06),
+    backgroundColor: withAlpha(palette.bg, 0.96),
+  },
+  disconnectButton: {
+    paddingVertical: 15,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    backgroundColor: palette.panel,
+    borderWidth: 1,
+    borderColor: withAlpha(palette.danger, 0.28),
+  },
+  disconnectText: {
+    color: palette.danger,
+    fontWeight: '700',
+    fontSize: 14,
+  },
 });
