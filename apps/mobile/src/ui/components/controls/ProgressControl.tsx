@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import type { ControlProps } from '../../../types/control.types';
 import { palette } from '../../theme/ui';
@@ -23,11 +24,10 @@ export function ProgressControl({
 
   const metaItems = useMemo(() => {
     const items: string[] = [];
-    items.push(freshnessLabel);
     if (command.options.refreshMs) items.push(`Auto ${formatRefreshInterval(command.options.refreshMs)}`);
     if (isDisabled) items.push('Desactive');
     return items;
-  }, [command.options.refreshMs, freshnessLabel, isDisabled]);
+  }, [command.options.refreshMs, isDisabled]);
 
   return (
     <CardShell
@@ -40,11 +40,35 @@ export function ProgressControl({
       isDisabled={isDisabled}
       metaItems={metaItems}
     >
-      <ProgressBarControl
-        value={numericValue}
-        accentColor={command.options.color ?? palette.accentAlt}
-        opts={command.options}
-      />
+      <View style={styles.container}>
+        <View style={styles.statusChip}>
+          <Text style={styles.statusText}>{freshnessLabel}</Text>
+        </View>
+        <ProgressBarControl
+          value={numericValue}
+          accentColor={command.options.color ?? palette.accentAlt}
+          opts={command.options}
+        />
+      </View>
     </CardShell>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    gap: 10,
+  },
+  statusChip: {
+    alignSelf: 'flex-start',
+    minWidth: 74,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: palette.panelInset,
+  },
+  statusText: {
+    color: palette.muted,
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
+  },
+});

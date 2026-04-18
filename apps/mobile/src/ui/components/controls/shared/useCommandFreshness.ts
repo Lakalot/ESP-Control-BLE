@@ -3,14 +3,16 @@ import { useEffect, useMemo, useState } from 'react';
 function formatAge(updatedAt: number, now: number): string {
   const diffSeconds = Math.max(0, Math.floor((now - updatedAt) / 1000));
 
-  if (diffSeconds <= 1) return 'Maj a l instant';
-  if (diffSeconds < 60) return `Maj il y a ${diffSeconds} s`;
+  if (diffSeconds < 60) return `Maj ${diffSeconds.toString().padStart(2, '0')} s`;
 
   const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) return `Maj il y a ${diffMinutes} min`;
+  if (diffMinutes < 60) return `Maj ${diffMinutes.toString().padStart(2, '0')} m`;
 
   const diffHours = Math.floor(diffMinutes / 60);
-  return `Maj il y a ${diffHours} h`;
+  if (diffHours < 24) return `Maj ${diffHours.toString().padStart(2, '0')} h`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `Maj ${diffDays.toString().padStart(2, '0')} j`;
 }
 
 export function useCommandFreshness(lastUpdatedAt: number | undefined, isPending: boolean): string {
@@ -27,9 +29,8 @@ export function useCommandFreshness(lastUpdatedAt: number | undefined, isPending
   }, [lastUpdatedAt]);
 
   return useMemo(() => {
-    if (isPending && !lastUpdatedAt) return 'Lecture en attente';
-    if (!lastUpdatedAt) return 'Aucune lecture';
-    if (isPending) return `Lecture en attente / ${formatAge(lastUpdatedAt, now)}`;
+    if (isPending) return 'Sync...';
+    if (!lastUpdatedAt) return 'Sans maj';
     return formatAge(lastUpdatedAt, now);
   }, [isPending, lastUpdatedAt, now]);
 }

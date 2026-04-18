@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthStore } from '../src/store/authStore';
@@ -10,6 +11,7 @@ import { bleManagerService } from '../src/transport/BleManager';
 import { palette } from '../src/ui/theme/ui';
 
 const Stack = createNativeStackNavigator();
+const { GestureHandlerRootView } = require('react-native-gesture-handler');
 
 const navTheme = {
   ...DefaultTheme,
@@ -36,35 +38,39 @@ export default function RootLayout() {
   }, [loadFromSecureStore, setBleState]);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor={palette.bg} />
-      <NavigationContainer theme={navTheme}>
-        <Stack.Navigator
-          screenOptions={{
-            headerStyle: { backgroundColor: palette.panel },
-            headerShadowVisible: false,
-            headerTintColor: palette.text,
-            headerTitleStyle: {
-              color: palette.text,
-              fontWeight: '700',
-              fontSize: 18,
-            },
-            contentStyle: { backgroundColor: palette.bg },
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen
-            name="index"
-            options={{ title: 'ESP Control BLE' }}
-            component={require('./index').default}
-          />
-          <Stack.Screen
-            name="control"
-            options={{ title: 'Controle', headerBackTitle: 'Retour' }}
-            component={require('./control/[deviceId]').default}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <BottomSheetModalProvider>
+          <StatusBar barStyle="light-content" backgroundColor={palette.bg} />
+          <NavigationContainer theme={navTheme}>
+            <Stack.Navigator
+              screenOptions={{
+                headerStyle: { backgroundColor: palette.panel },
+                headerShadowVisible: false,
+                headerTintColor: palette.text,
+                headerTitleStyle: {
+                  color: palette.text,
+                  fontWeight: '700',
+                  fontSize: 18,
+                },
+                contentStyle: { backgroundColor: palette.bg },
+                animation: 'slide_from_right',
+              }}
+            >
+              <Stack.Screen
+                name="index"
+                options={{ title: 'ESP Control BLE' }}
+                component={require('./index').default}
+              />
+              <Stack.Screen
+                name="control"
+                options={{ title: 'Controle', headerBackTitle: 'Retour' }}
+                component={require('./control/[deviceId]').default}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </BottomSheetModalProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -9,12 +9,15 @@ import {
   View,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAuth } from '../../src/hooks/useAuth';
 import { useAutoRefresh } from '../../src/hooks/useAutoRefresh';
 import { useBle } from '../../src/hooks/useBle';
 import { useManifest } from '../../src/hooks/useManifest';
 import type { BleDevice } from '../../src/types/ble.types';
+import { DeviceInfoSheet } from '../../src/ui/components/device/DeviceInfoSheet';
 import { ManifestRenderer } from '../../src/ui/components/manifest/ManifestRenderer';
 import {
   triggerErrorHaptic,
@@ -49,6 +52,7 @@ export default function ControlScreen() {
   const insets = useSafeAreaInsets();
   const { device, pin } = route.params as RouteParams;
 
+  const { knownDevices, removePin } = useAuth();
   const { connectionState, connectToDevice, sendCommand, disconnect } = useBle();
   const { manifest, commandValues, commandUpdatedAt, pendingCommands } = useManifest();
 
@@ -57,6 +61,8 @@ export default function ControlScreen() {
   const rootNodes = manifest?.rootNodes ?? [];
   const config = STATE_CONFIG[connectionState] ?? STATE_CONFIG.idle;
   const previousConnectionState = useRef(connectionState);
+  const deviceInfoSheetRef = useRef<React.ElementRef<typeof BottomSheetModal> | null>(null);
+  const knownDevice = knownDevices[device.id];
 
   const refreshableCommands = useMemo(
     () =>
@@ -122,6 +128,26 @@ export default function ControlScreen() {
     navigation.goBack();
   };
 
+  const handleOpenInfo = () => {
+    triggerSelectionHaptic();
+    deviceInfoSheetRef.current?.present();
+  };
+
+  const handleForgetPin = () => {
+    Alert.alert('Oublier le PIN', 'Supprimer le PIN memorise pour cet appareil ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: () => {
+          triggerSoftImpactHaptic();
+          void removePin(device.id).catch(() => undefined);
+          deviceInfoSheetRef.current?.dismiss();
+        },
+      },
+    ]);
+  };
+
   const isLoading = connectionState === 'connecting' || connectionState === 'authenticating';
 
   return (
@@ -144,11 +170,9 @@ export default function ControlScreen() {
             </View>
 
             <View style={styles.heroActions}>
-              {manifest ? (
-                <View style={styles.versionChip}>
-                  <Text style={styles.versionChipText}>v{manifest.version}</Text>
-                </View>
-              ) : null}
+              <TouchableOpacity style={styles.infoGhost} onPress={handleOpenInfo} activeOpacity={0.85}>
+                <Text style={styles.infoGhostText}>Infos</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.disconnectGhost}
                 onPress={handleDisconnect}
@@ -160,7 +184,6 @@ export default function ControlScreen() {
           </View>
 
           <Text style={styles.deviceName}>{device.name ?? 'ESP32'}</Text>
-          <Text style={styles.deviceId}>{device.id}</Text>
         </View>
 
         {isLoading ? (
@@ -210,6 +233,15 @@ export default function ControlScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <DeviceInfoSheet
+        modalRef={deviceInfoSheetRef}
+        device={device}
+        manifestVersion={manifest?.version}
+        knownLabel={knownDevice ? 'PIN memorise' : undefined}
+        canForgetPin={Boolean(knownDevice)}
+        onForgetPin={handleForgetPin}
+      />
     </View>
   );
 }
@@ -277,18 +309,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  versionChip: {
+  infoGhost: {
     borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: withAlpha(palette.accentAlt, 0.12),
-    borderWidth: 1,
-    borderColor: withAlpha(palette.accentAlt, 0.25),
   },
-  versionChipText: {
+  infoGhostText: {
     color: palette.accentAlt,
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   disconnectGhost: {
     borderRadius: radius.pill,
@@ -305,10 +335,6 @@ const styles = StyleSheet.create({
     color: palette.text,
     fontSize: 28,
     fontWeight: '800',
-  },
-  deviceId: {
-    color: palette.muted,
-    fontSize: 13,
   },
   stateCard: {
     minHeight: 220,

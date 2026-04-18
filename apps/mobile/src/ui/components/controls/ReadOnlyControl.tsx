@@ -30,11 +30,10 @@ export function ReadOnlyControl({
 
   const metaItems = useMemo(() => {
     const items: string[] = [];
-    items.push(freshnessLabel);
     if (command.options.refreshMs) items.push(`Auto ${formatRefreshInterval(command.options.refreshMs)}`);
     if (isDisabled) items.push('Desactive');
     return items;
-  }, [command.options.refreshMs, freshnessLabel, isDisabled]);
+  }, [command.options.refreshMs, isDisabled]);
 
   return (
     <CardShell
@@ -59,7 +58,9 @@ export function ReadOnlyControl({
           >
             {displayValue}
           </Text>
-          <Text style={styles.caption}>{freshnessLabel}</Text>
+          <View style={styles.statusChip}>
+            <Text style={styles.caption}>{freshnessLabel}</Text>
+          </View>
         </View>
 
         {command.options.refreshMs && history.length >= 2 ? (
@@ -90,5 +91,14 @@ const styles = StyleSheet.create({
   caption: {
     fontSize: 12,
     color: palette.muted,
+    fontVariant: ['tabular-nums'],
+  },
+  statusChip: {
+    alignSelf: 'flex-start',
+    minWidth: 74,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: palette.panelInset,
   },
 });
