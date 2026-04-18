@@ -63,7 +63,11 @@ def validate(manifest):
 
     cmd_ids = set()
     for cmd in commands:
-        cid = int(cmd['id'], 16) if isinstance(cmd['id'], str) else cmd['id']
+        try:
+            cid = int(cmd['id'], 16) if isinstance(cmd['id'], str) else int(cmd['id'])
+        except (ValueError, TypeError):
+            errors.append(f"Invalid command id '{cmd['id']}' (expected hex string like '0x01')")
+            continue
         if cid in cmd_ids:
             errors.append(f"Duplicate command id: {cmd['id']}")
         cmd_ids.add(cid)
@@ -84,12 +88,21 @@ def validate(manifest):
         parent = node.get('parent')
         if parent is not None and parent not in node_ids:
             errors.append(f"Node {nid} references unknown parent {parent} (must be declared before)")
+        opts = node.get('options', {})
+        if 'variant' in opts and opts['variant'] not in NODE_VARIANTS:
+            errors.append(f"Node {nid} has unknown variant '{opts['variant']}' (valid: {list(NODE_VARIANTS)})")
+        if 'style' in opts and opts['style'] not in NODE_STYLES:
+            errors.append(f"Node {nid} has unknown style '{opts['style']}' (valid: {list(NODE_STYLES)})")
         if node['kind'] == 'command':
             ref = node.get('ref')
             if ref is None:
                 errors.append(f"Command node {nid} missing 'ref'")
             else:
-                ref_id = int(ref, 16) if isinstance(ref, str) else ref
+                try:
+                    ref_id = int(ref, 16) if isinstance(ref, str) else int(ref)
+                except (ValueError, TypeError):
+                    errors.append(f"Command node {nid} has invalid ref '{ref}'")
+                    ref_id = -1
                 if ref_id not in cmd_ids:
                     errors.append(f"Command node {nid} ref={ref} not found in commands")
 
