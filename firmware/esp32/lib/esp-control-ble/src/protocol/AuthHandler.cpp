@@ -20,8 +20,12 @@ void AuthHandler::computeExpectedHash(uint8_t* hashOut) {
   size_t pinLen = strlen(_pin);
   size_t totalLen = pinLen + ECB_NONCE_SIZE;
 
-  uint8_t combined[64]; // pin(max ~56) + nonce(4)
-  if (totalLen > sizeof(combined)) return;
+  uint8_t combined[64];
+  if (totalLen > sizeof(combined)) {
+    Serial.printf("[ECB] Auth error: PIN too long (%u bytes)\n", (unsigned)pinLen);
+    memset(hashOut, 0, ECB_HASH_SIZE);
+    return;
+  }
   memcpy(combined, _pin, pinLen);
   memcpy(combined + pinLen, _nonce, ECB_NONCE_SIZE);
 
