@@ -1,19 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { FlashList } from '@shopify/flash-list';
 
 import { useAuth } from '../src/hooks/useAuth';
 import { useBle } from '../src/hooks/useBle';
 import type { BleDevice } from '../src/types/ble.types';
 import { DeviceCard } from '../src/ui/components/DeviceCard';
 import { PinPrompt } from '../src/ui/components/PinPrompt';
+import { triggerSelectionHaptic, triggerSoftImpactHaptic } from '../src/ui/feedback/haptics';
 import { palette, radius, shadows, withAlpha } from '../src/ui/theme/ui';
 
 const BLE_STATE_META: Record<string, { label: string; color: string }> = {
@@ -27,10 +28,29 @@ const BLE_STATE_META: Record<string, { label: string; color: string }> = {
   turning_off: { label: 'Desactivation...', color: palette.warn },
 };
 
+function compareDeviceNames(left: BleDevice, right: BleDevice): number {
+  return (left.name ?? left.id).localeCompare(right.name ?? right.id, 'fr', { sensitivity: 'base' });
+}
+
+function formatLastSeenLabel(lastSeen: string | undefined): string | undefined {
+  if (!lastSeen) return undefined;
+
+  const deltaMs = Date.now() - new Date(lastSeen).getTime();
+  if (Number.isNaN(deltaMs) || deltaMs < 0) return undefined;
+
+  const deltaHours = Math.floor(deltaMs / (1000 * 60 * 60));
+  if (deltaHours < 1) return 'Vu aujourd hui';
+  if (deltaHours < 24) return `Vu il y a ${deltaHours} h`;
+
+  const deltaDays = Math.floor(deltaHours / 24);
+  if (deltaDays === 1) return 'Vu hier';
+  return `Vu il y a ${deltaDays} j`;
+}
+
 export default function ScanScreen() {
   const navigation = useNavigation<any>();
   const { bleState, isScanning, discoveredDevices, startScan, stopScan } = useBle();
-  const { getPin } = useAuth();
+  const { knownDevices, getPin } = useAuth();
 
   const [selectedDevice, setSelectedDevice] = useState<BleDevice | null>(null);
   const [showPinPrompt, setShowPinPrompt] = useState(false);
@@ -38,6 +58,38 @@ export default function ScanScreen() {
 
   const bleMeta = BLE_STATE_META[bleState] ?? BLE_STATE_META.unknown;
   const readyCount = discoveredDevices.length;
+  const knownCount = useMemo(
+    () => discoveredDevices.filter((device) => Boolean(knownDevices[device.id])).length,
+    [discoveredDevices, knownDevices],
+  );
+  const sortedDevices = useMemo(() => {
+    const devices = [...discoveredDevices];
+
+    devices.sort((left, right) => {
+      const leftKnown = knownDevices[left.id];
+      const rightKnown = knownDevices[right.id];
+
+      if (Boolean(leftKnown) !== Boolean(rightKnown)) {
+        return leftKnown ? -1 : 1;
+      }
+
+      const rightSeen = rightKnown ? new Date(rightKnown.lastSeen).getTime() : 0;
+      const leftSeen = leftKnown ? new Date(leftKnown.lastSeen).getTime() : 0;
+      if (rightSeen !== leftSeen) return rightSeen - leftSeen;
+
+      const leftRssi = left.rssi ?? -999;
+      const rightRssi = right.rssi ?? -999;
+      if (rightRssi !== leftRssi) return rightRssi - leftRssi;
+
+      return compareDeviceNames(left, right);
+    });
+
+    return devices;
+  }, [discoveredDevices, knownDevices]);
+  const recentKnownDevices = useMemo(
+    () => sortedDevices.filter((device) => Boolean(knownDevices[device.id])).slice(0, 3),
+    [knownDevices, sortedDevices],
+  );
 
   const heroSubtitle = useMemo(() => {
     if (bleState !== 'on') {
@@ -62,6 +114,8 @@ export default function ScanScreen() {
       scanBtnDisabled.current = false;
     }, 600);
 
+    triggerSelectionHaptic();
+
     if (isScanning) {
       stopScan();
     } else {
@@ -78,6 +132,7 @@ export default function ScanScreen() {
   }, [bleState, startScan, stopScan]);
 
   const handleDevicePress = (device: BleDevice) => {
+    triggerSoftImpactHaptic();
     stopScan();
     setSelectedDevice(device);
     const savedPin = getPin(device.id);
@@ -111,13 +166,21 @@ export default function ScanScreen() {
       <View style={styles.orbA} />
       <View style={styles.orbB} />
 
-      <FlatList
-        data={discoveredDevices}
+      <FlashList
+        data={sortedDevices}
+        extraData={knownDevices}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <DeviceCard device={item} onPress={handleDevicePress} />}
+        renderItem={({ item }) => (
+          <DeviceCard
+            device={item}
+            isKnown={Boolean(knownDevices[item.id])}
+            knownLabel={formatLastSeenLabel(knownDevices[item.id]?.lastSeen)}
+            onPress={handleDevicePress}
+          />
+        )}
         contentContainerStyle={[
           styles.list,
-          discoveredDevices.length === 0 && styles.listEmpty,
+          sortedDevices.length === 0 && styles.listEmpty,
         ]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
@@ -151,14 +214,41 @@ export default function ScanScreen() {
                 <Text style={styles.statLabel}>Appareils</Text>
               </View>
               <View style={styles.statCard}>
+                <Text style={styles.statValue}>{knownCount}</Text>
+                <Text style={styles.statLabel}>Connus</Text>
+              </View>
+              <View style={styles.statCard}>
                 <Text style={styles.statValue}>{isScanning ? 'LIVE' : 'STOP'}</Text>
                 <Text style={styles.statLabel}>Scan</Text>
               </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{bleState === 'on' ? 'OK' : '--'}</Text>
-                <Text style={styles.statLabel}>BLE</Text>
-              </View>
             </View>
+
+            {recentKnownDevices.length > 0 ? (
+              <View style={styles.recentBlock}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Reconnus a portee</Text>
+                  <Text style={styles.sectionMeta}>PIN deja memorise</Text>
+                </View>
+
+                <View style={styles.recentGrid}>
+                  {recentKnownDevices.map((device) => (
+                    <TouchableOpacity
+                      key={`recent-${device.id}`}
+                      style={styles.recentChip}
+                      onPress={() => handleDevicePress(device)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.recentName} numberOfLines={1}>
+                        {device.name ?? knownDevices[device.id]?.name ?? device.id}
+                      </Text>
+                      <Text style={styles.recentMeta} numberOfLines={1}>
+                        {formatLastSeenLabel(knownDevices[device.id]?.lastSeen) ?? 'PIN memorise'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ) : null}
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Appareils detectes</Text>
@@ -335,6 +425,36 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     color: palette.subtle,
     fontSize: 12,
+  },
+  recentBlock: {
+    gap: 10,
+    marginBottom: 18,
+  },
+  recentGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  recentChip: {
+    minWidth: '47%',
+    flexGrow: 1,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: withAlpha(palette.accentAlt, 0.22),
+    backgroundColor: withAlpha(palette.accentAlt, 0.08),
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  recentName: {
+    color: palette.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  recentMeta: {
+    color: palette.accentAlt,
+    fontSize: 11,
+    fontWeight: '600',
   },
   emptyCard: {
     flex: 1,

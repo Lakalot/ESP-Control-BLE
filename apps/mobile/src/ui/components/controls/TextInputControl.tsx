@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import type { ControlProps } from '../../../types/control.types';
+import { triggerSoftImpactHaptic } from '../../feedback/haptics';
 import { palette, radius, withAlpha } from '../../theme/ui';
 import { CardShell } from './shared/CardShell';
 import { makeTextPayload } from './shared/controlUtils';
@@ -34,6 +35,7 @@ export function TextInputControl({
       nextValue = nextValue.slice(0, -1);
     }
 
+    triggerSoftImpactHaptic();
     onAction(command.id, makeTextPayload(nextValue));
   };
 

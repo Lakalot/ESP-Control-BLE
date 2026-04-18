@@ -6,6 +6,8 @@ import { palette, radius, shadows, withAlpha } from '../theme/ui';
 
 interface Props {
   device: BleDevice;
+  isKnown?: boolean;
+  knownLabel?: string;
   onPress: (device: BleDevice) => void;
 }
 
@@ -46,7 +48,7 @@ const signalStyles = StyleSheet.create({
   },
 });
 
-export function DeviceCard({ device, onPress }: Props) {
+export function DeviceCard({ device, isKnown = false, knownLabel, onPress }: Props) {
   const signal = rssiToSignal(device.rssi);
   const displayName = device.name ?? 'ESP32 inconnu';
 
@@ -67,9 +69,13 @@ export function DeviceCard({ device, onPress }: Props) {
       />
 
       <View style={styles.topRow}>
-        <View style={styles.protocolPill}>
-          <Text style={styles.protocolPillText}>BLE</Text>
-        </View>
+        {isKnown ? (
+          <View style={styles.knownPill}>
+            <Text style={styles.knownPillText}>PIN memorise</Text>
+          </View>
+        ) : (
+          <View />
+        )}
         <View style={[styles.signalPill, { borderColor: withAlpha(signal.color, 0.4) }]}>
           <SignalBars bars={signal.bars} color={signal.color} />
           <Text style={[styles.signalText, { color: signal.color }]}>{signal.label}</Text>
@@ -90,7 +96,11 @@ export function DeviceCard({ device, onPress }: Props) {
             {device.rssi !== null ? `${device.rssi} dBm` : 'RSSI indisponible'}
           </Text>
         </View>
-        <Text style={styles.cta}>Ouvrir</Text>
+        {knownLabel ? (
+          <View style={styles.metaChipAlt}>
+            <Text style={styles.metaChipAltText}>{knownLabel}</Text>
+          </View>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -125,13 +135,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     gap: 10,
   },
-  protocolPill: {
+  knownPill: {
     backgroundColor: palette.chip,
     borderRadius: radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  protocolPillText: {
+  knownPillText: {
     color: palette.accent,
     fontSize: 11,
     fontWeight: '700',
@@ -179,9 +189,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  cta: {
+  metaChipAlt: {
+    backgroundColor: withAlpha(palette.accentAlt, 0.12),
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  metaChipAltText: {
     color: palette.accentAlt,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
 });

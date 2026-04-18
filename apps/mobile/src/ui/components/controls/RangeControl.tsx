@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { ControlProps } from '../../../types/control.types';
 import { NodeVariant } from '../../../types/manifest.types';
+import { triggerSelectionHaptic } from '../../feedback/haptics';
 import { palette, radius, withAlpha } from '../../theme/ui';
 import { formatValue } from '../../../utils/formatValue';
 import { CardShell } from './shared/CardShell';
@@ -65,7 +66,10 @@ export function RangeControl({
           step={rangeStep}
           value={numericValue ?? command.params.min}
           onSlidingComplete={(value) => {
-            if (!isDisabled) onAction(command.id, makeRangePayload(value));
+            if (!isDisabled) {
+              triggerSelectionHaptic();
+              onAction(command.id, makeRangePayload(value));
+            }
           }}
           disabled={isPending || isDisabled}
           minimumTrackTintColor={accentColor}

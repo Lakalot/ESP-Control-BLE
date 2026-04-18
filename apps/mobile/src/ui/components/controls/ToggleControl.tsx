@@ -3,6 +3,7 @@ import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import type { ControlProps } from '../../../types/control.types';
 import { NodeVariant } from '../../../types/manifest.types';
+import { triggerSelectionHaptic } from '../../feedback/haptics';
 import { palette, radius, withAlpha } from '../../theme/ui';
 import { CardShell } from './shared/CardShell';
 
@@ -42,7 +43,10 @@ export function ToggleControl({
         <Switch
           value={boolValue}
           onValueChange={(value) => {
-            if (!isDisabled) onAction(command.id, new Uint8Array([value ? 0x01 : 0x00]));
+            if (!isDisabled) {
+              triggerSelectionHaptic();
+              onAction(command.id, new Uint8Array([value ? 0x01 : 0x00]));
+            }
           }}
           disabled={isPending || isDisabled}
           trackColor={{
@@ -77,7 +81,10 @@ export function ToggleControl({
         <Switch
           value={boolValue}
           onValueChange={(value) => {
-            if (!isDisabled) onAction(command.id, new Uint8Array([value ? 0x01 : 0x00]));
+            if (!isDisabled) {
+              triggerSelectionHaptic();
+              onAction(command.id, new Uint8Array([value ? 0x01 : 0x00]));
+            }
           }}
           disabled={isPending || isDisabled}
           trackColor={{

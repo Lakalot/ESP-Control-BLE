@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import type { ControlProps } from '../../../types/control.types';
+import { triggerSoftImpactHaptic } from '../../feedback/haptics';
 import { palette, radius, withAlpha } from '../../theme/ui';
 import { CardShell } from './shared/CardShell';
 import { makeColorPayload } from './shared/controlUtils';
@@ -130,7 +131,10 @@ export function ColorPickerControl({
               isDisabled && styles.sendButtonDisabled,
             ]}
             onPress={() => {
-              if (!isDisabled) onAction(command.id, makeColorPayload(previewHex));
+              if (!isDisabled) {
+                triggerSoftImpactHaptic();
+                onAction(command.id, makeColorPayload(previewHex));
+              }
             }}
             disabled={isDisabled}
             activeOpacity={0.85}

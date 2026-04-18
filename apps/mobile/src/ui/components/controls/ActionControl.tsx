@@ -3,6 +3,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import type { ControlProps } from '../../../types/control.types';
 import { NodeVariant } from '../../../types/manifest.types';
+import { triggerSoftImpactHaptic, triggerWarningHaptic } from '../../feedback/haptics';
 import { palette, radius, withAlpha } from '../../theme/ui';
 import { CardShell } from './shared/CardShell';
 import { iconChar } from './shared/controlUtils';
@@ -32,6 +33,8 @@ export function ActionControl({
   const helperText = opts.hint ?? (!opts.dangerous ? opts.confirm : undefined);
 
   const executeAction = () => {
+    if (opts.dangerous) triggerWarningHaptic();
+    else triggerSoftImpactHaptic();
     onAction(command.id, new Uint8Array(0));
     setDangerConfirmVisible(false);
   };
@@ -41,6 +44,7 @@ export function ActionControl({
 
     if (opts.dangerous) {
       if (!dangerConfirmVisible) {
+        triggerWarningHaptic();
         setDangerConfirmVisible(true);
         return;
       }

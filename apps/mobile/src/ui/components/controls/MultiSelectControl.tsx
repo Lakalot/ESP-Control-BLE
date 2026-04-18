@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import type { ControlProps } from '../../../types/control.types';
+import { triggerSelectionHaptic } from '../../feedback/haptics';
 import { palette, radius, withAlpha } from '../../theme/ui';
 import { CardShell } from './shared/CardShell';
 import { makeIndexPayload } from './shared/controlUtils';
@@ -56,7 +57,10 @@ export function MultiSelectControl({
                   isDisabled && styles.pillDisabled,
                 ]}
                 onPress={() => {
-                  if (!isDisabled) onAction(command.id, makeIndexPayload(index));
+                  if (!isDisabled) {
+                    triggerSelectionHaptic();
+                    onAction(command.id, makeIndexPayload(index));
+                  }
                 }}
                 disabled={isDisabled}
                 activeOpacity={0.85}
