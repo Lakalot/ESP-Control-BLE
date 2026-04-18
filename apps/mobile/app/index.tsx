@@ -23,7 +23,7 @@ export default function ScanScreen() {
 
   useEffect(() => {
     if (bleState === 'on') {
-      startScan();
+      startScan().catch((e) => console.error('[BLE] startScan error:', e));
     }
     return () => stopScan();
   }, [bleState]);

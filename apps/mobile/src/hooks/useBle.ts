@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { PermissionsAndroid, Platform } from 'react-native';
 import { useBleStore } from '../store/bleStore';
 import { useDeviceStore } from '../store/deviceStore';
 import { useAuthStore } from '../store/authStore';
@@ -13,12 +14,42 @@ import { BleDevice } from '../types/ble.types';
 
 const COMMAND_TIMEOUT_MS = 5000;
 
+async function requestBlePermissions(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+
+  const apiLevel = Platform.Version as number;
+
+  if (apiLevel >= 31) {
+    // Android 12+
+    const results = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+    ]);
+    return (
+      results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === 'granted' &&
+      results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === 'granted'
+    );
+  } else {
+    // Android < 12
+    const result = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    );
+    return result === 'granted';
+  }
+}
+
 export function useBle() {
   const bleStore = useBleStore();
   const deviceStore = useDeviceStore();
   const authStore = useAuthStore();
 
-  const startScan = useCallback(() => {
+  const startScan = useCallback(async () => {
+    const granted = await requestBlePermissions();
+    if (!granted) {
+      console.error('[BLE] Permissions refusées');
+      bleStore.setBleState('unauthorized');
+      return;
+    }
     bleStore.clearDiscoveredDevices();
     bleStore.setIsScanning(true);
     bleScanner.startScan(
