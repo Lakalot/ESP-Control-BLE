@@ -20,6 +20,19 @@ export default function ScanScreen() {
 
   const [selectedDevice, setSelectedDevice] = React.useState<BleDevice | null>(null);
   const [showPinPrompt, setShowPinPrompt] = React.useState(false);
+  const scanBtnDisabled = React.useRef(false);
+
+  const handleScanToggle = () => {
+    if (scanBtnDisabled.current) return;
+    scanBtnDisabled.current = true;
+    setTimeout(() => { scanBtnDisabled.current = false; }, 600);
+
+    if (isScanning) {
+      stopScan();
+    } else {
+      startScan().catch((e) => console.error('[BLE] startScan error:', e));
+    }
+  };
 
   useEffect(() => {
     if (bleState === 'on') {
@@ -73,7 +86,7 @@ export default function ScanScreen() {
         </Text>
         <TouchableOpacity
           style={[styles.scanBtn, isScanning && styles.scanBtnStop]}
-          onPress={isScanning ? stopScan : startScan}
+          onPress={handleScanToggle}
           disabled={bleState !== 'on'}
         >
           <Text style={styles.scanBtnText}>{isScanning ? 'Arrêter' : 'Scanner'}</Text>
