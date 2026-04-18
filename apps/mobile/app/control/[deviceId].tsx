@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,12 @@ import { useBle } from '../../src/hooks/useBle';
 import { useManifest } from '../../src/hooks/useManifest';
 import type { BleDevice } from '../../src/types/ble.types';
 import { ManifestRenderer } from '../../src/ui/components/manifest/ManifestRenderer';
+import {
+  triggerErrorHaptic,
+  triggerSelectionHaptic,
+  triggerSoftImpactHaptic,
+  triggerSuccessHaptic,
+} from '../../src/ui/feedback/haptics';
 import { palette, radius, shadows, withAlpha } from '../../src/ui/theme/ui';
 import { CmdType } from '../../src/types/manifest.types';
 
@@ -44,12 +50,13 @@ export default function ControlScreen() {
   const { device, pin } = route.params as RouteParams;
 
   const { connectionState, connectToDevice, sendCommand, disconnect } = useBle();
-  const { manifest, commandValues, pendingCommands } = useManifest();
+  const { manifest, commandValues, commandUpdatedAt, pendingCommands } = useManifest();
 
   const isReady = connectionState === 'ready';
   const commands = manifest?.commands ?? [];
   const rootNodes = manifest?.rootNodes ?? [];
   const config = STATE_CONFIG[connectionState] ?? STATE_CONFIG.idle;
+  const previousConnectionState = useRef(connectionState);
 
   const refreshableCommands = useMemo(
     () =>
@@ -69,6 +76,8 @@ export default function ControlScreen() {
   });
 
   const showConnectionError = (error: Error) => {
+    triggerErrorHaptic();
+
     if (error.message === 'AUTH_FAIL') {
       Alert.alert('Erreur', 'PIN incorrect. Reessayez.');
       return;
@@ -84,6 +93,18 @@ export default function ControlScreen() {
     };
   }, [connectToDevice, device, disconnect, pin]);
 
+  useEffect(() => {
+    if (connectionState === 'ready' && previousConnectionState.current !== 'ready') {
+      triggerSuccessHaptic();
+    }
+
+    if (connectionState === 'error' && previousConnectionState.current === 'ready') {
+      triggerErrorHaptic();
+    }
+
+    previousConnectionState.current = connectionState;
+  }, [connectionState]);
+
   const handleCommand = (cmdId: number, payload: Uint8Array) => {
     sendCommand(cmdId, payload, pin).catch((error: Error) => {
       console.error('[ControlScreen] Command send failed:', error);
@@ -91,10 +112,12 @@ export default function ControlScreen() {
   };
 
   const handleRetry = () => {
+    triggerSoftImpactHaptic();
     connectToDevice(device, pin).catch(showConnectionError);
   };
 
   const handleDisconnect = async () => {
+    triggerSelectionHaptic();
     await disconnect();
     navigation.goBack();
   };
@@ -109,7 +132,7 @@ export default function ControlScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: Math.max(insets.bottom, 16) + 96 },
+          { paddingBottom: Math.max(insets.bottom, 24) + 24 },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -167,21 +190,26 @@ export default function ControlScreen() {
           <ManifestRenderer
             nodes={rootNodes}
             commandValues={commandValues}
+            commandUpdatedAt={commandUpdatedAt}
             pendingCommands={pendingCommands}
             onAction={handleCommand}
           />
         )}
-      </ScrollView>
 
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <TouchableOpacity
-          style={styles.disconnectButton}
-          onPress={handleDisconnect}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.disconnectText}>Deconnecter l appareil</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={[styles.sessionCard, shadows.card]}>
+          <Text style={styles.sessionTitle}>Session</Text>
+          <Text style={styles.sessionHint}>
+            Fermez la connexion quand vous avez termine avec cet appareil.
+          </Text>
+          <TouchableOpacity
+            style={styles.disconnectButton}
+            onPress={handleDisconnect}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.disconnectText}>Deconnecter l appareil</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -337,21 +365,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 21,
   },
-  bottomBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: withAlpha(palette.white, 0.06),
-    backgroundColor: withAlpha(palette.bg, 0.96),
+  sessionCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.panel,
+    padding: 18,
+    gap: 12,
+  },
+  sessionTitle: {
+    color: palette.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  sessionHint: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 20,
   },
   disconnectButton: {
-    paddingVertical: 15,
+    minHeight: 48,
     borderRadius: radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: palette.panel,
     borderWidth: 1,
     borderColor: withAlpha(palette.danger, 0.28),

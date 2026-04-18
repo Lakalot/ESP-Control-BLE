@@ -8,6 +8,7 @@ export type Value = number | boolean | string | XYValue | null;
 interface DeviceStore {
   manifest: ParsedManifest | null;
   commandValues: Record<CmdId, Value>;
+  commandUpdatedAt: Record<CmdId, number>;
   pendingCommands: Set<CmdId>;
 
   setManifest: (manifest: ParsedManifest | null) => void;
@@ -20,11 +21,15 @@ interface DeviceStore {
 export const useDeviceStore = create<DeviceStore>((set) => ({
   manifest: null,
   commandValues: {},
+  commandUpdatedAt: {},
   pendingCommands: new Set(),
 
   setManifest: (manifest) => set({ manifest }),
   setCommandValue: (cmdId, value) =>
-    set((state) => ({ commandValues: { ...state.commandValues, [cmdId]: value } })),
+    set((state) => ({
+      commandValues: { ...state.commandValues, [cmdId]: value },
+      commandUpdatedAt: { ...state.commandUpdatedAt, [cmdId]: Date.now() },
+    })),
   addPendingCommand: (cmdId) =>
     set((state) => ({ pendingCommands: new Set(state.pendingCommands).add(cmdId) })),
   removePendingCommand: (cmdId) =>
@@ -33,5 +38,11 @@ export const useDeviceStore = create<DeviceStore>((set) => ({
       next.delete(cmdId);
       return { pendingCommands: next };
     }),
-  reset: () => set({ manifest: null, commandValues: {}, pendingCommands: new Set() }),
+  reset: () =>
+    set({
+      manifest: null,
+      commandValues: {},
+      commandUpdatedAt: {},
+      pendingCommands: new Set(),
+    }),
 }));

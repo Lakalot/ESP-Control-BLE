@@ -70,3 +70,8 @@ export function makeXyPayload(x: number, y: number): Uint8Array {
 export function makeIndexPayload(index: number): Uint8Array {
   return new Uint8Array([index & 0xff]);
 }
+
+export function formatRefreshInterval(ms: number): string {
+  if (ms % 1000 === 0) return `${ms / 1000} s`;
+  return `${ms} ms`;
+}

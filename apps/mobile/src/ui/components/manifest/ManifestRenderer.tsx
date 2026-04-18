@@ -9,6 +9,7 @@ import { ManifestNode, NodeKind, NodeStyle, NodeVariant } from '../../../types/m
 interface ManifestRendererProps {
   nodes: ManifestNode[];
   commandValues: Record<number, Value>;
+  commandUpdatedAt: Record<number, number>;
   pendingCommands: Set<number>;
   onAction: (cmdId: number, payload: Uint8Array) => void;
 }
@@ -256,13 +257,20 @@ function TextNode({ node }: NodeRendererProps) {
   );
 }
 
-function CommandNode({ node, commandValues, pendingCommands, onAction }: NodeRendererProps) {
+function CommandNode({
+  node,
+  commandValues,
+  commandUpdatedAt,
+  pendingCommands,
+  onAction,
+}: NodeRendererProps) {
   if (!node.command) return null;
 
   return (
     <CommandControl
       command={node.command}
       currentValue={commandValues[node.command.id] ?? null}
+      lastUpdatedAt={commandUpdatedAt[node.command.id]}
       isPending={pendingCommands.has(node.command.id)}
       onAction={onAction}
       variant={node.options.variant ?? NodeVariant.CARD}

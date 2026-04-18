@@ -8,10 +8,13 @@ import { palette } from '../../theme/ui';
 import { formatValue } from '../../../utils/formatValue';
 import { SparklineChart } from '../SparklineChart';
 import { CardShell } from './shared/CardShell';
+import { formatRefreshInterval } from './shared/controlUtils';
+import { useCommandFreshness } from './shared/useCommandFreshness';
 
 export function ReadOnlyControl({
   command,
   currentValue,
+  lastUpdatedAt,
   isPending,
   variant,
   surfaceStyle,
@@ -23,13 +26,15 @@ export function ReadOnlyControl({
   const numericValue = typeof currentValue === 'number' ? currentValue : null;
   const displayValue = numericValue != null ? formatValue(numericValue, command.options) : '--';
   const history = useSparkline(command.id);
+  const freshnessLabel = useCommandFreshness(lastUpdatedAt, isPending);
 
   const metaItems = useMemo(() => {
     const items: string[] = [];
-    if (command.options.refreshMs) items.push(`Auto ${command.options.refreshMs} ms`);
+    items.push(freshnessLabel);
+    if (command.options.refreshMs) items.push(`Auto ${formatRefreshInterval(command.options.refreshMs)}`);
     if (isDisabled) items.push('Desactive');
     return items;
-  }, [command.options.refreshMs, isDisabled]);
+  }, [command.options.refreshMs, freshnessLabel, isDisabled]);
 
   return (
     <CardShell
@@ -54,7 +59,7 @@ export function ReadOnlyControl({
           >
             {displayValue}
           </Text>
-          <Text style={styles.caption}>Derniere lecture</Text>
+          <Text style={styles.caption}>{freshnessLabel}</Text>
         </View>
 
         {command.options.refreshMs && history.length >= 2 ? (

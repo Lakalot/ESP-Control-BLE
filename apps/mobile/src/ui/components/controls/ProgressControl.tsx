@@ -4,10 +4,13 @@ import type { ControlProps } from '../../../types/control.types';
 import { palette } from '../../theme/ui';
 import { CardShell } from './shared/CardShell';
 import { ProgressBarControl } from './ProgressBarControl';
+import { formatRefreshInterval } from './shared/controlUtils';
+import { useCommandFreshness } from './shared/useCommandFreshness';
 
 export function ProgressControl({
   command,
   currentValue,
+  lastUpdatedAt,
   isPending,
   variant,
   surfaceStyle,
@@ -16,13 +19,15 @@ export function ProgressControl({
 }: ControlProps) {
   const isDisabled = Boolean(command.options.disabled);
   const numericValue = typeof currentValue === 'number' ? currentValue : null;
+  const freshnessLabel = useCommandFreshness(lastUpdatedAt, isPending);
 
   const metaItems = useMemo(() => {
     const items: string[] = [];
-    if (command.options.refreshMs) items.push(`Auto ${command.options.refreshMs} ms`);
+    items.push(freshnessLabel);
+    if (command.options.refreshMs) items.push(`Auto ${formatRefreshInterval(command.options.refreshMs)}`);
     if (isDisabled) items.push('Desactive');
     return items;
-  }, [command.options.refreshMs, isDisabled]);
+  }, [command.options.refreshMs, freshnessLabel, isDisabled]);
 
   return (
     <CardShell

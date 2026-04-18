@@ -2,12 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { palette, radius, shadows, withAlpha } from '../../../theme/ui';
-import {
-  CmdType,
-  type ManifestCommand,
-  NodeStyle,
-  NodeVariant,
-} from '../../../../types/manifest.types';
+import { CmdType, type ManifestCommand, NodeStyle, NodeVariant } from '../../../../types/manifest.types';
 import { iconChar, resolveSurface } from './controlUtils';
 
 interface CardShellProps {
@@ -103,19 +98,17 @@ export function CardShell({
         </View>
 
         <View style={styles.headerBadges}>
-          <View style={[styles.typePill, { borderColor: withAlpha(accentColor, 0.3) }]}>
-            <Text style={[styles.typePillText, { color: accentColor }]}>
-              {commandTypeLabel(command.type)}
-            </Text>
-          </View>
-
           {command.options.badge ? (
             <View style={[styles.badge, { backgroundColor: accentColor }]}>
               <Text style={styles.badgeText}>{command.options.badge}</Text>
             </View>
           ) : null}
 
-          {isPending ? <View style={styles.pendingDot} /> : null}
+          {isPending ? (
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingBadgeText}>En cours</Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -196,17 +189,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 6,
   },
-  typePill: {
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: palette.panelInset,
-  },
-  typePillText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
   badge: {
     borderRadius: radius.pill,
     paddingHorizontal: 9,
@@ -218,10 +200,18 @@ const styles = StyleSheet.create({
     color: palette.bg,
     letterSpacing: 0.6,
   },
-  pendingDot: {
-    width: 9,
-    height: 9,
+  pendingBadge: {
     borderRadius: radius.pill,
-    backgroundColor: palette.warn,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    backgroundColor: withAlpha(palette.warn, 0.18),
+    borderWidth: 1,
+    borderColor: withAlpha(palette.warn, 0.4),
+  },
+  pendingBadgeText: {
+    color: palette.warn,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
 });
