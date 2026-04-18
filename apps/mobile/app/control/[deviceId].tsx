@@ -159,13 +159,6 @@ export default function ControlScreen() {
             </View>
           </View>
 
-          <View style={styles.heroHintCard}>
-            <Text style={styles.heroHintTitle}>UI pilotee par manifeste</Text>
-            <Text style={styles.heroHintText}>
-              Sections, grilles, barres d actions et variantes de cartes viennent maintenant du
-              firmware.
-            </Text>
-          </View>
         </View>
 
         {isLoading ? (
@@ -186,9 +179,9 @@ export default function ControlScreen() {
           </View>
         ) : rootNodes.length === 0 ? (
           <View style={[styles.stateCard, shadows.card]}>
-            <Text style={styles.emptyTitle}>Manifeste vide</Text>
+            <Text style={styles.emptyTitle}>Aucune commande disponible</Text>
             <Text style={styles.emptyHint}>
-              L appareil est connecte, mais aucun noeud UI n a ete publie.
+              L appareil est connecte, mais rien n est expose pour cet ecran.
             </Text>
           </View>
         ) : (
@@ -332,24 +325,6 @@ const styles = StyleSheet.create({
   statLabel: {
     color: palette.muted,
     fontSize: 12,
-  },
-  heroHintCard: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: withAlpha(palette.white, 0.06),
-    backgroundColor: withAlpha(palette.white, 0.02),
-    padding: 14,
-    gap: 6,
-  },
-  heroHintTitle: {
-    color: palette.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  heroHintText: {
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 20,
   },
   stateCard: {
     minHeight: 220,

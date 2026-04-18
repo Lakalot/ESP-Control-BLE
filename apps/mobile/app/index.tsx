@@ -41,14 +41,14 @@ export default function ScanScreen() {
 
   const heroSubtitle = useMemo(() => {
     if (bleState !== 'on') {
-      return 'Activez le Bluetooth et les permissions pour detecter vos appareils locaux.';
+      return 'Activez le Bluetooth et lancez un scan pour afficher les appareils disponibles.';
     }
 
     if (isScanning) {
-      return 'Recherche active des ESP32 exposes en BLE dans votre environnement proche.';
+      return 'Recherche des appareils BLE disponibles.';
     }
 
-    return 'Detection locale, PIN securise et commandes dynamiques depuis une seule interface.';
+    return 'Selectionnez un appareil pour ouvrir ses commandes.';
   }, [bleState, isScanning]);
 
   const safeStartScan = () => {
@@ -143,8 +143,6 @@ export default function ScanScreen() {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.heroEyebrow}>Local BLE Console</Text>
-            <Text style={styles.heroTitle}>Pilotez vos ESP32 au plus pres.</Text>
             <Text style={styles.heroSubtitle}>{heroSubtitle}</Text>
 
             <View style={styles.heroStats}>
@@ -290,20 +288,6 @@ const styles = StyleSheet.create({
     color: palette.bg,
     fontWeight: '800',
     fontSize: 13,
-  },
-  heroEyebrow: {
-    color: palette.accent,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  heroTitle: {
-    color: palette.text,
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '800',
-    marginBottom: 10,
   },
   heroSubtitle: {
     color: palette.muted,
