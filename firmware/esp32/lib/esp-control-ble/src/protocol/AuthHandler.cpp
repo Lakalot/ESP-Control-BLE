@@ -16,7 +16,7 @@ void AuthHandler::generateChallenge(uint8_t* nonceOut) {
 }
 
 void AuthHandler::computeExpectedHash(uint8_t* hashOut) {
-  if (!_pin) return;
+  if (!_pin) { memset(hashOut, 0, ECB_HASH_SIZE); return; }
   size_t pinLen = strlen(_pin);
   size_t totalLen = pinLen + ECB_NONCE_SIZE;
 
