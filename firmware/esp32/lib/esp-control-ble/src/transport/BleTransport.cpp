@@ -22,8 +22,7 @@ public:
   }
 
   void onWrite(NimBLECharacteristic* pChar) override {
-    std::string value = pChar->getValue();
-    _transport->handleWrite((const uint8_t*)value.data(), (uint16_t)value.length());
+    _transport->handleWrite(pChar->getValue<uint8_t*>(), (uint16_t)pChar->getDataLength());
   }
 };
 
