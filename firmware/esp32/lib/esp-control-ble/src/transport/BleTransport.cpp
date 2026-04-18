@@ -1,5 +1,6 @@
 #include "BleTransport.h"
 #include <Arduino.h>
+#include <pgmspace.h>
 
 // ── Static instance ────────────────────────────────────────
 BleTransport* BleTransport::_instance = nullptr;
@@ -48,21 +49,9 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   _auth      = auth;
   _registry  = registry;
   _instance  = this;
+  _manifest  = manifest;
+  _manifestLen = manifestLen;
   _manifestChunked = manifestLen > 512;
-
-  if (_manifest) {
-    free(_manifest);
-    _manifest = nullptr;
-    _manifestLen = 0;
-  }
-
-  if (manifestLen > 0) {
-    _manifest = (uint8_t*)malloc(manifestLen);
-    if (_manifest) {
-      memcpy(_manifest, manifest, manifestLen);
-      _manifestLen = manifestLen;
-    }
-  }
 
   NimBLEDevice::init(deviceName);
   NimBLEDevice::setPower(ESP_PWR_LVL_P9);
@@ -81,12 +70,14 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
     uint8_t meta[5];
     meta[0] = ECB_MANIFEST_VERSION_4;
     meta[1] = ECB_MANIFEST_FLAG_CHUNKED;
-    meta[2] = (uint8_t)((manifestLen >> 8) & 0xFF);
-    meta[3] = (uint8_t)(manifestLen & 0xFF);
+    meta[2] = (uint8_t)((_manifestLen >> 8) & 0xFF);
+    meta[3] = (uint8_t)(_manifestLen & 0xFF);
     meta[4] = ECB_MANIFEST_CHUNK_SIZE;
     manifestChar->setValue(meta, sizeof(meta));
   } else if (_manifest && _manifestLen > 0) {
-    manifestChar->setValue(_manifest, _manifestLen);
+    uint8_t inlineManifest[512];
+    memcpy_P(inlineManifest, _manifest, _manifestLen);
+    manifestChar->setValue(inlineManifest, _manifestLen);
   }
 
   _cmdChar = service->createCharacteristic(
@@ -138,7 +129,7 @@ void BleTransport::sendManifestChunk(uint16_t offset, uint8_t requestedLen) {
   resp[0] = ECB_SYSTEM_CMD_MANIFEST_CHUNK;
   resp[1] = ECB_STATUS_OK;
   resp[2] = safeLen;
-  memcpy(resp + 3, _manifest + offset, safeLen);
+  memcpy_P(resp + 3, _manifest + offset, safeLen);
   sendNotify(resp, (uint16_t)(3 + safeLen));
 }
 

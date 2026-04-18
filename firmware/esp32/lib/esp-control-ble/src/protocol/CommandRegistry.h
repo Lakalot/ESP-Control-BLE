@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Protocol.h"
+#include <etl/flat_map.h>
 #include <stdint.h>
 
 typedef void (*EcbNotifyFn)(const uint8_t* data, uint16_t len);
@@ -80,11 +81,5 @@ public:
   bool dispatch(uint8_t cmdId, const uint8_t* payload, uint8_t len, EcbNotifyFn notify);
 
 private:
-  struct Entry {
-    uint8_t      id;
-    EcbCommandFn callback;
-  };
-
-  Entry   _entries[ECB_MAX_COMMANDS];
-  uint8_t _count = 0;
+  etl::flat_map<uint8_t, EcbCommandFn, ECB_MAX_COMMANDS> _entries;
 };

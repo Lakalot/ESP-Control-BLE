@@ -15,7 +15,7 @@ private:
   CommandRegistry* _registry = nullptr;
 
   NimBLECharacteristic* _cmdChar = nullptr;
-  uint8_t* _manifest = nullptr;
+  const uint8_t* _manifest = nullptr;
   uint16_t _manifestLen = 0;
   bool _manifestChunked = false;
 
