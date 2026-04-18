@@ -17,7 +17,7 @@ import { useManifest } from '../../src/hooks/useManifest';
 import type { BleDevice } from '../../src/types/ble.types';
 import { ManifestRenderer } from '../../src/ui/components/manifest/ManifestRenderer';
 import { palette, radius, shadows, withAlpha } from '../../src/ui/theme/ui';
-import { CmdType, NodeKind } from '../../src/types/manifest.types';
+import { CmdType } from '../../src/types/manifest.types';
 
 type RouteParams = {
   deviceId: string;
@@ -59,11 +59,6 @@ export default function ControlScreen() {
           Boolean(command.options.refreshMs),
       ),
     [commands],
-  );
-
-  const sectionCount = useMemo(
-    () => manifest?.nodes.filter((node) => node.kind === NodeKind.SECTION).length ?? 0,
-    [manifest],
   );
 
   useAutoRefresh({
@@ -143,29 +138,13 @@ export default function ControlScreen() {
 
           <Text style={styles.deviceName}>{device.name ?? 'ESP32'}</Text>
           <Text style={styles.deviceId}>{device.id}</Text>
-
-          <View style={styles.heroStats}>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{sectionCount}</Text>
-              <Text style={styles.statLabel}>Sections</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{commands.length}</Text>
-              <Text style={styles.statLabel}>Commandes</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{refreshableCommands.length}</Text>
-              <Text style={styles.statLabel}>Auto</Text>
-            </View>
-          </View>
-
         </View>
 
         {isLoading ? (
           <View style={[styles.stateCard, shadows.card]}>
             <ActivityIndicator color={palette.accentAlt} size="large" />
             <Text style={styles.loadingText}>{config.label}...</Text>
-            <Text style={styles.loadingHint}>Connexion BLE et chargement du manifeste.</Text>
+            <Text style={styles.loadingHint}>Connexion BLE et chargement des commandes.</Text>
           </View>
         ) : connectionState === 'error' ? (
           <View style={[styles.stateCard, shadows.card]}>
@@ -302,29 +281,6 @@ const styles = StyleSheet.create({
   deviceId: {
     color: palette.muted,
     fontSize: 13,
-  },
-  heroStats: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: palette.panelInset,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: palette.border,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-  },
-  statValue: {
-    color: palette.text,
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  statLabel: {
-    color: palette.muted,
-    fontSize: 12,
   },
   stateCard: {
     minHeight: 220,
