@@ -3,6 +3,7 @@
 #include "Protocol.h"
 #include <etl/flat_map.h>
 #include <stdint.h>
+#include <string.h>
 
 typedef void (*EcbNotifyFn)(const uint8_t* data, uint16_t len);
 
@@ -46,12 +47,12 @@ struct CmdContext {
   }
 
   void replyOk(const uint8_t* data = nullptr, uint8_t len = 0) const {
-    uint8_t buf[3 + ECB_MAX_PAYLOAD];
+    static uint8_t buf[3 + ECB_MAX_PAYLOAD];
     buf[0] = cmdId;
     buf[1] = ECB_STATUS_OK;
     buf[2] = len;
     if (len > 0 && data) {
-      for (uint8_t i = 0; i < len; i++) buf[3 + i] = data[i];
+      memcpy(buf + 3, data, len);
     }
     _notify(buf, 3 + len);
   }
