@@ -1,9 +1,22 @@
 #include <Arduino.h>
 #include <EspControlBle.h>
 #include <esp_timer.h>
-#include "manifest_data.h"
+#include "manifest_v5_data.h"
 
 #define LED_PIN 2
+
+#define V5_RES_RELAY     5u
+#define V5_RES_BRIGHTNESS 4u
+#define V5_RES_TEMPERATURE 2u
+#define V5_RES_FAN_PROFILE 3u
+#define V5_RES_LOAD       6u
+#define V5_RES_DEBUG      1u
+
+#define V5_ACT_TOGGLE     4u
+#define V5_ACT_SET_BRIGHTNESS 3u
+#define V5_ACT_SET_PROFILE 2u
+#define V5_ACT_SET_DEBUG   1u
+#define V5_ACT_FACTORY_RESET 5u
 
 static bool ledState = false;
 static uint8_t ledR = 255;
@@ -24,83 +37,58 @@ void setup() {
   Serial.println("[App] Starting...");
   pinMode(LED_PIN, OUTPUT);
 
-  control.registerCallback(0x01, [](CmdContext& ctx) {
+
+  control.registerActionV5(V5_ACT_TOGGLE, [](ecb::v5::ActionContext& ctx) {
     ledState = !ledState;
     digitalWrite(LED_PIN, ledState ? HIGH : LOW);
-    Serial.printf("[LED] Toggle -> %s\n", ledState ? "ON" : "OFF");
-    uint8_t val = ledState ? 0x01 : 0x00;
-    ctx.replyOk(&val, 1);
+    Serial.printf("[V5] relay.toggle -> %s\n", ledState ? "ON" : "OFF");
+    control.resources().setBool(V5_RES_RELAY, ledState);
+    control.publishDelta(V5_RES_RELAY);
+    ctx.replyOk(nullptr, 0);
   });
 
-  control.registerCallback(0x02, [](CmdContext& ctx) {
-    if (ctx.length < 2) {
-      ctx.replyError(ECB_STATUS_BAD_FRAME);
-      return;
-    }
-    int16_t value = ctx.readInt16();
-    uint8_t brightness = (uint8_t)constrain(value, 0, 100);
+  control.registerActionV5(V5_ACT_SET_BRIGHTNESS, [](ecb::v5::ActionContext& ctx) {
+    if (ctx.payloadLen < 4) { ctx.replyError(ecb::v5::ActionStatus::BadPayload, "need uint"); return; }
+    uint32_t val = (uint32_t)ctx.payload[0]
+                 | ((uint32_t)ctx.payload[1] << 8)
+                 | ((uint32_t)ctx.payload[2] << 16)
+                 | ((uint32_t)ctx.payload[3] << 24);
+    uint8_t brightness = (uint8_t)constrain((int)val, 0, 100);
     analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));
-    Serial.printf("[LED] Brightness -> %d%%\n", brightness);
-    ctx.replyOk(ctx.payload, 2);
+    control.resources().setUint(V5_RES_BRIGHTNESS, brightness);
+    control.publishDelta(V5_RES_BRIGHTNESS);
+    Serial.printf("[V5] light.set_brightness -> %u%%\n", brightness);
+    ctx.replyOk(nullptr, 0);
   });
 
-  control.registerCallback(0x03, [](CmdContext& ctx) {
-    uint8_t r = 0, g = 0, b = 0;
-    if (!ctx.readRgb(r, g, b)) {
-      ctx.replyError(ECB_STATUS_BAD_FRAME);
-      return;
-    }
-    ledR = r; ledG = g; ledB = b;
-    Serial.printf("[LED] Colour -> #%02X%02X%02X\n", r, g, b);
-    ctx.replyOk(ctx.payload, 3);
+  control.registerActionV5(V5_ACT_SET_PROFILE, [](ecb::v5::ActionContext& ctx) {
+    if (ctx.payloadLen < 1) { ctx.replyError(ecb::v5::ActionStatus::BadPayload, "need value"); return; }
+    fanMode = ctx.payload[0];
+    control.resources().setUint(V5_RES_FAN_PROFILE, fanMode);
+    control.publishDelta(V5_RES_FAN_PROFILE);
+    Serial.printf("[V5] fan.set_profile -> %u\n", fanMode);
+    ctx.replyOk(nullptr, 0);
   });
 
-  control.registerCallback(0x10, [](CmdContext& ctx) {
-    uint8_t buf[2];
-    buf[0] = (uint8_t)((temperatureCenti >> 8) & 0xFF);
-    buf[1] = (uint8_t)(temperatureCenti & 0xFF);
-    ctx.replyOk(buf, 2);
+  control.registerActionV5(V5_ACT_SET_DEBUG, [](ecb::v5::ActionContext& ctx) {
+    if (ctx.payloadLen < 1) { ctx.replyError(ecb::v5::ActionStatus::BadPayload, "need bool"); return; }
+    bool dbg = ctx.payload[0] != 0;
+    control.resources().setBool(V5_RES_DEBUG, dbg);
+    control.publishDelta(V5_RES_DEBUG);
+    Serial.printf("[V5] device.set_debug -> %s\n", dbg ? "true" : "false");
+    ctx.replyOk(nullptr, 0);
   });
 
-  control.registerCallback(0x21, [](CmdContext& ctx) {
-    (void)ctx;
-    ctx.replyProgress(42);
+  control.registerActionV5(V5_ACT_FACTORY_RESET, [](ecb::v5::ActionContext& ctx) {
+    Serial.println("[V5] system.factory_reset triggered");
+    ctx.replyOk(nullptr, 0);
   });
 
-  control.registerCallback(0x20, [](CmdContext& ctx) {
-    fanMode = ctx.readMultiSelect();
-    Serial.printf("[Fan] Mode -> %u\n", fanMode);
-    ctx.replyOk(&fanMode, 1);
-  });
+  control.resources().setBool(V5_RES_RELAY, false);
+  control.resources().setUint(V5_RES_BRIGHTNESS, 0);
+  control.resources().setBool(V5_RES_DEBUG, false);
 
-  control.registerCallback(0x40, [](CmdContext& ctx) {
-    int16_t x = 0, y = 0;
-    if (!ctx.readXY(x, y)) {
-      ctx.replyError(ECB_STATUS_BAD_FRAME);
-      return;
-    }
-    Serial.printf("[Motion] XY -> x=%d y=%d\n", x, y);
-    ctx.replyOk(ctx.payload, 4);
-  });
-
-  control.registerCallback(0x50, [](CmdContext& ctx) {
-    char name[33] = { 0 };
-    ctx.readTextInput(name, sizeof(name));
-    Serial.printf("[Config] New name: %s\n", name);
-    ctx.replyOk((const uint8_t*)name, (uint8_t)strlen(name));
-  });
-
-  control.registerCallback(0x30, [](CmdContext& ctx) {
-    Serial.println("[ADV] Factory reset triggered");
-    ctx.replyOk();
-  });
-
-  control.registerCallback(0x31, [](CmdContext& ctx) {
-    uint8_t value = ctx.length > 0 ? ctx.payload[0] : 0x00;
-    ctx.replyOk(&value, 1);
-  });
-
-  control.begin(ECB_MANIFEST_DATA, ECB_MANIFEST_LEN);
+  control.begin(MANIFEST_V5_DATA, MANIFEST_V5_LEN);
 
   const esp_timer_create_args_t timerArgs = {
     .callback = onTemperatureTick,
@@ -110,7 +98,7 @@ void setup() {
   esp_timer_create(&timerArgs, &tempTimer);
   esp_timer_start_periodic(tempTimer, 1000000);
 
-  Serial.println("[App] Ready");
+  Serial.println("[App] Ready (V5 manifest, 2036 bytes)");
 }
 
 void loop() {
