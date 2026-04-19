@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +27,14 @@ import {
 } from '../../src/ui/feedback/haptics';
 import { palette, radius, shadows, withAlpha } from '../../src/ui/theme/ui';
 import { CmdType } from '../../src/types/manifest.types';
+import { getManifestRuntime } from '../../src/settings/manifestRuntimeFlag';
+import { BleRuntime } from '../../src/manifest-v5/runtime/BleRuntime';
+import { createRealBleDevice } from '../../src/hooks/useBle';
+import { ManifestScreenRenderer } from '../../src/manifest-v5/render/ManifestScreenRenderer';
+import { loadBundledFixtureRuntime } from '../../src/manifest-v5/runtime/bundledFixtureRuntime';
+import { bundledFixture } from '../../src/manifest-v5/runtime/bundledFixture';
+import '../../src/manifest-v5/render/widgets';
+
 
 type RouteParams = {
   deviceId: string;
@@ -46,8 +54,28 @@ const STATE_CONFIG: Record<string, { label: string; color: string; bg: string }>
   error: { label: 'Erreur', color: palette.danger, bg: withAlpha(palette.danger, 0.14) },
 };
 
+function V5PilotRenderer() {
+  const flag = getManifestRuntime();
+  const [rt, setRt] = useState<null | Awaited<ReturnType<typeof loadBundledFixtureRuntime>>>(null);
+  useEffect(() => {
+    if (flag === 'v5-ble') {
+        const device = createRealBleDevice(); // Assume this exists in useBle hook
+        setRt(new BleRuntime(device as any));
+    } else {
+        loadBundledFixtureRuntime().then(setRt);
+    }
+  }, [flag]);
+  if (!rt) return <ActivityIndicator />;
+  return <ManifestScreenRenderer runtime={rt} screenSlug="controls" />;
+}
+
 export default function ControlScreen() {
   const route = useRoute();
+  const runtimeMode = getManifestRuntime();
+  if (runtimeMode === 'v5' || runtimeMode === 'v5-ble') {
+    return <V5PilotRenderer />;
+  }
+
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { device, pin } = route.params as RouteParams;
