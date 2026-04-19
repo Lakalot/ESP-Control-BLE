@@ -1,8 +1,6 @@
 import { BleDevice } from '../types/ble.types';
 import { bleManagerService } from './BleManager';
 
-const SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
-
 const SCAN_COOLDOWN_MS = 500;
 
 export class BleScanner {
@@ -20,7 +18,7 @@ export class BleScanner {
       this.isScanning = true;
 
       const manager = bleManagerService.getPlxManager();
-      manager.startDeviceScan([SERVICE_UUID], null, (error, device) => {
+      manager.startDeviceScan(null, null, (error, device) => {
         if (error) {
           this.isScanning = false;
           onError(error);

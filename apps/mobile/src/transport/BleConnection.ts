@@ -20,7 +20,6 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-const SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
 const MANIFEST_CHAR_UUID = '12345678-1234-1234-1234-123456789abd';
 const CMD_CHAR_UUID = '12345678-1234-1234-1234-123456789abe';
 
@@ -29,6 +28,7 @@ const RECONNECT_BASE_DELAY_MS = 1000;
 
 export class BleConnection implements IBleTransport {
   private device: Device | null = null;
+  private serviceUUID: string | null = null;
   private reconnectAttempts = 0;
   private onDisconnectCallback: (() => void) | null = null;
   private disconnectSubscription: { remove(): void } | null = null;
@@ -44,6 +44,10 @@ export class BleConnection implements IBleTransport {
       requestMTU: 512,
     });
     await device.discoverAllServicesAndCharacteristics();
+    const services = await device.services();
+    const serviceUUID = await this.resolveServiceUUID(services);
+    if (!serviceUUID) throw new Error('Service ECB introuvable sur cet appareil');
+    this.serviceUUID = serviceUUID;
     this.device = device;
     this.reconnectAttempts = 0;
     this.intentionalDisconnect = false;
@@ -54,6 +58,16 @@ export class BleConnection implements IBleTransport {
         this.handleUnexpectedDisconnect(deviceId);
       }
     });
+  }
+
+  private async resolveServiceUUID(services: import('react-native-ble-plx').Service[]): Promise<string | null> {
+    for (const service of services) {
+      const chars = await service.characteristics();
+      if (chars.some((c) => c.uuid.toLowerCase() === MANIFEST_CHAR_UUID.toLowerCase())) {
+        return service.uuid;
+      }
+    }
+    return null;
   }
 
   private async handleUnexpectedDisconnect(deviceId: string): Promise<void> {
@@ -96,7 +110,7 @@ export class BleConnection implements IBleTransport {
   async readManifest(): Promise<Uint8Array> {
     if (!this.device) throw new Error('Non connecté');
     const char = await this.device.readCharacteristicForService(
-      SERVICE_UUID,
+      this.serviceUUID!,
       MANIFEST_CHAR_UUID,
     );
     if (!char.value) throw new Error('Manifest vide');
@@ -107,7 +121,7 @@ export class BleConnection implements IBleTransport {
     if (!this.device) throw new Error('Non connecté');
     const b64 = uint8ArrayToBase64(data);
     await this.device.writeCharacteristicWithResponseForService(
-      SERVICE_UUID,
+      this.serviceUUID!,
       CMD_CHAR_UUID,
       b64,
     );
@@ -121,7 +135,7 @@ export class BleConnection implements IBleTransport {
     // Nettoyer l'ancienne souscription aux notifications
     this.notifySubscription?.remove();
     this.notifySubscription = this.device.monitorCharacteristicForService(
-      SERVICE_UUID,
+      this.serviceUUID!,
       CMD_CHAR_UUID,
       (error, char) => {
         if (error) {
