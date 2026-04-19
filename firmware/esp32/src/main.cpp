@@ -14,7 +14,7 @@ static int16_t temperatureCenti = 2350;
 static EspControl control("ESP32-Test", "1234");
 static esp_timer_handle_t tempTimer = nullptr;
 
-static void onTemperatureTick(void*) {
+static void IRAM_ATTR onTemperatureTick(void*) {
   temperatureCenti += 5;
   if (temperatureCenti > 2450) temperatureCenti = 2350;
 }

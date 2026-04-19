@@ -64,7 +64,8 @@ export class BleConnection implements IBleTransport {
     this.reconnectAttempts = 0;
     this.intentionalDisconnect = false;
 
-    this.disconnectSubscription = device.onDisconnected((_error, _dev) => {
+    this.disconnectSubscription = device.onDisconnected((error, _dev) => {
+      console.log('[BleConnection] onDisconnected fired, intentional=', this.intentionalDisconnect, 'err=', error?.message);
       this.device = null;
       if (!this.intentionalDisconnect) {
         this.handleUnexpectedDisconnect(deviceId);
@@ -147,21 +148,28 @@ export class BleConnection implements IBleTransport {
     if (!this.device) throw new Error('Non connecté');
     // Nettoyer l'ancienne souscription aux notifications
     this.notifySubscription?.remove();
+    console.log('[BleConnection] subscribing to notifications on', CMD_CHAR_UUID);
     this.notifySubscription = this.device.monitorCharacteristicForService(
       this.serviceUUID!,
       CMD_CHAR_UUID,
       (error, char) => {
         if (error) {
-          // Ignorer les erreurs si la déconnexion est intentionnelle
+          console.log('[BleConnection] notify error:', error.message, 'intentional=', this.intentionalDisconnect);
           if (!this.intentionalDisconnect) {
             onError(error);
           }
           return;
         }
-        if (!char?.value) return;
-        onData(base64ToUint8Array(char.value));
+        if (!char?.value) {
+          console.log('[BleConnection] notify callback fired with no value');
+          return;
+        }
+        const bytes = base64ToUint8Array(char.value);
+        console.log('[BleConnection] notify received', bytes.length, 'bytes: first=0x' + bytes[0].toString(16));
+        onData(bytes);
       },
     );
+    console.log('[BleConnection] monitor registered');
     return () => {
       this.notifySubscription?.remove();
       this.notifySubscription = null;

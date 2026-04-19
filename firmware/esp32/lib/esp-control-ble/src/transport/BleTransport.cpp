@@ -22,7 +22,8 @@ public:
   }
 
   void onWrite(NimBLECharacteristic* pChar) override {
-    _transport->handleWrite(pChar->getValue<uint8_t*>(), (uint16_t)pChar->getDataLength());
+    NimBLEAttValue v = pChar->getValue();
+    _transport->handleWrite(v.data(), (uint16_t)v.size());
   }
 };
 
@@ -40,8 +41,6 @@ public:
   }
 };
 
-static alignas(EcbCmdCallbacks)    uint8_t s_cmdBuf[sizeof(EcbCmdCallbacks)];
-static alignas(EcbServerCallbacks) uint8_t s_serverBuf[sizeof(EcbServerCallbacks)];
 static EcbCmdCallbacks*    s_cmdCallbacks    = nullptr;
 static EcbServerCallbacks* s_serverCallbacks = nullptr;
 
@@ -89,7 +88,7 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   NimBLEDevice::setPower(ESP_PWR_LVL_P9);
 
   NimBLEServer* server = NimBLEDevice::createServer();
-  s_serverCallbacks = new(s_serverBuf) EcbServerCallbacks(this);
+  if (!s_serverCallbacks) s_serverCallbacks = new EcbServerCallbacks(this);
   server->setCallbacks(s_serverCallbacks);
 
   NimBLEService* service = server->createService(_serviceUuid);
@@ -117,7 +116,7 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
     ECB_CMD_CHAR_UUID,
     NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
   );
-  s_cmdCallbacks = new(s_cmdBuf) EcbCmdCallbacks(this);
+  if (!s_cmdCallbacks) s_cmdCallbacks = new EcbCmdCallbacks(this);
   _cmdChar->setCallbacks(s_cmdCallbacks);
 
   service->start();
@@ -168,6 +167,8 @@ void BleTransport::sendManifestChunk(uint16_t offset, uint8_t requestedLen) {
 }
 
 void BleTransport::handleSubscribe() {
+  Serial.printf("[ECB] handleSubscribe this=%p _auth=%p _cmdChar=%p _instance=%p\n",
+                this, _auth, _cmdChar, _instance);
   if (_auth->isAuthenticated()) {
     Serial.println("[ECB] Client re-subscribed (already authenticated, skipping challenge)");
     return;

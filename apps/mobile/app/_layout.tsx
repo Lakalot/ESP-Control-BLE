@@ -5,13 +5,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import { useAuthStore } from '../src/store/authStore';
 import { useBleStore } from '../src/store/bleStore';
 import { bleManagerService } from '../src/transport/BleManager';
 import { palette } from '../src/ui/theme/ui';
 
 const Stack = createNativeStackNavigator();
-const { GestureHandlerRootView } = require('react-native-gesture-handler');
 
 const navTheme = {
   ...DefaultTheme,

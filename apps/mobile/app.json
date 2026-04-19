@@ -16,16 +16,17 @@
       "bundleIdentifier": "com.amazing.espcontrolble",
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "L'app utilise le Bluetooth pour communiquer avec vos ESP32.",
-        "NSBluetoothPeripheralUsageDescription": "L'app utilise le Bluetooth pour communiquer avec vos ESP32."
+        "NSBluetoothPeripheralUsageDescription": "L'app utilise le Bluetooth pour communiquer avec vos ESP32.",
+        "UIBackgroundModes": []
       }
     },
     "android": {
       "package": "com.amazing.espcontrolble",
       "permissions": [
-        "BLUETOOTH_SCAN",
-        "BLUETOOTH_CONNECT",
-        "BLUETOOTH_ADVERTISE",
-        "ACCESS_FINE_LOCATION"
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ]
     },
     "plugins": [
@@ -34,7 +35,8 @@
         {
           "isBackgroundEnabled": false,
           "modes": ["central"],
-          "bluetoothAlwaysPermission": "L'app utilise le Bluetooth pour communiquer avec vos ESP32."
+          "bluetoothAlwaysPermission": "L'app utilise le Bluetooth pour communiquer avec vos ESP32.",
+          "neverForLocation": true
         }
       ]
     ]

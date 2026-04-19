@@ -2,18 +2,23 @@ import { BleManager as PlxBleManager, State } from 'react-native-ble-plx';
 import { BleStateType } from '../types/ble.types';
 
 class BleManagerService {
-  private manager: PlxBleManager;
+  private _manager: PlxBleManager | null = null;
   private static instance: BleManagerService;
 
-  private constructor() {
-    this.manager = new PlxBleManager();
-  }
+  private constructor() {}
 
   static getInstance(): BleManagerService {
     if (!BleManagerService.instance) {
       BleManagerService.instance = new BleManagerService();
     }
     return BleManagerService.instance;
+  }
+
+  private get manager(): PlxBleManager {
+    if (!this._manager) {
+      this._manager = new PlxBleManager();
+    }
+    return this._manager;
   }
 
   getPlxManager(): PlxBleManager {
@@ -49,7 +54,8 @@ class BleManagerService {
   }
 
   destroy(): void {
-    this.manager.destroy();
+    this._manager?.destroy();
+    this._manager = null;
   }
 }
 
