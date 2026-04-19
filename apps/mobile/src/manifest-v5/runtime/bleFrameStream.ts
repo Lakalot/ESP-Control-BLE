@@ -3,7 +3,7 @@ import { decodeFrames, type DecodedFrame } from './frameCodecV5';
 type Listener = (frame: DecodedFrame) => void;
 
 export class BleFrameStream {
-  private buffer = new Uint8Array();
+  private buffer: Uint8Array = new Uint8Array(0);
   private listeners: Listener[] = [];
 
   onFrame(listener: Listener): () => void {
@@ -16,7 +16,7 @@ export class BleFrameStream {
     merged.set(this.buffer, 0);
     merged.set(chunk, this.buffer.length);
     const { frames, leftover } = decodeFrames(merged);
-    this.buffer = leftover;
+    this.buffer = new Uint8Array(leftover);
     for (const frame of frames) for (const listener of this.listeners) listener(frame);
   }
 }

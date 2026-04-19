@@ -1,5 +1,7 @@
-import { ResourceValue } from '../model/snapshot.types';
-import { RuntimeManifest } from '../model/runtime.types';
+import type { ResourceValue, SnapshotMap } from '../model/snapshot.types';
+import type { RuntimeManifest } from '../model/runtime.types';
+
+export type { SnapshotMap } from '../model/snapshot.types';
 
 export interface InvokeResult {
   status: 'ok' | 'error';
@@ -11,10 +13,6 @@ export interface SubscriptionUpdate {
   slug: string;
   value: ResourceValue;
   updatedAt: number;
-}
-
-export interface SnapshotMap {
-  get(resourceId: number | string): any;
 }
 
 export type SubscriptionListener = (update: SubscriptionUpdate) => void;

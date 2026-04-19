@@ -65,9 +65,9 @@ export function createActionMachine(cfg: ActionMachineInput) {
           input: ({ context }) => ({ actionSlug: context.actionSlug ?? '', input: context.input }),
           onDone: [
             {
-              guard: ({ event }) => (event.output as InvokeResult).ok,
+              guard: ({ event }) => (event.output as InvokeResult).status === 'ok',
               target: 'success',
-              actions: [{ type: 'recordResult', params: ({ event }) => ({ result: (event.output as InvokeResult).result ?? null }) }],
+              actions: [{ type: 'recordResult', params: ({ event }) => ({ result: (event.output as any).result ?? null }) }],
             },
             {
               target: 'error',

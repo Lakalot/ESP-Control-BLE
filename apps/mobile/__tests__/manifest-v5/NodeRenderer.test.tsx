@@ -6,7 +6,9 @@ import '@/manifest-v5/render/widgets';
 
 function tinyManifest(): RuntimeManifest {
   return {
-    version: 5,
+    version: 5 as const,
+    schemaVersion: 1 as const,
+    minAppVersion: '1.0.0',
     capabilities: new Set(),
     resources: new Map(),
     actions: new Map(),

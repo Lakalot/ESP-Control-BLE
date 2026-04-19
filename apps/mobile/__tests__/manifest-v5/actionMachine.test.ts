@@ -1,19 +1,19 @@
 import { createActor } from 'xstate';
 import { createActionMachine } from '@/manifest-v5/runtime/actionMachine';
 
-const oneShot = (ok: boolean, result?: Record<string, unknown>) =>
-  jest.fn().mockResolvedValue({ ok, result });
+const oneShot = (status: 'ok' | 'error', result?: Record<string, unknown>) =>
+  jest.fn().mockResolvedValue({ status, result });
 
 describe('actionMachine', () => {
   it('starts in idle', () => {
-    const a = createActor(createActionMachine({ invoke: oneShot(true) }));
+    const a = createActor(createActionMachine({ invoke: oneShot('ok') }));
     a.start();
     expect(a.getSnapshot().value).toBe('idle');
     a.stop();
   });
 
   it('idle -> pending -> success on ok result', async () => {
-    const invoke = oneShot(true, { echo: 1 });
+    const invoke = oneShot('ok', { echo: 1 });
     // Use cooldown > 0 so it pauses in cooldown and we can observe success/result
     const a = createActor(createActionMachine({ invoke, cooldownMs: 100 }));
     a.start();
@@ -39,7 +39,7 @@ describe('actionMachine', () => {
 
   it('respects cooldownMs between invocations', async () => {
     jest.useFakeTimers();
-    const a = createActor(createActionMachine({ invoke: oneShot(true), cooldownMs: 500 }));
+    const a = createActor(createActionMachine({ invoke: oneShot('ok'), cooldownMs: 500 }));
     a.start();
     a.send({ type: 'INVOKE', actionSlug: 'x', input: {} });
     

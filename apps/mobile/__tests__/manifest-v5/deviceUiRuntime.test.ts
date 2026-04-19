@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { useDeviceUi } from '@/manifest-v5/runtime/useDeviceUi';
+import type { ManifestV5Runtime } from '@/manifest-v5/runtime/ManifestV5Runtime';
 
 function createRuntimeFixture() {
   return {
@@ -7,8 +8,8 @@ function createRuntimeFixture() {
     subscriptions: [] as string[],
     async loadManifest() {
       return {
-        version: 5,
-        schemaVersion: 1,
+        version: 5 as const,
+        schemaVersion: 1 as const,
         minAppVersion: '1.0.0',
         capabilities: new Set(['widget.timer']),
         resources: new Map([
@@ -18,6 +19,8 @@ function createRuntimeFixture() {
         actions: new Map(),
         screens: new Map(),
         nodes: new Map(),
+        forms: new Map(),
+        themeTokens: new Map(),
       };
     },
     async snapshot() {
@@ -41,7 +44,7 @@ function createRuntimeFixture() {
 }
 
 it('loads manifest, requests snapshot, and subscribes only to subscribe-mode resources', async () => {
-  const runtime = createRuntimeFixture();
+  const runtime = createRuntimeFixture() as unknown as ManifestV5Runtime & { snapshotCalls: number; subscriptions: string[]; flush(): Promise<void> };
   const { result } = renderHook(() => useDeviceUi(runtime));
   await act(async () => {
     await runtime.flush();

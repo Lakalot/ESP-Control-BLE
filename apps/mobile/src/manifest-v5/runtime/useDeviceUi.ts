@@ -2,7 +2,7 @@ import { useMachine } from '@xstate/react';
 import { useEffect, useMemo, useState } from 'react';
 import { createDeviceUiMachine } from './deviceUiMachine';
 import type { ManifestV5Runtime } from './ManifestV5Runtime';
-import type { SnapshotMap } from '../model/snapshot.types';
+import type { ResourceState, SnapshotMap } from '../model/snapshot.types';
 
 export interface UseDeviceUiResult {
   state: ReturnType<ReturnType<typeof createDeviceUiMachine>['getInitialSnapshot']>;
@@ -16,13 +16,13 @@ export interface UseDeviceUiResult {
 export function useDeviceUi(runtime: ManifestV5Runtime): UseDeviceUiResult {
   const machine = useMemo(() => createDeviceUiMachine({ runtime }), [runtime]);
   const [state, send] = useMachine(machine);
-  const [snapshot, setSnapshot] = useState<SnapshotMap>(new Map());
+  const [snapshot, setSnapshot] = useState<Map<string, ResourceState>>(new Map());
 
   useEffect(() => {
     let unsub: (() => void) | undefined;
     runtime.loadManifest().then(async (manifest) => {
       const snap = await runtime.snapshot();
-      setSnapshot(new Map(snap));
+      setSnapshot(new Map(snap as Map<string, ResourceState>));
       const subscribeSlugs = [...manifest.resources.values()]
         .filter((resource) => resource.readMode === 'subscribe')
         .map((resource) => resource.slug);

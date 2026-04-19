@@ -29,11 +29,9 @@ import { palette, radius, shadows, withAlpha } from '../../src/ui/theme/ui';
 import { CmdType } from '../../src/types/manifest.types';
 import { getManifestRuntime } from '../../src/settings/manifestRuntimeFlag';
 import { BleRuntime } from '../../src/manifest-v5/runtime/BleRuntime';
-import { createRealBleDevice } from '../../src/hooks/useBle';
+import { createRealBleDevice } from '../../src/manifest-v5/runtime/RealBleDevice';
 import { ManifestScreenRenderer } from '../../src/manifest-v5/render/ManifestScreenRenderer';
-import { ManifestV5Runtime } from '../../src/manifest-v5/runtime/ManifestV5Runtime';
-import { loadBundledFixtureRuntime } from '../../src/manifest-v5/runtime/bundledFixtureRuntime';
-import { bundledFixture } from '../../src/manifest-v5/runtime/bundledFixture';
+import type { ManifestV5Runtime } from '../../src/manifest-v5/runtime/ManifestV5Runtime';
 import '../../src/manifest-v5/render/widgets';
 
 
@@ -58,7 +56,11 @@ const STATE_CONFIG: Record<string, { label: string; color: string; bg: string }>
 function V5PilotRenderer({ deviceId }: { deviceId: string }) {
   const [runtime, setRuntime] = useState<ManifestV5Runtime | null>(null);
   useEffect(() => {
-    setRuntime(new BleRuntime(createRealBleDevice(deviceId)));
+    let cancelled = false;
+    createRealBleDevice(deviceId).then((device) => {
+      if (!cancelled) setRuntime(new BleRuntime(device));
+    });
+    return () => { cancelled = true; };
   }, [deviceId]);
   if (!runtime) return <ActivityIndicator />;
   return <ManifestScreenRenderer runtime={runtime} screenSlug="controls" />;

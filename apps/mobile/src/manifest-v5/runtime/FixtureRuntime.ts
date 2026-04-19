@@ -53,7 +53,7 @@ export class FixtureRuntime implements ManifestV5Runtime {
 
   async invokeAction(actionSlug: string, input: Record<string, unknown>): Promise<InvokeResult> {
     this.invocations.push({ actionSlug, input });
-    return this.opts.onInvoke?.(actionSlug, input) ?? { ok: true };
+    return this.opts.onInvoke?.(actionSlug, input) ?? { status: 'ok' as const };
   }
 
   /** Test/dev helper: push an update that fan-outs to subscribers. */
