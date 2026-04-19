@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { StringTable } from '../src/compiler/stringTable.js';
 import { assignIds } from '../src/compiler/assignIds.js';
+import { normalize } from '../src/compiler/normalize.js';
 import { DEMO_MANIFEST } from './fixtures/demo.manifest.js';
 import { MINIMAL_MANIFEST } from './fixtures/minimal.manifest.js';
 
@@ -45,6 +46,8 @@ describe('assignIds', () => {
 
     const originalIds = assignIds(DEMO_MANIFEST);
     const permutedIds = assignIds(permuted);
+    const originalNormalized = normalize(DEMO_MANIFEST);
+    const permutedNormalized = normalize(structuredClone(DEMO_MANIFEST));
 
     expect(Array.from(originalIds.resources.entries())).toEqual([
       ['device.debug', 1],
@@ -67,5 +70,18 @@ describe('assignIds', () => {
     expect(Array.from(permutedIds.actions.entries())).toEqual(
       Array.from(originalIds.actions.entries()),
     );
+    expect(normalizedIdSlugPairs(originalNormalized.resources, originalNormalized.strings)).toEqual(
+      normalizedIdSlugPairs(permutedNormalized.resources, permutedNormalized.strings),
+    );
+    expect(normalizedIdSlugPairs(originalNormalized.actions, originalNormalized.strings)).toEqual(
+      normalizedIdSlugPairs(permutedNormalized.actions, permutedNormalized.strings),
+    );
   });
 });
+
+function normalizedIdSlugPairs(
+  items: { id: number; slugIdx: number }[],
+  strings: string[],
+): [number, string][] {
+  return items.map((item) => [item.id, strings[item.slugIdx]] as [number, string]);
+}
