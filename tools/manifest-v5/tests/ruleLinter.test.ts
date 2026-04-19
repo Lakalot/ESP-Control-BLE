@@ -11,7 +11,7 @@ describe('lintRules', () => {
   it('reports unknown resources used in var references', () => {
     const diags = lintRules(UNKNOWN_VAR_MANIFEST);
     expect(diags).toHaveLength(1);
-    expect(diags[0].message).toContain('resource.nonexistent');
+    expect(diags[0]!.message).toContain('resource.nonexistent');
   });
 
   it('reports unsupported operators', () => {
@@ -19,12 +19,15 @@ describe('lintRules', () => {
       ...MINIMAL_MANIFEST,
       screens: [
         {
+          id: 'home',
+          title: 'Home',
+          rootNodeId: 'home.root',
           ...MINIMAL_MANIFEST.screens[0],
           entryRules: [{ '+': [1, 2] } as unknown as never],
         },
       ],
     });
     expect(diags).toHaveLength(1);
-    expect(diags[0].message).toContain("operator '+'");
+    expect(diags[0]!.message).toContain("operator '+'");
   });
 });

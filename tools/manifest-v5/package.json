@@ -10,7 +10,8 @@
     "test:watch": "vitest",
     "validate": "tsx src/cli/main.ts validate",
     "compile": "tsx src/cli/main.ts compile",
-    "inspect": "tsx src/cli/main.ts inspect"
+    "inspect": "tsx src/cli/main.ts inspect",
+    "proto:gen:ts": "node ./scripts/generateTsProto.mjs"
   },
   "dependencies": {
     "@sinclair/typebox": "^0.33.17",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.7.4",
+    "protobufjs-cli": "^1.1.3",
     "tsx": "^4.19.1",
     "typescript": "~5.5.4",
     "vitest": "^2.1.1"

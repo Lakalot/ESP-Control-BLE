@@ -1,0 +1,122 @@
+syntax = "proto3";
+package esp_control.v5;
+
+enum ValueType {
+  VALUE_TYPE_UNSPECIFIED = 0;
+  VALUE_TYPE_BOOL = 1;
+  VALUE_TYPE_INT = 2;
+  VALUE_TYPE_UINT = 3;
+  VALUE_TYPE_FLOAT = 4;
+  VALUE_TYPE_STRING = 5;
+  VALUE_TYPE_ENUM = 6;
+  VALUE_TYPE_DURATION_MS = 7;
+}
+
+enum ReadMode {
+  READ_MODE_UNSPECIFIED = 0;
+  READ_MODE_SNAPSHOT = 1;
+  READ_MODE_SUBSCRIBE = 2;
+  READ_MODE_POLL = 3;
+}
+
+enum DangerLevel {
+  DANGER_LEVEL_UNSPECIFIED = 0;
+  DANGER_LEVEL_NORMAL = 1;
+  DANGER_LEVEL_ELEVATED = 2;
+  DANGER_LEVEL_DANGEROUS = 3;
+}
+
+enum NodeKind {
+  NODE_KIND_UNSPECIFIED = 0;
+  NODE_KIND_STACK = 1;
+  NODE_KIND_ROW = 2;
+  NODE_KIND_GRID = 3;
+  NODE_KIND_SECTION = 4;
+  NODE_KIND_WIDGET = 5;
+}
+
+enum WidgetKind {
+  WIDGET_KIND_UNSPECIFIED = 0;
+  WIDGET_KIND_ACTION = 1;
+  WIDGET_KIND_TOGGLE = 2;
+  WIDGET_KIND_RANGE = 3;
+  WIDGET_KIND_SELECT = 4;
+  WIDGET_KIND_READ_ONLY = 5;
+  WIDGET_KIND_TEXT = 6;
+  WIDGET_KIND_DIVIDER = 7;
+}
+
+message StringEntry {
+  string value = 1;
+}
+
+message Rule {
+  string jsonlogic = 1;
+}
+
+message CapabilitiesDef {
+  repeated uint32 feature_idxs = 1;
+}
+
+message ResourceDef {
+  uint32 id = 1;
+  uint32 slug_idx = 2;
+  uint32 label_idx = 3;
+  uint32 unit_idx = 4;
+  ValueType value_type = 5;
+  ReadMode read_mode = 6;
+  uint32 stale_after_ms = 7;
+  uint32 poll_ms = 8;
+  repeated uint32 enum_value_idxs = 9;
+}
+
+message ActionDef {
+  uint32 id = 1;
+  uint32 slug_idx = 2;
+  uint32 label_idx = 3;
+  DangerLevel danger_level = 4;
+  uint32 confirm_idx = 5;
+  uint32 cooldown_ms = 6;
+  uint32 input_schema_idx = 7;
+  uint32 result_schema_idx = 8;
+}
+
+message ScreenDef {
+  uint32 id = 1;
+  uint32 slug_idx = 2;
+  uint32 title_idx = 3;
+  uint32 route_key_idx = 4;
+  uint32 root_node_id = 5;
+  repeated Rule entry_rules = 6;
+}
+
+message BindingDef {
+  uint32 resource_id = 1;
+  uint32 action_id = 2;
+}
+
+message NodeDef {
+  uint32 id = 1;
+  uint32 slug_idx = 2;
+  NodeKind kind = 3;
+  WidgetKind widget_kind = 4;
+  uint32 title_idx = 5;
+  uint32 tone_idx = 6;
+  repeated uint32 children_ids = 7;
+  uint32 columns = 8;
+  BindingDef bind = 9;
+  Rule visible_if = 10;
+  Rule enabled_if = 11;
+  uint32 text_idx = 12;
+  uint32 format_hint_idx = 13;
+}
+
+message ManifestBundleV5 {
+  uint32 version = 1;
+  CapabilitiesDef capabilities = 2;
+  repeated StringEntry strings = 3;
+  repeated ResourceDef resources = 4;
+  repeated ActionDef actions = 5;
+  repeated ScreenDef screens = 6;
+  repeated NodeDef nodes = 7;
+}
