@@ -31,6 +31,15 @@ describe('runCli', () => {
     expect(result.stdout).toMatch(/bytes:\s+\d+/);
   });
 
+  it('inspect prints runtime ids when asked', async () => {
+    const result = await runCli(['inspect', '--source', DEMO, '--ids']);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toMatch(/resource_id/);
+    expect(result.stdout).toMatch(/action_id/);
+    expect(result.stdout).toContain('relay.auto');
+    expect(result.stdout).toContain('system.factory_reset');
+  });
+
   it('validate returns exitCode 1 for an invalid fixture', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'manifest-v5-'));
     const broken = join(dir, 'broken.ts');

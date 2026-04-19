@@ -33,8 +33,9 @@ export async function runCli(argv: readonly string[]): Promise<CliResult> {
   program
     .command('inspect')
     .requiredOption('--source <path>', 'path to the TS/JS manifest source')
-    .action(async (options: { source: string }) => {
-      result = await inspectCmd(options.source);
+    .option('--ids', 'print runtime id tables')
+    .action(async (options: { source: string; ids?: boolean }) => {
+      result = await inspectCmd(options.source, options.ids ?? false);
     });
 
   try {

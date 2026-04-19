@@ -22,6 +22,7 @@ export interface NormalizedManifest {
 
 export interface NormalizedResource {
   id: number;
+  runtimeId: string;
   slugIdx: number;
   labelIdx: number;
   unitIdx: number;
@@ -34,6 +35,7 @@ export interface NormalizedResource {
 
 export interface NormalizedAction {
   id: number;
+  runtimeId: string;
   slugIdx: number;
   labelIdx: number;
   dangerLevel: number;
@@ -140,6 +142,7 @@ export function normalize(input: Manifest): NormalizedManifest {
   );
   const resources = input.resources.map((resource) => ({
     id: ids.resources.get(resource.id)!,
+    runtimeId: resource.id,
     slugIdx: strings.intern(resource.id),
     labelIdx: strings.internOptional(resource.label),
     unitIdx: strings.internOptional(resource.unit),
@@ -152,6 +155,7 @@ export function normalize(input: Manifest): NormalizedManifest {
 
   const actions = input.actions.map((action) => ({
     id: ids.actions.get(action.id)!,
+    runtimeId: action.id,
     slugIdx: strings.intern(action.id),
     labelIdx: strings.internOptional(action.label),
     dangerLevel: DANGER_LEVEL_MAP[action.dangerLevel]!,

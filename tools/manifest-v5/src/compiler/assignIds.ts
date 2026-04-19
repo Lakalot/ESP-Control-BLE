@@ -13,9 +13,11 @@ export interface IdMaps {
 export function assignIds(manifest: Manifest): IdMaps {
   const build = (items: readonly { id: string }[]): Map<string, number> => {
     const out = new Map<string, number>();
-    items.forEach((item, index) => {
-      out.set(item.id, index + 1);
-    });
+    [...items]
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .forEach((item, index) => {
+        out.set(item.id, index + 1);
+      });
     return out;
   };
 
