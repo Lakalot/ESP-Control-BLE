@@ -1,0 +1,55 @@
+name: mobile-v5
+
+on:
+  push:
+    paths:
+      - 'apps/mobile/**'
+      - 'tools/manifest-v5/**'
+      - 'proto/**'
+      - '.github/workflows/mobile-v5.yml'
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'tools/manifest-v5/**'
+      - 'proto/**'
+      - '.github/workflows/mobile-v5.yml'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+
+      - name: install tools workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: regenerate pbjs output
+        run: pnpm --filter @esp-control-ble/manifest-v5 run proto:gen:ts
+
+      - name: compile demo fixture for mobile asset
+        run: node apps/mobile/scripts/refresh-v5-fixture.mjs
+
+      - name: ensure the fixture asset is committed
+        run: git diff --exit-code -- apps/mobile/assets/manifest_v5_demo.pb
+
+      - name: install mobile deps
+        working-directory: apps/mobile
+        run: npm ci
+
+      - name: copy pbjs into mobile
+        working-directory: apps/mobile
+        run: npm run copy-v5-proto
+
+      - name: typecheck mobile
+        working-directory: apps/mobile
+        run: npx tsc --noEmit
+
+      - name: test mobile
+        working-directory: apps/mobile
+        run: npm test -- --ci
