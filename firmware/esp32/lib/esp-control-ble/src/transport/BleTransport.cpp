@@ -37,6 +37,17 @@ public:
   }
 };
 
+class EcbV5DataCallbacks : public NimBLECharacteristicCallbacks {
+  BleTransport* _transport;
+public:
+  EcbV5DataCallbacks(BleTransport* t) : _transport(t) {}
+
+  void onWrite(NimBLECharacteristic* pChar) override {
+    NimBLEAttValue v = pChar->getValue();
+    _transport->handleV5Write(v.data(), (uint16_t)v.size());
+  }
+};
+
 class EcbServerCallbacks : public NimBLEServerCallbacks {
   BleTransport* _transport;
 public:
@@ -52,6 +63,7 @@ public:
 };
 
 static EcbCmdCallbacks*    s_cmdCallbacks    = nullptr;
+static EcbV5DataCallbacks* s_v5DataCallbacks = nullptr;
 static EcbServerCallbacks* s_serverCallbacks = nullptr;
 
 // ── BleTransport ───────────────────────────────────────────
@@ -80,6 +92,10 @@ void BleTransport::loadOrCreateUuid() {
     Serial.printf("[ECB] UUID generated and saved: %s\n", _serviceUuid);
   }
   prefs.end();
+}
+
+void BleTransport::setV5Transport(ecb::v5::BleTransportV5* t) {
+  _v5Transport = t;
 }
 
 void BleTransport::begin(const char* deviceName, AuthHandler* auth,
@@ -133,7 +149,8 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
     ECB_V5_DATA_CHAR_UUID,
     NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
   );
-  // Optional: add callbacks for V5 if needed
+  if (!s_v5DataCallbacks) s_v5DataCallbacks = new EcbV5DataCallbacks(this);
+  _v5DataChar->setCallbacks(s_v5DataCallbacks);
   
   service->start();
 
@@ -257,4 +274,24 @@ void BleTransport::handleDisconnect() {
   Serial.println("[ECB] Client disconnected");
   _auth->reset();
   NimBLEDevice::startAdvertising();
+}
+
+void BleTransport::handleV5Write(const uint8_t* data, uint16_t len) {
+  if (!_v5Transport) {
+    Serial.println("[ECB] V5 transport not initialized");
+    return;
+  }
+  
+  if (len < ecb::v5::FrameCodec::kHeaderSize) {
+    Serial.println("[ECB] V5 frame too short");
+    return;
+  }
+
+  ecb::v5::FrameHeader header;
+  if (!ecb::v5::FrameCodec::decodeHeader(data, len, header)) {
+    Serial.println("[ECB] V5 header decode failed");
+    return;
+  }
+  
+  _v5Transport->handleFrame(header.kind, data + ecb::v5::FrameCodec::kHeaderSize, header.length);
 }

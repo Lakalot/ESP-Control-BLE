@@ -34,5 +34,6 @@ void EspControl::begin(const uint8_t* manifestData, uint16_t manifestLen) {
     storeV5,
     _resourcesV5, _subsV5, _registryV5,
     [this](const uint8_t* data, size_t len) { _transport.notifyRawV5(data, len); });
+  _transport.setV5Transport(_transportV5);
 }
 
