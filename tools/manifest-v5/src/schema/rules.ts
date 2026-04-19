@@ -20,7 +20,6 @@ export const RuleSpec = Type.Object(
     ALLOWED_RULE_OPERATORS.map((op) => [op, Type.Optional(Type.Unknown())]),
   ),
   {
-    $id: 'RuleSpec',
     additionalProperties: false,
     minProperties: 1,
     maxProperties: 1,

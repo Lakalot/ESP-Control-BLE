@@ -3,13 +3,10 @@ import { Label, SlugId } from './primitives.js';
 
 export const DangerLevel = Type.Union(
   [Type.Literal('normal'), Type.Literal('elevated'), Type.Literal('dangerous')],
-  { $id: 'DangerLevel' },
 );
 export type DangerLevel = Static<typeof DangerLevel>;
 
-export const EmbeddedJsonSchema = Type.Record(Type.String(), Type.Unknown(), {
-  $id: 'EmbeddedJsonSchema',
-});
+export const EmbeddedJsonSchema = Type.Record(Type.String(), Type.Unknown());
 export type EmbeddedJsonSchema = Static<typeof EmbeddedJsonSchema>;
 
 export const ActionSpec = Type.Object(
@@ -23,7 +20,6 @@ export const ActionSpec = Type.Object(
     resultSchema: Type.Optional(EmbeddedJsonSchema),
   },
   {
-    $id: 'ActionSpec',
     additionalProperties: false,
   },
 );

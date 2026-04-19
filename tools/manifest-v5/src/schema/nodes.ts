@@ -9,7 +9,6 @@ export const ContainerKind = Type.Union(
     Type.Literal('grid'),
     Type.Literal('section'),
   ],
-  { $id: 'ContainerKind' },
 );
 export type ContainerKind = Static<typeof ContainerKind>;
 
@@ -23,7 +22,6 @@ export const WidgetKind = Type.Union(
     Type.Literal('text'),
     Type.Literal('divider'),
   ],
-  { $id: 'WidgetKind' },
 );
 export type WidgetKind = Static<typeof WidgetKind>;
 
@@ -65,7 +63,5 @@ export const WidgetNodeSpec = Type.Object(
   { additionalProperties: false },
 );
 
-export const NodeSpec = Type.Union([ContainerNodeSpec, WidgetNodeSpec], {
-  $id: 'NodeSpec',
-});
+export const NodeSpec = Type.Union([ContainerNodeSpec, WidgetNodeSpec]);
 export type NodeSpec = Static<typeof NodeSpec>;

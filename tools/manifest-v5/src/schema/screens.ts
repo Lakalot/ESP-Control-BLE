@@ -11,7 +11,6 @@ export const ScreenSpec = Type.Object(
     entryRules: Type.Optional(Type.Array(RuleSpec, { maxItems: 4 })),
   },
   {
-    $id: 'ScreenSpec',
     additionalProperties: false,
   },
 );

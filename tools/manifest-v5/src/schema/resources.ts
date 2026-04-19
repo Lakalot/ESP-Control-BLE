@@ -11,13 +11,11 @@ export const ValueType = Type.Union(
     Type.Literal('enum'),
     Type.Literal('duration_ms'),
   ],
-  { $id: 'ValueType' },
 );
 export type ValueType = Static<typeof ValueType>;
 
 export const ReadMode = Type.Union(
   [Type.Literal('snapshot'), Type.Literal('subscribe'), Type.Literal('poll')],
-  { $id: 'ReadMode' },
 );
 export type ReadMode = Static<typeof ReadMode>;
 
@@ -33,7 +31,6 @@ export const ResourceSpec = Type.Object(
     enumValues: Type.Optional(Type.Array(SlugId, { minItems: 1, maxItems: 32 })),
   },
   {
-    $id: 'ResourceSpec',
     additionalProperties: false,
   },
 );

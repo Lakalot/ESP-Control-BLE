@@ -22,7 +22,6 @@ export const ManifestSpec = Type.Object(
     nodes: Type.Array(NodeSpec, { minItems: 1, maxItems: 256 }),
   },
   {
-    $id: 'ManifestSpec',
     additionalProperties: false,
   },
 );
