@@ -17,4 +17,22 @@ describe('ManifestSpec', () => {
       Value.Check(ManifestSpec, { ...MINIMAL_MANIFEST, rogue: true } as unknown),
     ).toBe(false);
   });
+
+  it('requires strict compatibility metadata and the closed widget catalog', () => {
+    expect(
+      Value.Check(ManifestSpec, {
+        version: 5,
+        schemaVersion: 1,
+        minAppVersion: '1.0.0',
+        capabilities: { required: ['widget.timer'], optional: [] },
+        resources: [],
+        actions: [],
+        screens: [],
+        nodes: [
+          { id: 'home.timer', kind: 'widget', widget: 'timer', bind: { resource: 'timer.remaining' } },
+          { id: 'home.input', kind: 'widget', widget: 'text_input', bind: { action: 'timer.start' } },
+        ],
+      }),
+    ).toBe(true);
+  });
 });

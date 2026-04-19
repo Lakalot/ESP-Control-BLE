@@ -3,8 +3,11 @@ import { ManifestSpec } from '../../src/schema/manifest.js';
 
 export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
   version: 5,
+  schemaVersion: 1,
+  minAppVersion: '1.0.0',
   capabilities: {
-    features: ['layout.sections', 'rules.visibility'],
+    required: ['layout.sections', 'rules.visibility'],
+    optional: [],
   },
   resources: [
     {
@@ -158,7 +161,7 @@ export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
     {
       id: 'lighting.range',
       kind: 'widget',
-      widget: 'range',
+      widget: 'slider',
       title: 'Brightness',
       bind: {
         resource: 'light.brightness',
@@ -175,7 +178,7 @@ export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
     {
       id: 'telemetry.temp',
       kind: 'widget',
-      widget: 'read_only',
+      widget: 'stat',
       title: 'Temperature',
       bind: {
         resource: 'env.temperature',
@@ -185,7 +188,7 @@ export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
     {
       id: 'telemetry.load',
       kind: 'widget',
-      widget: 'read_only',
+      widget: 'stat',
       title: 'Load',
       bind: {
         resource: 'system.load',
@@ -224,12 +227,13 @@ export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
     {
       id: 'advanced.divider',
       kind: 'widget',
-      widget: 'divider',
+      widget: 'text',
+      text: 'Advanced settings',
     },
     {
       id: 'advanced.reset',
       kind: 'widget',
-      widget: 'action',
+      widget: 'button',
       title: 'Factory Reset',
       bind: {
         action: 'system.factory_reset',

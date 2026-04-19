@@ -14,13 +14,16 @@ export type ContainerKind = Static<typeof ContainerKind>;
 
 export const WidgetKind = Type.Union(
   [
-    Type.Literal('action'),
-    Type.Literal('toggle'),
-    Type.Literal('range'),
-    Type.Literal('select'),
-    Type.Literal('read_only'),
     Type.Literal('text'),
-    Type.Literal('divider'),
+    Type.Literal('stat'),
+    Type.Literal('toggle'),
+    Type.Literal('button'),
+    Type.Literal('slider'),
+    Type.Literal('select'),
+    Type.Literal('text_input'),
+    Type.Literal('badge'),
+    Type.Literal('progress'),
+    Type.Literal('timer'),
   ],
 );
 export type WidgetKind = Static<typeof WidgetKind>;

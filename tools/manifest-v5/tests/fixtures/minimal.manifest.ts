@@ -3,7 +3,9 @@ import type { ManifestSpec } from '../../src/schema/manifest.js';
 
 export const MINIMAL_MANIFEST: Static<typeof ManifestSpec> = {
   version: 5,
-  capabilities: { features: [] },
+  schemaVersion: 1,
+  minAppVersion: '1.0.0',
+  capabilities: { required: [], optional: [] },
   resources: [
     {
       id: 'relay.auto',
