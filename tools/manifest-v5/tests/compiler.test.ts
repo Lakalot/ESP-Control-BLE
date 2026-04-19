@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { StringTable } from '../src/compiler/stringTable.js';
 import { assignIds } from '../src/compiler/assignIds.js';
-import { normalize } from '../src/compiler/normalize.js';
 import { DEMO_MANIFEST } from './fixtures/demo.manifest.js';
 import { MINIMAL_MANIFEST } from './fixtures/minimal.manifest.js';
 
@@ -40,28 +39,33 @@ describe('assignIds', () => {
   });
 
   it('assigns stable numeric ids from sorted slugs', () => {
-    const first = normalize(DEMO_MANIFEST);
-    const second = normalize(structuredClone(DEMO_MANIFEST));
-    expect(first.resources.map((r) => [r.id, r.runtimeId])).toEqual([
-      [5, 'relay.auto'],
-      [4, 'light.brightness'],
-      [2, 'env.temperature'],
-      [3, 'fan.profile'],
-      [6, 'system.load'],
-      [1, 'device.debug'],
+    const permuted = structuredClone(DEMO_MANIFEST);
+    permuted.resources.reverse();
+    permuted.actions.reverse();
+
+    const originalIds = assignIds(DEMO_MANIFEST);
+    const permutedIds = assignIds(permuted);
+
+    expect(Array.from(originalIds.resources.entries())).toEqual([
+      ['device.debug', 1],
+      ['env.temperature', 2],
+      ['fan.profile', 3],
+      ['light.brightness', 4],
+      ['relay.auto', 5],
+      ['system.load', 6],
     ]);
-    expect(first.actions.map((a) => [a.id, a.runtimeId])).toEqual([
-      [4, 'relay.toggle'],
-      [3, 'light.set_brightness'],
-      [2, 'fan.set_profile'],
-      [1, 'device.set_debug'],
-      [5, 'system.factory_reset'],
+    expect(Array.from(originalIds.actions.entries())).toEqual([
+      ['device.set_debug', 1],
+      ['fan.set_profile', 2],
+      ['light.set_brightness', 3],
+      ['relay.toggle', 4],
+      ['system.factory_reset', 5],
     ]);
-    expect(first.resources.map((r) => [r.id, r.runtimeId])).toEqual(
-      second.resources.map((r) => [r.id, r.runtimeId]),
+    expect(Array.from(permutedIds.resources.entries())).toEqual(
+      Array.from(originalIds.resources.entries()),
     );
-    expect(first.actions.map((a) => [a.id, a.runtimeId])).toEqual(
-      second.actions.map((a) => [a.id, a.runtimeId]),
+    expect(Array.from(permutedIds.actions.entries())).toEqual(
+      Array.from(originalIds.actions.entries()),
     );
   });
 });

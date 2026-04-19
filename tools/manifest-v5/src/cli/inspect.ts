@@ -1,3 +1,4 @@
+import { assignIds } from '../compiler/assignIds.js';
 import { normalize } from '../compiler/normalize.js';
 import { encodeManifest } from '../compiler/encodeProto.js';
 import { loadManifestSource } from './loadSource.js';
@@ -5,28 +6,29 @@ import type { CliResult } from './main.js';
 
 export async function inspectCmd(sourcePath: string, includeIds = false): Promise<CliResult> {
   const manifest = (await loadManifestSource(sourcePath)) as {
-    resources: unknown[];
-    actions: unknown[];
+    resources: { id: string }[];
+    actions: { id: string }[];
     screens: unknown[];
     nodes: unknown[];
   };
 
   const normalized = normalize(manifest as never);
+  const ids = assignIds(manifest as never);
   const bytes = encodeManifest(normalized);
 
   return {
     exitCode: 0,
-    stdout: buildOutput(manifest, normalized, bytes.byteLength, includeIds),
+    stdout: buildOutput(manifest, normalized, ids, bytes.byteLength, includeIds),
     stderr: '',
   };
 }
 
 function buildOutput(
-  manifest: { resources: unknown[]; actions: unknown[]; screens: unknown[]; nodes: unknown[] },
-  normalized: {
-    strings: string[];
-    resources: { id: number; runtimeId: string }[];
-    actions: { id: number; runtimeId: string }[];
+  manifest: { resources: { id: string }[]; actions: { id: string }[]; screens: unknown[]; nodes: unknown[] },
+  normalized: { strings: string[] },
+  ids: {
+    resources: Map<string, number>;
+    actions: Map<string, number>;
   },
   byteLength: number,
   includeIds: boolean,
@@ -46,7 +48,8 @@ function buildOutput(
 
   lines.push('');
   lines.push('resource_id runtime_id');
-  [...normalized.resources]
+  manifest.resources
+    .map((resource) => ({ id: ids.resources.get(resource.id)!, runtimeId: resource.id }))
     .sort((left, right) => left.id - right.id)
     .forEach((resource) => {
       lines.push(`${resource.id} ${resource.runtimeId}`);
@@ -54,7 +57,8 @@ function buildOutput(
 
   lines.push('');
   lines.push('action_id runtime_id');
-  [...normalized.actions]
+  manifest.actions
+    .map((action) => ({ id: ids.actions.get(action.id)!, runtimeId: action.id }))
     .sort((left, right) => left.id - right.id)
     .forEach((action) => {
       lines.push(`${action.id} ${action.runtimeId}`);

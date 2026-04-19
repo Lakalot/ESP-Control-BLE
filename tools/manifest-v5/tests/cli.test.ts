@@ -34,10 +34,30 @@ describe('runCli', () => {
   it('inspect prints runtime ids when asked', async () => {
     const result = await runCli(['inspect', '--source', DEMO, '--ids']);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toMatch(/resource_id/);
-    expect(result.stdout).toMatch(/action_id/);
-    expect(result.stdout).toContain('relay.auto');
-    expect(result.stdout).toContain('system.factory_reset');
+    const lines = result.stdout.trimEnd().split(/\r?\n/);
+    expect(lines[0]).toMatch(/^resources:\s+6$/);
+    expect(lines[1]).toMatch(/^actions:\s+5$/);
+    expect(lines[2]).toMatch(/^screens:\s+1$/);
+    expect(lines[3]).toMatch(/^nodes:\s+13$/);
+    expect(lines[6]).toBe('');
+    expect(lines[7]).toBe('resource_id runtime_id');
+    expect(lines.slice(8, 14)).toEqual([
+      '1 device.debug',
+      '2 env.temperature',
+      '3 fan.profile',
+      '4 light.brightness',
+      '5 relay.auto',
+      '6 system.load',
+    ]);
+    expect(lines[14]).toBe('');
+    expect(lines[15]).toBe('action_id runtime_id');
+    expect(lines.slice(16, 21)).toEqual([
+      '1 device.set_debug',
+      '2 fan.set_profile',
+      '3 light.set_brightness',
+      '4 relay.toggle',
+      '5 system.factory_reset',
+    ]);
   });
 
   it('validate returns exitCode 1 for an invalid fixture', async () => {

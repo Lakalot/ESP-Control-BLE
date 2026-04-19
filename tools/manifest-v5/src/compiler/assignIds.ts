@@ -14,7 +14,7 @@ export function assignIds(manifest: Manifest): IdMaps {
   const build = (items: readonly { id: string }[]): Map<string, number> => {
     const out = new Map<string, number>();
     [...items]
-      .sort((left, right) => left.id.localeCompare(right.id))
+      .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0))
       .forEach((item, index) => {
         out.set(item.id, index + 1);
       });
