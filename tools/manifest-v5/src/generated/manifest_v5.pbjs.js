@@ -1,11 +1,11 @@
 /*eslint-disable block-scoped-var, id-length, no-control-regex, no-magic-numbers, no-prototype-builtins, no-redeclare, no-shadow, no-var, sort-vars*/
-import * as $protobuf from "protobufjs/minimal";
+import $protobuf from "protobufjs/minimal.js";
 
 // Common aliases
-const $Reader = $protobuf.Reader, $Writer = $protobuf.Writer, $util = $protobuf.util;
+const $Reader = $protobuf.Reader, $Writer = $protobuf.Writer, $util = $protobuf.util || $protobuf.default.util;
 
 // Exported root namespace
-const $root = $protobuf.roots["default"] || ($protobuf.roots["default"] = {});
+const $root = {};
 
 export const esp_control = $root.esp_control = (() => {
 
@@ -3299,6 +3299,2076 @@ export const esp_control = $root.esp_control = (() => {
             };
 
             return ManifestBundleV5;
+        })();
+
+        /**
+         * Status enum.
+         * @name esp_control.v5.Status
+         * @enum {number}
+         * @property {number} STATUS_UNSPECIFIED=0 STATUS_UNSPECIFIED value
+         * @property {number} STATUS_OK=1 STATUS_OK value
+         * @property {number} STATUS_BAD_PAYLOAD=2 STATUS_BAD_PAYLOAD value
+         * @property {number} STATUS_UNKNOWN_ACTION=3 STATUS_UNKNOWN_ACTION value
+         * @property {number} STATUS_UNAUTHORIZED=4 STATUS_UNAUTHORIZED value
+         * @property {number} STATUS_INTERNAL=5 STATUS_INTERNAL value
+         */
+        v5.Status = (function() {
+            const valuesById = {}, values = Object.create(valuesById);
+            values[valuesById[0] = "STATUS_UNSPECIFIED"] = 0;
+            values[valuesById[1] = "STATUS_OK"] = 1;
+            values[valuesById[2] = "STATUS_BAD_PAYLOAD"] = 2;
+            values[valuesById[3] = "STATUS_UNKNOWN_ACTION"] = 3;
+            values[valuesById[4] = "STATUS_UNAUTHORIZED"] = 4;
+            values[valuesById[5] = "STATUS_INTERNAL"] = 5;
+            return values;
+        })();
+
+        v5.ResourceValue = (function() {
+
+            /**
+             * Properties of a ResourceValue.
+             * @memberof esp_control.v5
+             * @interface IResourceValue
+             * @property {number|null} [resourceId] ResourceValue resourceId
+             * @property {boolean|null} [boolValue] ResourceValue boolValue
+             * @property {number|null} [intValue] ResourceValue intValue
+             * @property {number|null} [uintValue] ResourceValue uintValue
+             * @property {string|null} [stringValue] ResourceValue stringValue
+             * @property {Uint8Array|null} [bytesValue] ResourceValue bytesValue
+             */
+
+            /**
+             * Constructs a new ResourceValue.
+             * @memberof esp_control.v5
+             * @classdesc Represents a ResourceValue.
+             * @implements IResourceValue
+             * @constructor
+             * @param {esp_control.v5.IResourceValue=} [properties] Properties to set
+             */
+            function ResourceValue(properties) {
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * ResourceValue resourceId.
+             * @member {number} resourceId
+             * @memberof esp_control.v5.ResourceValue
+             * @instance
+             */
+            ResourceValue.prototype.resourceId = 0;
+
+            /**
+             * ResourceValue boolValue.
+             * @member {boolean|null|undefined} boolValue
+             * @memberof esp_control.v5.ResourceValue
+             * @instance
+             */
+            ResourceValue.prototype.boolValue = null;
+
+            /**
+             * ResourceValue intValue.
+             * @member {number|null|undefined} intValue
+             * @memberof esp_control.v5.ResourceValue
+             * @instance
+             */
+            ResourceValue.prototype.intValue = null;
+
+            /**
+             * ResourceValue uintValue.
+             * @member {number|null|undefined} uintValue
+             * @memberof esp_control.v5.ResourceValue
+             * @instance
+             */
+            ResourceValue.prototype.uintValue = null;
+
+            /**
+             * ResourceValue stringValue.
+             * @member {string|null|undefined} stringValue
+             * @memberof esp_control.v5.ResourceValue
+             * @instance
+             */
+            ResourceValue.prototype.stringValue = null;
+
+            /**
+             * ResourceValue bytesValue.
+             * @member {Uint8Array|null|undefined} bytesValue
+             * @memberof esp_control.v5.ResourceValue
+             * @instance
+             */
+            ResourceValue.prototype.bytesValue = null;
+
+            // OneOf field names bound to virtual getters and setters
+            let $oneOfFields;
+
+            /**
+             * ResourceValue value.
+             * @member {"boolValue"|"intValue"|"uintValue"|"stringValue"|"bytesValue"|undefined} value
+             * @memberof esp_control.v5.ResourceValue
+             * @instance
+             */
+            Object.defineProperty(ResourceValue.prototype, "value", {
+                get: $util.oneOfGetter($oneOfFields = ["boolValue", "intValue", "uintValue", "stringValue", "bytesValue"]),
+                set: $util.oneOfSetter($oneOfFields)
+            });
+
+            /**
+             * Creates a new ResourceValue instance using the specified properties.
+             * @function create
+             * @memberof esp_control.v5.ResourceValue
+             * @static
+             * @param {esp_control.v5.IResourceValue=} [properties] Properties to set
+             * @returns {esp_control.v5.ResourceValue} ResourceValue instance
+             */
+            ResourceValue.create = function create(properties) {
+                return new ResourceValue(properties);
+            };
+
+            /**
+             * Encodes the specified ResourceValue message. Does not implicitly {@link esp_control.v5.ResourceValue.verify|verify} messages.
+             * @function encode
+             * @memberof esp_control.v5.ResourceValue
+             * @static
+             * @param {esp_control.v5.IResourceValue} message ResourceValue message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            ResourceValue.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.resourceId != null && Object.hasOwnProperty.call(message, "resourceId"))
+                    writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.resourceId);
+                if (message.boolValue != null && Object.hasOwnProperty.call(message, "boolValue"))
+                    writer.uint32(/* id 2, wireType 0 =*/16).bool(message.boolValue);
+                if (message.intValue != null && Object.hasOwnProperty.call(message, "intValue"))
+                    writer.uint32(/* id 3, wireType 0 =*/24).int32(message.intValue);
+                if (message.uintValue != null && Object.hasOwnProperty.call(message, "uintValue"))
+                    writer.uint32(/* id 4, wireType 0 =*/32).uint32(message.uintValue);
+                if (message.stringValue != null && Object.hasOwnProperty.call(message, "stringValue"))
+                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.stringValue);
+                if (message.bytesValue != null && Object.hasOwnProperty.call(message, "bytesValue"))
+                    writer.uint32(/* id 6, wireType 2 =*/50).bytes(message.bytesValue);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified ResourceValue message, length delimited. Does not implicitly {@link esp_control.v5.ResourceValue.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof esp_control.v5.ResourceValue
+             * @static
+             * @param {esp_control.v5.IResourceValue} message ResourceValue message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            ResourceValue.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a ResourceValue message from the specified reader or buffer.
+             * @function decode
+             * @memberof esp_control.v5.ResourceValue
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {esp_control.v5.ResourceValue} ResourceValue
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            ResourceValue.decode = function decode(reader, length, error) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.v5.ResourceValue();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            message.resourceId = reader.uint32();
+                            break;
+                        }
+                    case 2: {
+                            message.boolValue = reader.bool();
+                            break;
+                        }
+                    case 3: {
+                            message.intValue = reader.int32();
+                            break;
+                        }
+                    case 4: {
+                            message.uintValue = reader.uint32();
+                            break;
+                        }
+                    case 5: {
+                            message.stringValue = reader.string();
+                            break;
+                        }
+                    case 6: {
+                            message.bytesValue = reader.bytes();
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a ResourceValue message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof esp_control.v5.ResourceValue
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {esp_control.v5.ResourceValue} ResourceValue
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            ResourceValue.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a ResourceValue message.
+             * @function verify
+             * @memberof esp_control.v5.ResourceValue
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            ResourceValue.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                let properties = {};
+                if (message.resourceId != null && message.hasOwnProperty("resourceId"))
+                    if (!$util.isInteger(message.resourceId))
+                        return "resourceId: integer expected";
+                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
+                    properties.value = 1;
+                    if (typeof message.boolValue !== "boolean")
+                        return "boolValue: boolean expected";
+                }
+                if (message.intValue != null && message.hasOwnProperty("intValue")) {
+                    if (properties.value === 1)
+                        return "value: multiple values";
+                    properties.value = 1;
+                    if (!$util.isInteger(message.intValue))
+                        return "intValue: integer expected";
+                }
+                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
+                    if (properties.value === 1)
+                        return "value: multiple values";
+                    properties.value = 1;
+                    if (!$util.isInteger(message.uintValue))
+                        return "uintValue: integer expected";
+                }
+                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
+                    if (properties.value === 1)
+                        return "value: multiple values";
+                    properties.value = 1;
+                    if (!$util.isString(message.stringValue))
+                        return "stringValue: string expected";
+                }
+                if (message.bytesValue != null && message.hasOwnProperty("bytesValue")) {
+                    if (properties.value === 1)
+                        return "value: multiple values";
+                    properties.value = 1;
+                    if (!(message.bytesValue && typeof message.bytesValue.length === "number" || $util.isString(message.bytesValue)))
+                        return "bytesValue: buffer expected";
+                }
+                return null;
+            };
+
+            /**
+             * Creates a ResourceValue message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof esp_control.v5.ResourceValue
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {esp_control.v5.ResourceValue} ResourceValue
+             */
+            ResourceValue.fromObject = function fromObject(object) {
+                if (object instanceof $root.esp_control.v5.ResourceValue)
+                    return object;
+                let message = new $root.esp_control.v5.ResourceValue();
+                if (object.resourceId != null)
+                    message.resourceId = object.resourceId >>> 0;
+                if (object.boolValue != null)
+                    message.boolValue = Boolean(object.boolValue);
+                if (object.intValue != null)
+                    message.intValue = object.intValue | 0;
+                if (object.uintValue != null)
+                    message.uintValue = object.uintValue >>> 0;
+                if (object.stringValue != null)
+                    message.stringValue = String(object.stringValue);
+                if (object.bytesValue != null)
+                    if (typeof object.bytesValue === "string")
+                        $util.base64.decode(object.bytesValue, message.bytesValue = $util.newBuffer($util.base64.length(object.bytesValue)), 0);
+                    else if (object.bytesValue.length >= 0)
+                        message.bytesValue = object.bytesValue;
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a ResourceValue message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof esp_control.v5.ResourceValue
+             * @static
+             * @param {esp_control.v5.ResourceValue} message ResourceValue
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            ResourceValue.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.defaults)
+                    object.resourceId = 0;
+                if (message.resourceId != null && message.hasOwnProperty("resourceId"))
+                    object.resourceId = message.resourceId;
+                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
+                    object.boolValue = message.boolValue;
+                    if (options.oneofs)
+                        object.value = "boolValue";
+                }
+                if (message.intValue != null && message.hasOwnProperty("intValue")) {
+                    object.intValue = message.intValue;
+                    if (options.oneofs)
+                        object.value = "intValue";
+                }
+                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
+                    object.uintValue = message.uintValue;
+                    if (options.oneofs)
+                        object.value = "uintValue";
+                }
+                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
+                    object.stringValue = message.stringValue;
+                    if (options.oneofs)
+                        object.value = "stringValue";
+                }
+                if (message.bytesValue != null && message.hasOwnProperty("bytesValue")) {
+                    object.bytesValue = options.bytes === String ? $util.base64.encode(message.bytesValue, 0, message.bytesValue.length) : options.bytes === Array ? Array.prototype.slice.call(message.bytesValue) : message.bytesValue;
+                    if (options.oneofs)
+                        object.value = "bytesValue";
+                }
+                return object;
+            };
+
+            /**
+             * Converts this ResourceValue to JSON.
+             * @function toJSON
+             * @memberof esp_control.v5.ResourceValue
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            ResourceValue.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for ResourceValue
+             * @function getTypeUrl
+             * @memberof esp_control.v5.ResourceValue
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            ResourceValue.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/esp_control.v5.ResourceValue";
+            };
+
+            return ResourceValue;
+        })();
+
+        v5.ResourceSnapshot = (function() {
+
+            /**
+             * Properties of a ResourceSnapshot.
+             * @memberof esp_control.v5
+             * @interface IResourceSnapshot
+             * @property {Array.<esp_control.v5.IResourceValue>|null} [values] ResourceSnapshot values
+             * @property {number|null} [generation] ResourceSnapshot generation
+             */
+
+            /**
+             * Constructs a new ResourceSnapshot.
+             * @memberof esp_control.v5
+             * @classdesc Represents a ResourceSnapshot.
+             * @implements IResourceSnapshot
+             * @constructor
+             * @param {esp_control.v5.IResourceSnapshot=} [properties] Properties to set
+             */
+            function ResourceSnapshot(properties) {
+                this.values = [];
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * ResourceSnapshot values.
+             * @member {Array.<esp_control.v5.IResourceValue>} values
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @instance
+             */
+            ResourceSnapshot.prototype.values = $util.emptyArray;
+
+            /**
+             * ResourceSnapshot generation.
+             * @member {number} generation
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @instance
+             */
+            ResourceSnapshot.prototype.generation = 0;
+
+            /**
+             * Creates a new ResourceSnapshot instance using the specified properties.
+             * @function create
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @static
+             * @param {esp_control.v5.IResourceSnapshot=} [properties] Properties to set
+             * @returns {esp_control.v5.ResourceSnapshot} ResourceSnapshot instance
+             */
+            ResourceSnapshot.create = function create(properties) {
+                return new ResourceSnapshot(properties);
+            };
+
+            /**
+             * Encodes the specified ResourceSnapshot message. Does not implicitly {@link esp_control.v5.ResourceSnapshot.verify|verify} messages.
+             * @function encode
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @static
+             * @param {esp_control.v5.IResourceSnapshot} message ResourceSnapshot message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            ResourceSnapshot.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.values != null && message.values.length)
+                    for (let i = 0; i < message.values.length; ++i)
+                        $root.esp_control.v5.ResourceValue.encode(message.values[i], writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
+                if (message.generation != null && Object.hasOwnProperty.call(message, "generation"))
+                    writer.uint32(/* id 2, wireType 0 =*/16).uint32(message.generation);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified ResourceSnapshot message, length delimited. Does not implicitly {@link esp_control.v5.ResourceSnapshot.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @static
+             * @param {esp_control.v5.IResourceSnapshot} message ResourceSnapshot message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            ResourceSnapshot.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a ResourceSnapshot message from the specified reader or buffer.
+             * @function decode
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {esp_control.v5.ResourceSnapshot} ResourceSnapshot
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            ResourceSnapshot.decode = function decode(reader, length, error) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.v5.ResourceSnapshot();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            if (!(message.values && message.values.length))
+                                message.values = [];
+                            message.values.push($root.esp_control.v5.ResourceValue.decode(reader, reader.uint32()));
+                            break;
+                        }
+                    case 2: {
+                            message.generation = reader.uint32();
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a ResourceSnapshot message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {esp_control.v5.ResourceSnapshot} ResourceSnapshot
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            ResourceSnapshot.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a ResourceSnapshot message.
+             * @function verify
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            ResourceSnapshot.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.values != null && message.hasOwnProperty("values")) {
+                    if (!Array.isArray(message.values))
+                        return "values: array expected";
+                    for (let i = 0; i < message.values.length; ++i) {
+                        let error = $root.esp_control.v5.ResourceValue.verify(message.values[i]);
+                        if (error)
+                            return "values." + error;
+                    }
+                }
+                if (message.generation != null && message.hasOwnProperty("generation"))
+                    if (!$util.isInteger(message.generation))
+                        return "generation: integer expected";
+                return null;
+            };
+
+            /**
+             * Creates a ResourceSnapshot message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {esp_control.v5.ResourceSnapshot} ResourceSnapshot
+             */
+            ResourceSnapshot.fromObject = function fromObject(object) {
+                if (object instanceof $root.esp_control.v5.ResourceSnapshot)
+                    return object;
+                let message = new $root.esp_control.v5.ResourceSnapshot();
+                if (object.values) {
+                    if (!Array.isArray(object.values))
+                        throw TypeError(".esp_control.v5.ResourceSnapshot.values: array expected");
+                    message.values = [];
+                    for (let i = 0; i < object.values.length; ++i) {
+                        if (typeof object.values[i] !== "object")
+                            throw TypeError(".esp_control.v5.ResourceSnapshot.values: object expected");
+                        message.values[i] = $root.esp_control.v5.ResourceValue.fromObject(object.values[i]);
+                    }
+                }
+                if (object.generation != null)
+                    message.generation = object.generation >>> 0;
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a ResourceSnapshot message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @static
+             * @param {esp_control.v5.ResourceSnapshot} message ResourceSnapshot
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            ResourceSnapshot.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.arrays || options.defaults)
+                    object.values = [];
+                if (options.defaults)
+                    object.generation = 0;
+                if (message.values && message.values.length) {
+                    object.values = [];
+                    for (let j = 0; j < message.values.length; ++j)
+                        object.values[j] = $root.esp_control.v5.ResourceValue.toObject(message.values[j], options);
+                }
+                if (message.generation != null && message.hasOwnProperty("generation"))
+                    object.generation = message.generation;
+                return object;
+            };
+
+            /**
+             * Converts this ResourceSnapshot to JSON.
+             * @function toJSON
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            ResourceSnapshot.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for ResourceSnapshot
+             * @function getTypeUrl
+             * @memberof esp_control.v5.ResourceSnapshot
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            ResourceSnapshot.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/esp_control.v5.ResourceSnapshot";
+            };
+
+            return ResourceSnapshot;
+        })();
+
+        v5.ResourceDelta = (function() {
+
+            /**
+             * Properties of a ResourceDelta.
+             * @memberof esp_control.v5
+             * @interface IResourceDelta
+             * @property {number|null} [resourceId] ResourceDelta resourceId
+             * @property {boolean|null} [boolValue] ResourceDelta boolValue
+             * @property {number|null} [intValue] ResourceDelta intValue
+             * @property {number|null} [uintValue] ResourceDelta uintValue
+             * @property {string|null} [stringValue] ResourceDelta stringValue
+             * @property {Uint8Array|null} [bytesValue] ResourceDelta bytesValue
+             * @property {number|null} [generation] ResourceDelta generation
+             */
+
+            /**
+             * Constructs a new ResourceDelta.
+             * @memberof esp_control.v5
+             * @classdesc Represents a ResourceDelta.
+             * @implements IResourceDelta
+             * @constructor
+             * @param {esp_control.v5.IResourceDelta=} [properties] Properties to set
+             */
+            function ResourceDelta(properties) {
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * ResourceDelta resourceId.
+             * @member {number} resourceId
+             * @memberof esp_control.v5.ResourceDelta
+             * @instance
+             */
+            ResourceDelta.prototype.resourceId = 0;
+
+            /**
+             * ResourceDelta boolValue.
+             * @member {boolean|null|undefined} boolValue
+             * @memberof esp_control.v5.ResourceDelta
+             * @instance
+             */
+            ResourceDelta.prototype.boolValue = null;
+
+            /**
+             * ResourceDelta intValue.
+             * @member {number|null|undefined} intValue
+             * @memberof esp_control.v5.ResourceDelta
+             * @instance
+             */
+            ResourceDelta.prototype.intValue = null;
+
+            /**
+             * ResourceDelta uintValue.
+             * @member {number|null|undefined} uintValue
+             * @memberof esp_control.v5.ResourceDelta
+             * @instance
+             */
+            ResourceDelta.prototype.uintValue = null;
+
+            /**
+             * ResourceDelta stringValue.
+             * @member {string|null|undefined} stringValue
+             * @memberof esp_control.v5.ResourceDelta
+             * @instance
+             */
+            ResourceDelta.prototype.stringValue = null;
+
+            /**
+             * ResourceDelta bytesValue.
+             * @member {Uint8Array|null|undefined} bytesValue
+             * @memberof esp_control.v5.ResourceDelta
+             * @instance
+             */
+            ResourceDelta.prototype.bytesValue = null;
+
+            /**
+             * ResourceDelta generation.
+             * @member {number} generation
+             * @memberof esp_control.v5.ResourceDelta
+             * @instance
+             */
+            ResourceDelta.prototype.generation = 0;
+
+            // OneOf field names bound to virtual getters and setters
+            let $oneOfFields;
+
+            /**
+             * ResourceDelta value.
+             * @member {"boolValue"|"intValue"|"uintValue"|"stringValue"|"bytesValue"|undefined} value
+             * @memberof esp_control.v5.ResourceDelta
+             * @instance
+             */
+            Object.defineProperty(ResourceDelta.prototype, "value", {
+                get: $util.oneOfGetter($oneOfFields = ["boolValue", "intValue", "uintValue", "stringValue", "bytesValue"]),
+                set: $util.oneOfSetter($oneOfFields)
+            });
+
+            /**
+             * Creates a new ResourceDelta instance using the specified properties.
+             * @function create
+             * @memberof esp_control.v5.ResourceDelta
+             * @static
+             * @param {esp_control.v5.IResourceDelta=} [properties] Properties to set
+             * @returns {esp_control.v5.ResourceDelta} ResourceDelta instance
+             */
+            ResourceDelta.create = function create(properties) {
+                return new ResourceDelta(properties);
+            };
+
+            /**
+             * Encodes the specified ResourceDelta message. Does not implicitly {@link esp_control.v5.ResourceDelta.verify|verify} messages.
+             * @function encode
+             * @memberof esp_control.v5.ResourceDelta
+             * @static
+             * @param {esp_control.v5.IResourceDelta} message ResourceDelta message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            ResourceDelta.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.resourceId != null && Object.hasOwnProperty.call(message, "resourceId"))
+                    writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.resourceId);
+                if (message.boolValue != null && Object.hasOwnProperty.call(message, "boolValue"))
+                    writer.uint32(/* id 2, wireType 0 =*/16).bool(message.boolValue);
+                if (message.intValue != null && Object.hasOwnProperty.call(message, "intValue"))
+                    writer.uint32(/* id 3, wireType 0 =*/24).int32(message.intValue);
+                if (message.uintValue != null && Object.hasOwnProperty.call(message, "uintValue"))
+                    writer.uint32(/* id 4, wireType 0 =*/32).uint32(message.uintValue);
+                if (message.stringValue != null && Object.hasOwnProperty.call(message, "stringValue"))
+                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.stringValue);
+                if (message.bytesValue != null && Object.hasOwnProperty.call(message, "bytesValue"))
+                    writer.uint32(/* id 6, wireType 2 =*/50).bytes(message.bytesValue);
+                if (message.generation != null && Object.hasOwnProperty.call(message, "generation"))
+                    writer.uint32(/* id 7, wireType 0 =*/56).uint32(message.generation);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified ResourceDelta message, length delimited. Does not implicitly {@link esp_control.v5.ResourceDelta.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof esp_control.v5.ResourceDelta
+             * @static
+             * @param {esp_control.v5.IResourceDelta} message ResourceDelta message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            ResourceDelta.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a ResourceDelta message from the specified reader or buffer.
+             * @function decode
+             * @memberof esp_control.v5.ResourceDelta
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {esp_control.v5.ResourceDelta} ResourceDelta
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            ResourceDelta.decode = function decode(reader, length, error) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.v5.ResourceDelta();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            message.resourceId = reader.uint32();
+                            break;
+                        }
+                    case 2: {
+                            message.boolValue = reader.bool();
+                            break;
+                        }
+                    case 3: {
+                            message.intValue = reader.int32();
+                            break;
+                        }
+                    case 4: {
+                            message.uintValue = reader.uint32();
+                            break;
+                        }
+                    case 5: {
+                            message.stringValue = reader.string();
+                            break;
+                        }
+                    case 6: {
+                            message.bytesValue = reader.bytes();
+                            break;
+                        }
+                    case 7: {
+                            message.generation = reader.uint32();
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a ResourceDelta message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof esp_control.v5.ResourceDelta
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {esp_control.v5.ResourceDelta} ResourceDelta
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            ResourceDelta.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a ResourceDelta message.
+             * @function verify
+             * @memberof esp_control.v5.ResourceDelta
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            ResourceDelta.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                let properties = {};
+                if (message.resourceId != null && message.hasOwnProperty("resourceId"))
+                    if (!$util.isInteger(message.resourceId))
+                        return "resourceId: integer expected";
+                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
+                    properties.value = 1;
+                    if (typeof message.boolValue !== "boolean")
+                        return "boolValue: boolean expected";
+                }
+                if (message.intValue != null && message.hasOwnProperty("intValue")) {
+                    if (properties.value === 1)
+                        return "value: multiple values";
+                    properties.value = 1;
+                    if (!$util.isInteger(message.intValue))
+                        return "intValue: integer expected";
+                }
+                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
+                    if (properties.value === 1)
+                        return "value: multiple values";
+                    properties.value = 1;
+                    if (!$util.isInteger(message.uintValue))
+                        return "uintValue: integer expected";
+                }
+                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
+                    if (properties.value === 1)
+                        return "value: multiple values";
+                    properties.value = 1;
+                    if (!$util.isString(message.stringValue))
+                        return "stringValue: string expected";
+                }
+                if (message.bytesValue != null && message.hasOwnProperty("bytesValue")) {
+                    if (properties.value === 1)
+                        return "value: multiple values";
+                    properties.value = 1;
+                    if (!(message.bytesValue && typeof message.bytesValue.length === "number" || $util.isString(message.bytesValue)))
+                        return "bytesValue: buffer expected";
+                }
+                if (message.generation != null && message.hasOwnProperty("generation"))
+                    if (!$util.isInteger(message.generation))
+                        return "generation: integer expected";
+                return null;
+            };
+
+            /**
+             * Creates a ResourceDelta message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof esp_control.v5.ResourceDelta
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {esp_control.v5.ResourceDelta} ResourceDelta
+             */
+            ResourceDelta.fromObject = function fromObject(object) {
+                if (object instanceof $root.esp_control.v5.ResourceDelta)
+                    return object;
+                let message = new $root.esp_control.v5.ResourceDelta();
+                if (object.resourceId != null)
+                    message.resourceId = object.resourceId >>> 0;
+                if (object.boolValue != null)
+                    message.boolValue = Boolean(object.boolValue);
+                if (object.intValue != null)
+                    message.intValue = object.intValue | 0;
+                if (object.uintValue != null)
+                    message.uintValue = object.uintValue >>> 0;
+                if (object.stringValue != null)
+                    message.stringValue = String(object.stringValue);
+                if (object.bytesValue != null)
+                    if (typeof object.bytesValue === "string")
+                        $util.base64.decode(object.bytesValue, message.bytesValue = $util.newBuffer($util.base64.length(object.bytesValue)), 0);
+                    else if (object.bytesValue.length >= 0)
+                        message.bytesValue = object.bytesValue;
+                if (object.generation != null)
+                    message.generation = object.generation >>> 0;
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a ResourceDelta message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof esp_control.v5.ResourceDelta
+             * @static
+             * @param {esp_control.v5.ResourceDelta} message ResourceDelta
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            ResourceDelta.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.defaults) {
+                    object.resourceId = 0;
+                    object.generation = 0;
+                }
+                if (message.resourceId != null && message.hasOwnProperty("resourceId"))
+                    object.resourceId = message.resourceId;
+                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
+                    object.boolValue = message.boolValue;
+                    if (options.oneofs)
+                        object.value = "boolValue";
+                }
+                if (message.intValue != null && message.hasOwnProperty("intValue")) {
+                    object.intValue = message.intValue;
+                    if (options.oneofs)
+                        object.value = "intValue";
+                }
+                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
+                    object.uintValue = message.uintValue;
+                    if (options.oneofs)
+                        object.value = "uintValue";
+                }
+                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
+                    object.stringValue = message.stringValue;
+                    if (options.oneofs)
+                        object.value = "stringValue";
+                }
+                if (message.bytesValue != null && message.hasOwnProperty("bytesValue")) {
+                    object.bytesValue = options.bytes === String ? $util.base64.encode(message.bytesValue, 0, message.bytesValue.length) : options.bytes === Array ? Array.prototype.slice.call(message.bytesValue) : message.bytesValue;
+                    if (options.oneofs)
+                        object.value = "bytesValue";
+                }
+                if (message.generation != null && message.hasOwnProperty("generation"))
+                    object.generation = message.generation;
+                return object;
+            };
+
+            /**
+             * Converts this ResourceDelta to JSON.
+             * @function toJSON
+             * @memberof esp_control.v5.ResourceDelta
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            ResourceDelta.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for ResourceDelta
+             * @function getTypeUrl
+             * @memberof esp_control.v5.ResourceDelta
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            ResourceDelta.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/esp_control.v5.ResourceDelta";
+            };
+
+            return ResourceDelta;
+        })();
+
+        v5.InvokeAction = (function() {
+
+            /**
+             * Properties of an InvokeAction.
+             * @memberof esp_control.v5
+             * @interface IInvokeAction
+             * @property {number|null} [actionId] InvokeAction actionId
+             * @property {Uint8Array|null} [payload] InvokeAction payload
+             * @property {number|null} [correlationId] InvokeAction correlationId
+             */
+
+            /**
+             * Constructs a new InvokeAction.
+             * @memberof esp_control.v5
+             * @classdesc Represents an InvokeAction.
+             * @implements IInvokeAction
+             * @constructor
+             * @param {esp_control.v5.IInvokeAction=} [properties] Properties to set
+             */
+            function InvokeAction(properties) {
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * InvokeAction actionId.
+             * @member {number} actionId
+             * @memberof esp_control.v5.InvokeAction
+             * @instance
+             */
+            InvokeAction.prototype.actionId = 0;
+
+            /**
+             * InvokeAction payload.
+             * @member {Uint8Array} payload
+             * @memberof esp_control.v5.InvokeAction
+             * @instance
+             */
+            InvokeAction.prototype.payload = $util.newBuffer([]);
+
+            /**
+             * InvokeAction correlationId.
+             * @member {number} correlationId
+             * @memberof esp_control.v5.InvokeAction
+             * @instance
+             */
+            InvokeAction.prototype.correlationId = 0;
+
+            /**
+             * Creates a new InvokeAction instance using the specified properties.
+             * @function create
+             * @memberof esp_control.v5.InvokeAction
+             * @static
+             * @param {esp_control.v5.IInvokeAction=} [properties] Properties to set
+             * @returns {esp_control.v5.InvokeAction} InvokeAction instance
+             */
+            InvokeAction.create = function create(properties) {
+                return new InvokeAction(properties);
+            };
+
+            /**
+             * Encodes the specified InvokeAction message. Does not implicitly {@link esp_control.v5.InvokeAction.verify|verify} messages.
+             * @function encode
+             * @memberof esp_control.v5.InvokeAction
+             * @static
+             * @param {esp_control.v5.IInvokeAction} message InvokeAction message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            InvokeAction.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.actionId != null && Object.hasOwnProperty.call(message, "actionId"))
+                    writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.actionId);
+                if (message.payload != null && Object.hasOwnProperty.call(message, "payload"))
+                    writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.payload);
+                if (message.correlationId != null && Object.hasOwnProperty.call(message, "correlationId"))
+                    writer.uint32(/* id 3, wireType 0 =*/24).uint32(message.correlationId);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified InvokeAction message, length delimited. Does not implicitly {@link esp_control.v5.InvokeAction.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof esp_control.v5.InvokeAction
+             * @static
+             * @param {esp_control.v5.IInvokeAction} message InvokeAction message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            InvokeAction.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes an InvokeAction message from the specified reader or buffer.
+             * @function decode
+             * @memberof esp_control.v5.InvokeAction
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {esp_control.v5.InvokeAction} InvokeAction
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            InvokeAction.decode = function decode(reader, length, error) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.v5.InvokeAction();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            message.actionId = reader.uint32();
+                            break;
+                        }
+                    case 2: {
+                            message.payload = reader.bytes();
+                            break;
+                        }
+                    case 3: {
+                            message.correlationId = reader.uint32();
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes an InvokeAction message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof esp_control.v5.InvokeAction
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {esp_control.v5.InvokeAction} InvokeAction
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            InvokeAction.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies an InvokeAction message.
+             * @function verify
+             * @memberof esp_control.v5.InvokeAction
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            InvokeAction.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.actionId != null && message.hasOwnProperty("actionId"))
+                    if (!$util.isInteger(message.actionId))
+                        return "actionId: integer expected";
+                if (message.payload != null && message.hasOwnProperty("payload"))
+                    if (!(message.payload && typeof message.payload.length === "number" || $util.isString(message.payload)))
+                        return "payload: buffer expected";
+                if (message.correlationId != null && message.hasOwnProperty("correlationId"))
+                    if (!$util.isInteger(message.correlationId))
+                        return "correlationId: integer expected";
+                return null;
+            };
+
+            /**
+             * Creates an InvokeAction message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof esp_control.v5.InvokeAction
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {esp_control.v5.InvokeAction} InvokeAction
+             */
+            InvokeAction.fromObject = function fromObject(object) {
+                if (object instanceof $root.esp_control.v5.InvokeAction)
+                    return object;
+                let message = new $root.esp_control.v5.InvokeAction();
+                if (object.actionId != null)
+                    message.actionId = object.actionId >>> 0;
+                if (object.payload != null)
+                    if (typeof object.payload === "string")
+                        $util.base64.decode(object.payload, message.payload = $util.newBuffer($util.base64.length(object.payload)), 0);
+                    else if (object.payload.length >= 0)
+                        message.payload = object.payload;
+                if (object.correlationId != null)
+                    message.correlationId = object.correlationId >>> 0;
+                return message;
+            };
+
+            /**
+             * Creates a plain object from an InvokeAction message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof esp_control.v5.InvokeAction
+             * @static
+             * @param {esp_control.v5.InvokeAction} message InvokeAction
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            InvokeAction.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.defaults) {
+                    object.actionId = 0;
+                    if (options.bytes === String)
+                        object.payload = "";
+                    else {
+                        object.payload = [];
+                        if (options.bytes !== Array)
+                            object.payload = $util.newBuffer(object.payload);
+                    }
+                    object.correlationId = 0;
+                }
+                if (message.actionId != null && message.hasOwnProperty("actionId"))
+                    object.actionId = message.actionId;
+                if (message.payload != null && message.hasOwnProperty("payload"))
+                    object.payload = options.bytes === String ? $util.base64.encode(message.payload, 0, message.payload.length) : options.bytes === Array ? Array.prototype.slice.call(message.payload) : message.payload;
+                if (message.correlationId != null && message.hasOwnProperty("correlationId"))
+                    object.correlationId = message.correlationId;
+                return object;
+            };
+
+            /**
+             * Converts this InvokeAction to JSON.
+             * @function toJSON
+             * @memberof esp_control.v5.InvokeAction
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            InvokeAction.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for InvokeAction
+             * @function getTypeUrl
+             * @memberof esp_control.v5.InvokeAction
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            InvokeAction.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/esp_control.v5.InvokeAction";
+            };
+
+            return InvokeAction;
+        })();
+
+        v5.InvokeResult = (function() {
+
+            /**
+             * Properties of an InvokeResult.
+             * @memberof esp_control.v5
+             * @interface IInvokeResult
+             * @property {number|null} [correlationId] InvokeResult correlationId
+             * @property {esp_control.v5.Status|null} [status] InvokeResult status
+             * @property {Uint8Array|null} [payload] InvokeResult payload
+             * @property {string|null} [message] InvokeResult message
+             */
+
+            /**
+             * Constructs a new InvokeResult.
+             * @memberof esp_control.v5
+             * @classdesc Represents an InvokeResult.
+             * @implements IInvokeResult
+             * @constructor
+             * @param {esp_control.v5.IInvokeResult=} [properties] Properties to set
+             */
+            function InvokeResult(properties) {
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * InvokeResult correlationId.
+             * @member {number} correlationId
+             * @memberof esp_control.v5.InvokeResult
+             * @instance
+             */
+            InvokeResult.prototype.correlationId = 0;
+
+            /**
+             * InvokeResult status.
+             * @member {esp_control.v5.Status} status
+             * @memberof esp_control.v5.InvokeResult
+             * @instance
+             */
+            InvokeResult.prototype.status = 0;
+
+            /**
+             * InvokeResult payload.
+             * @member {Uint8Array} payload
+             * @memberof esp_control.v5.InvokeResult
+             * @instance
+             */
+            InvokeResult.prototype.payload = $util.newBuffer([]);
+
+            /**
+             * InvokeResult message.
+             * @member {string} message
+             * @memberof esp_control.v5.InvokeResult
+             * @instance
+             */
+            InvokeResult.prototype.message = "";
+
+            /**
+             * Creates a new InvokeResult instance using the specified properties.
+             * @function create
+             * @memberof esp_control.v5.InvokeResult
+             * @static
+             * @param {esp_control.v5.IInvokeResult=} [properties] Properties to set
+             * @returns {esp_control.v5.InvokeResult} InvokeResult instance
+             */
+            InvokeResult.create = function create(properties) {
+                return new InvokeResult(properties);
+            };
+
+            /**
+             * Encodes the specified InvokeResult message. Does not implicitly {@link esp_control.v5.InvokeResult.verify|verify} messages.
+             * @function encode
+             * @memberof esp_control.v5.InvokeResult
+             * @static
+             * @param {esp_control.v5.IInvokeResult} message InvokeResult message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            InvokeResult.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.correlationId != null && Object.hasOwnProperty.call(message, "correlationId"))
+                    writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.correlationId);
+                if (message.status != null && Object.hasOwnProperty.call(message, "status"))
+                    writer.uint32(/* id 2, wireType 0 =*/16).int32(message.status);
+                if (message.payload != null && Object.hasOwnProperty.call(message, "payload"))
+                    writer.uint32(/* id 3, wireType 2 =*/26).bytes(message.payload);
+                if (message.message != null && Object.hasOwnProperty.call(message, "message"))
+                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.message);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified InvokeResult message, length delimited. Does not implicitly {@link esp_control.v5.InvokeResult.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof esp_control.v5.InvokeResult
+             * @static
+             * @param {esp_control.v5.IInvokeResult} message InvokeResult message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            InvokeResult.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes an InvokeResult message from the specified reader or buffer.
+             * @function decode
+             * @memberof esp_control.v5.InvokeResult
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {esp_control.v5.InvokeResult} InvokeResult
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            InvokeResult.decode = function decode(reader, length, error) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.v5.InvokeResult();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            message.correlationId = reader.uint32();
+                            break;
+                        }
+                    case 2: {
+                            message.status = reader.int32();
+                            break;
+                        }
+                    case 3: {
+                            message.payload = reader.bytes();
+                            break;
+                        }
+                    case 4: {
+                            message.message = reader.string();
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes an InvokeResult message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof esp_control.v5.InvokeResult
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {esp_control.v5.InvokeResult} InvokeResult
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            InvokeResult.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies an InvokeResult message.
+             * @function verify
+             * @memberof esp_control.v5.InvokeResult
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            InvokeResult.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.correlationId != null && message.hasOwnProperty("correlationId"))
+                    if (!$util.isInteger(message.correlationId))
+                        return "correlationId: integer expected";
+                if (message.status != null && message.hasOwnProperty("status"))
+                    switch (message.status) {
+                    default:
+                        return "status: enum value expected";
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                    case 5:
+                        break;
+                    }
+                if (message.payload != null && message.hasOwnProperty("payload"))
+                    if (!(message.payload && typeof message.payload.length === "number" || $util.isString(message.payload)))
+                        return "payload: buffer expected";
+                if (message.message != null && message.hasOwnProperty("message"))
+                    if (!$util.isString(message.message))
+                        return "message: string expected";
+                return null;
+            };
+
+            /**
+             * Creates an InvokeResult message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof esp_control.v5.InvokeResult
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {esp_control.v5.InvokeResult} InvokeResult
+             */
+            InvokeResult.fromObject = function fromObject(object) {
+                if (object instanceof $root.esp_control.v5.InvokeResult)
+                    return object;
+                let message = new $root.esp_control.v5.InvokeResult();
+                if (object.correlationId != null)
+                    message.correlationId = object.correlationId >>> 0;
+                switch (object.status) {
+                default:
+                    if (typeof object.status === "number") {
+                        message.status = object.status;
+                        break;
+                    }
+                    break;
+                case "STATUS_UNSPECIFIED":
+                case 0:
+                    message.status = 0;
+                    break;
+                case "STATUS_OK":
+                case 1:
+                    message.status = 1;
+                    break;
+                case "STATUS_BAD_PAYLOAD":
+                case 2:
+                    message.status = 2;
+                    break;
+                case "STATUS_UNKNOWN_ACTION":
+                case 3:
+                    message.status = 3;
+                    break;
+                case "STATUS_UNAUTHORIZED":
+                case 4:
+                    message.status = 4;
+                    break;
+                case "STATUS_INTERNAL":
+                case 5:
+                    message.status = 5;
+                    break;
+                }
+                if (object.payload != null)
+                    if (typeof object.payload === "string")
+                        $util.base64.decode(object.payload, message.payload = $util.newBuffer($util.base64.length(object.payload)), 0);
+                    else if (object.payload.length >= 0)
+                        message.payload = object.payload;
+                if (object.message != null)
+                    message.message = String(object.message);
+                return message;
+            };
+
+            /**
+             * Creates a plain object from an InvokeResult message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof esp_control.v5.InvokeResult
+             * @static
+             * @param {esp_control.v5.InvokeResult} message InvokeResult
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            InvokeResult.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.defaults) {
+                    object.correlationId = 0;
+                    object.status = options.enums === String ? "STATUS_UNSPECIFIED" : 0;
+                    if (options.bytes === String)
+                        object.payload = "";
+                    else {
+                        object.payload = [];
+                        if (options.bytes !== Array)
+                            object.payload = $util.newBuffer(object.payload);
+                    }
+                    object.message = "";
+                }
+                if (message.correlationId != null && message.hasOwnProperty("correlationId"))
+                    object.correlationId = message.correlationId;
+                if (message.status != null && message.hasOwnProperty("status"))
+                    object.status = options.enums === String ? $root.esp_control.v5.Status[message.status] === undefined ? message.status : $root.esp_control.v5.Status[message.status] : message.status;
+                if (message.payload != null && message.hasOwnProperty("payload"))
+                    object.payload = options.bytes === String ? $util.base64.encode(message.payload, 0, message.payload.length) : options.bytes === Array ? Array.prototype.slice.call(message.payload) : message.payload;
+                if (message.message != null && message.hasOwnProperty("message"))
+                    object.message = message.message;
+                return object;
+            };
+
+            /**
+             * Converts this InvokeResult to JSON.
+             * @function toJSON
+             * @memberof esp_control.v5.InvokeResult
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            InvokeResult.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for InvokeResult
+             * @function getTypeUrl
+             * @memberof esp_control.v5.InvokeResult
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            InvokeResult.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/esp_control.v5.InvokeResult";
+            };
+
+            return InvokeResult;
+        })();
+
+        v5.Subscribe = (function() {
+
+            /**
+             * Properties of a Subscribe.
+             * @memberof esp_control.v5
+             * @interface ISubscribe
+             * @property {Array.<number>|null} [resourceIds] Subscribe resourceIds
+             */
+
+            /**
+             * Constructs a new Subscribe.
+             * @memberof esp_control.v5
+             * @classdesc Represents a Subscribe.
+             * @implements ISubscribe
+             * @constructor
+             * @param {esp_control.v5.ISubscribe=} [properties] Properties to set
+             */
+            function Subscribe(properties) {
+                this.resourceIds = [];
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * Subscribe resourceIds.
+             * @member {Array.<number>} resourceIds
+             * @memberof esp_control.v5.Subscribe
+             * @instance
+             */
+            Subscribe.prototype.resourceIds = $util.emptyArray;
+
+            /**
+             * Creates a new Subscribe instance using the specified properties.
+             * @function create
+             * @memberof esp_control.v5.Subscribe
+             * @static
+             * @param {esp_control.v5.ISubscribe=} [properties] Properties to set
+             * @returns {esp_control.v5.Subscribe} Subscribe instance
+             */
+            Subscribe.create = function create(properties) {
+                return new Subscribe(properties);
+            };
+
+            /**
+             * Encodes the specified Subscribe message. Does not implicitly {@link esp_control.v5.Subscribe.verify|verify} messages.
+             * @function encode
+             * @memberof esp_control.v5.Subscribe
+             * @static
+             * @param {esp_control.v5.ISubscribe} message Subscribe message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            Subscribe.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.resourceIds != null && message.resourceIds.length) {
+                    writer.uint32(/* id 1, wireType 2 =*/10).fork();
+                    for (let i = 0; i < message.resourceIds.length; ++i)
+                        writer.uint32(message.resourceIds[i]);
+                    writer.ldelim();
+                }
+                return writer;
+            };
+
+            /**
+             * Encodes the specified Subscribe message, length delimited. Does not implicitly {@link esp_control.v5.Subscribe.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof esp_control.v5.Subscribe
+             * @static
+             * @param {esp_control.v5.ISubscribe} message Subscribe message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            Subscribe.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a Subscribe message from the specified reader or buffer.
+             * @function decode
+             * @memberof esp_control.v5.Subscribe
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {esp_control.v5.Subscribe} Subscribe
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            Subscribe.decode = function decode(reader, length, error) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.v5.Subscribe();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            if (!(message.resourceIds && message.resourceIds.length))
+                                message.resourceIds = [];
+                            if ((tag & 7) === 2) {
+                                let end2 = reader.uint32() + reader.pos;
+                                while (reader.pos < end2)
+                                    message.resourceIds.push(reader.uint32());
+                            } else
+                                message.resourceIds.push(reader.uint32());
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a Subscribe message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof esp_control.v5.Subscribe
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {esp_control.v5.Subscribe} Subscribe
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            Subscribe.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a Subscribe message.
+             * @function verify
+             * @memberof esp_control.v5.Subscribe
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            Subscribe.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.resourceIds != null && message.hasOwnProperty("resourceIds")) {
+                    if (!Array.isArray(message.resourceIds))
+                        return "resourceIds: array expected";
+                    for (let i = 0; i < message.resourceIds.length; ++i)
+                        if (!$util.isInteger(message.resourceIds[i]))
+                            return "resourceIds: integer[] expected";
+                }
+                return null;
+            };
+
+            /**
+             * Creates a Subscribe message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof esp_control.v5.Subscribe
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {esp_control.v5.Subscribe} Subscribe
+             */
+            Subscribe.fromObject = function fromObject(object) {
+                if (object instanceof $root.esp_control.v5.Subscribe)
+                    return object;
+                let message = new $root.esp_control.v5.Subscribe();
+                if (object.resourceIds) {
+                    if (!Array.isArray(object.resourceIds))
+                        throw TypeError(".esp_control.v5.Subscribe.resourceIds: array expected");
+                    message.resourceIds = [];
+                    for (let i = 0; i < object.resourceIds.length; ++i)
+                        message.resourceIds[i] = object.resourceIds[i] >>> 0;
+                }
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a Subscribe message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof esp_control.v5.Subscribe
+             * @static
+             * @param {esp_control.v5.Subscribe} message Subscribe
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            Subscribe.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.arrays || options.defaults)
+                    object.resourceIds = [];
+                if (message.resourceIds && message.resourceIds.length) {
+                    object.resourceIds = [];
+                    for (let j = 0; j < message.resourceIds.length; ++j)
+                        object.resourceIds[j] = message.resourceIds[j];
+                }
+                return object;
+            };
+
+            /**
+             * Converts this Subscribe to JSON.
+             * @function toJSON
+             * @memberof esp_control.v5.Subscribe
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            Subscribe.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for Subscribe
+             * @function getTypeUrl
+             * @memberof esp_control.v5.Subscribe
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            Subscribe.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/esp_control.v5.Subscribe";
+            };
+
+            return Subscribe;
+        })();
+
+        v5.Unsubscribe = (function() {
+
+            /**
+             * Properties of an Unsubscribe.
+             * @memberof esp_control.v5
+             * @interface IUnsubscribe
+             * @property {Array.<number>|null} [resourceIds] Unsubscribe resourceIds
+             */
+
+            /**
+             * Constructs a new Unsubscribe.
+             * @memberof esp_control.v5
+             * @classdesc Represents an Unsubscribe.
+             * @implements IUnsubscribe
+             * @constructor
+             * @param {esp_control.v5.IUnsubscribe=} [properties] Properties to set
+             */
+            function Unsubscribe(properties) {
+                this.resourceIds = [];
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * Unsubscribe resourceIds.
+             * @member {Array.<number>} resourceIds
+             * @memberof esp_control.v5.Unsubscribe
+             * @instance
+             */
+            Unsubscribe.prototype.resourceIds = $util.emptyArray;
+
+            /**
+             * Creates a new Unsubscribe instance using the specified properties.
+             * @function create
+             * @memberof esp_control.v5.Unsubscribe
+             * @static
+             * @param {esp_control.v5.IUnsubscribe=} [properties] Properties to set
+             * @returns {esp_control.v5.Unsubscribe} Unsubscribe instance
+             */
+            Unsubscribe.create = function create(properties) {
+                return new Unsubscribe(properties);
+            };
+
+            /**
+             * Encodes the specified Unsubscribe message. Does not implicitly {@link esp_control.v5.Unsubscribe.verify|verify} messages.
+             * @function encode
+             * @memberof esp_control.v5.Unsubscribe
+             * @static
+             * @param {esp_control.v5.IUnsubscribe} message Unsubscribe message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            Unsubscribe.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.resourceIds != null && message.resourceIds.length) {
+                    writer.uint32(/* id 1, wireType 2 =*/10).fork();
+                    for (let i = 0; i < message.resourceIds.length; ++i)
+                        writer.uint32(message.resourceIds[i]);
+                    writer.ldelim();
+                }
+                return writer;
+            };
+
+            /**
+             * Encodes the specified Unsubscribe message, length delimited. Does not implicitly {@link esp_control.v5.Unsubscribe.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof esp_control.v5.Unsubscribe
+             * @static
+             * @param {esp_control.v5.IUnsubscribe} message Unsubscribe message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            Unsubscribe.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes an Unsubscribe message from the specified reader or buffer.
+             * @function decode
+             * @memberof esp_control.v5.Unsubscribe
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {esp_control.v5.Unsubscribe} Unsubscribe
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            Unsubscribe.decode = function decode(reader, length, error) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.v5.Unsubscribe();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            if (!(message.resourceIds && message.resourceIds.length))
+                                message.resourceIds = [];
+                            if ((tag & 7) === 2) {
+                                let end2 = reader.uint32() + reader.pos;
+                                while (reader.pos < end2)
+                                    message.resourceIds.push(reader.uint32());
+                            } else
+                                message.resourceIds.push(reader.uint32());
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes an Unsubscribe message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof esp_control.v5.Unsubscribe
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {esp_control.v5.Unsubscribe} Unsubscribe
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            Unsubscribe.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies an Unsubscribe message.
+             * @function verify
+             * @memberof esp_control.v5.Unsubscribe
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            Unsubscribe.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.resourceIds != null && message.hasOwnProperty("resourceIds")) {
+                    if (!Array.isArray(message.resourceIds))
+                        return "resourceIds: array expected";
+                    for (let i = 0; i < message.resourceIds.length; ++i)
+                        if (!$util.isInteger(message.resourceIds[i]))
+                            return "resourceIds: integer[] expected";
+                }
+                return null;
+            };
+
+            /**
+             * Creates an Unsubscribe message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof esp_control.v5.Unsubscribe
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {esp_control.v5.Unsubscribe} Unsubscribe
+             */
+            Unsubscribe.fromObject = function fromObject(object) {
+                if (object instanceof $root.esp_control.v5.Unsubscribe)
+                    return object;
+                let message = new $root.esp_control.v5.Unsubscribe();
+                if (object.resourceIds) {
+                    if (!Array.isArray(object.resourceIds))
+                        throw TypeError(".esp_control.v5.Unsubscribe.resourceIds: array expected");
+                    message.resourceIds = [];
+                    for (let i = 0; i < object.resourceIds.length; ++i)
+                        message.resourceIds[i] = object.resourceIds[i] >>> 0;
+                }
+                return message;
+            };
+
+            /**
+             * Creates a plain object from an Unsubscribe message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof esp_control.v5.Unsubscribe
+             * @static
+             * @param {esp_control.v5.Unsubscribe} message Unsubscribe
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            Unsubscribe.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.arrays || options.defaults)
+                    object.resourceIds = [];
+                if (message.resourceIds && message.resourceIds.length) {
+                    object.resourceIds = [];
+                    for (let j = 0; j < message.resourceIds.length; ++j)
+                        object.resourceIds[j] = message.resourceIds[j];
+                }
+                return object;
+            };
+
+            /**
+             * Converts this Unsubscribe to JSON.
+             * @function toJSON
+             * @memberof esp_control.v5.Unsubscribe
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            Unsubscribe.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for Unsubscribe
+             * @function getTypeUrl
+             * @memberof esp_control.v5.Unsubscribe
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            Unsubscribe.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/esp_control.v5.Unsubscribe";
+            };
+
+            return Unsubscribe;
         })();
 
         return v5;

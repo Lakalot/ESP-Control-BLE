@@ -120,3 +120,62 @@ message ManifestBundleV5 {
   repeated ScreenDef screens = 6;
   repeated NodeDef nodes = 7;
 }
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_OK = 1;
+  STATUS_BAD_PAYLOAD = 2;
+  STATUS_UNKNOWN_ACTION = 3;
+  STATUS_UNAUTHORIZED = 4;
+  STATUS_INTERNAL = 5;
+}
+
+message ResourceValue {
+  uint32 resource_id = 1;
+  oneof value {
+    bool bool_value = 2;
+    int32 int_value = 3;
+    uint32 uint_value = 4;
+    string string_value = 5;
+    bytes bytes_value = 6;
+  }
+}
+
+message ResourceSnapshot {
+  repeated ResourceValue values = 1;
+  uint32 generation = 2;
+}
+
+message ResourceDelta {
+  uint32 resource_id = 1;
+  oneof value {
+    bool bool_value = 2;
+    int32 int_value = 3;
+    uint32 uint_value = 4;
+    string string_value = 5;
+    bytes bytes_value = 6;
+  }
+  uint32 generation = 7;
+}
+
+message InvokeAction {
+  uint32 action_id = 1;
+  bytes payload = 2;
+  uint32 correlation_id = 3;
+}
+
+message InvokeResult {
+  uint32 correlation_id = 1;
+  Status status = 2;
+  bytes payload = 3;
+  string message = 4;
+}
+
+message Subscribe {
+  repeated uint32 resource_ids = 1;
+}
+
+message Unsubscribe {
+  repeated uint32 resource_ids = 1;
+}
+
