@@ -17,7 +17,10 @@ export type ValidateResult = { ok: true } | { ok: false; errors: Diagnostic[] };
 
 export function validateManifest(input: unknown): ValidateResult {
   const structuralOk = validate(input);
-  const errors: Diagnostic[] = structuralOk ? [] : formatAjvErrors(validate.errors);
+  const errors: Diagnostic[] = structuralOk ? [] : (validate.errors ?? []).map((error) => ({
+    path: error.instancePath || '/',
+    message: error.message ?? 'schema validation failed',
+  }));
 
   if (structuralOk) {
     errors.push(...collectDuplicateIdErrors(input as Record<string, unknown>));
