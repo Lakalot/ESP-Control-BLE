@@ -10,6 +10,16 @@ using ecb::v5::SnapshotEncoder;
 void setUp() {}
 void tearDown() {}
 
+struct DecodeCtx { size_t count; };
+
+static bool countValues(pb_istream_t* stream, const pb_field_t* /*field*/, void** arg) {
+  DecodeCtx* ctx = static_cast<DecodeCtx*>(*arg);
+  esp_control_v5_ResourceValue rv = esp_control_v5_ResourceValue_init_zero;
+  if (!pb_decode(stream, esp_control_v5_ResourceValue_fields, &rv)) return false;
+  ctx->count += 1;
+  return true;
+}
+
 static void test_encode_two_resources_round_trips_via_nanopb() {
   ResourceTable t;
   t.setBool(10, true);
@@ -19,10 +29,13 @@ static void test_encode_two_resources_round_trips_via_nanopb() {
   TEST_ASSERT_TRUE(SnapshotEncoder::encode(t, buf, sizeof(buf), written));
   TEST_ASSERT_GREATER_THAN(0u, written);
 
-  manifest_v5_ResourceSnapshot decoded = manifest_v5_ResourceSnapshot_init_zero;
+  DecodeCtx ctx{0};
+  esp_control_v5_ResourceSnapshot decoded = esp_control_v5_ResourceSnapshot_init_zero;
+  decoded.values.funcs.decode = countValues;
+  decoded.values.arg = &ctx;
   pb_istream_t is = pb_istream_from_buffer(buf, written);
-  TEST_ASSERT_TRUE(pb_decode(&is, manifest_v5_ResourceSnapshot_fields, &decoded));
-  TEST_ASSERT_EQUAL(2u, decoded.values_count);
+  TEST_ASSERT_TRUE(pb_decode(&is, esp_control_v5_ResourceSnapshot_fields, &decoded));
+  TEST_ASSERT_EQUAL(2u, ctx.count);
   TEST_ASSERT_EQUAL(t.generation(), decoded.generation);
 }
 
