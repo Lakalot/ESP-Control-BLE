@@ -2873,6 +2873,8 @@ export const esp_control = $root.esp_control = (() => {
              * @memberof esp_control.v5
              * @interface IManifestBundleV5
              * @property {number|null} [version] ManifestBundleV5 version
+             * @property {number|null} [schemaVersion] ManifestBundleV5 schemaVersion
+             * @property {string|null} [minAppVersion] ManifestBundleV5 minAppVersion
              * @property {esp_control.v5.ICapabilitiesDef|null} [capabilities] ManifestBundleV5 capabilities
              * @property {Array.<esp_control.v5.IStringEntry>|null} [strings] ManifestBundleV5 strings
              * @property {Array.<esp_control.v5.IResourceDef>|null} [resources] ManifestBundleV5 resources
@@ -2908,6 +2910,22 @@ export const esp_control = $root.esp_control = (() => {
              * @instance
              */
             ManifestBundleV5.prototype.version = 0;
+
+            /**
+             * ManifestBundleV5 schemaVersion.
+             * @member {number} schemaVersion
+             * @memberof esp_control.v5.ManifestBundleV5
+             * @instance
+             */
+            ManifestBundleV5.prototype.schemaVersion = 0;
+
+            /**
+             * ManifestBundleV5 minAppVersion.
+             * @member {string} minAppVersion
+             * @memberof esp_control.v5.ManifestBundleV5
+             * @instance
+             */
+            ManifestBundleV5.prototype.minAppVersion = "";
 
             /**
              * ManifestBundleV5 capabilities.
@@ -2983,23 +3001,27 @@ export const esp_control = $root.esp_control = (() => {
                     writer = $Writer.create();
                 if (message.version != null && Object.hasOwnProperty.call(message, "version"))
                     writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.version);
+                if (message.schemaVersion != null && Object.hasOwnProperty.call(message, "schemaVersion"))
+                    writer.uint32(/* id 2, wireType 0 =*/16).uint32(message.schemaVersion);
+                if (message.minAppVersion != null && Object.hasOwnProperty.call(message, "minAppVersion"))
+                    writer.uint32(/* id 3, wireType 2 =*/26).string(message.minAppVersion);
                 if (message.capabilities != null && Object.hasOwnProperty.call(message, "capabilities"))
-                    $root.esp_control.v5.CapabilitiesDef.encode(message.capabilities, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
+                    $root.esp_control.v5.CapabilitiesDef.encode(message.capabilities, writer.uint32(/* id 4, wireType 2 =*/34).fork()).ldelim();
                 if (message.strings != null && message.strings.length)
                     for (let i = 0; i < message.strings.length; ++i)
-                        $root.esp_control.v5.StringEntry.encode(message.strings[i], writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                        $root.esp_control.v5.StringEntry.encode(message.strings[i], writer.uint32(/* id 5, wireType 2 =*/42).fork()).ldelim();
                 if (message.resources != null && message.resources.length)
                     for (let i = 0; i < message.resources.length; ++i)
-                        $root.esp_control.v5.ResourceDef.encode(message.resources[i], writer.uint32(/* id 4, wireType 2 =*/34).fork()).ldelim();
+                        $root.esp_control.v5.ResourceDef.encode(message.resources[i], writer.uint32(/* id 6, wireType 2 =*/50).fork()).ldelim();
                 if (message.actions != null && message.actions.length)
                     for (let i = 0; i < message.actions.length; ++i)
-                        $root.esp_control.v5.ActionDef.encode(message.actions[i], writer.uint32(/* id 5, wireType 2 =*/42).fork()).ldelim();
+                        $root.esp_control.v5.ActionDef.encode(message.actions[i], writer.uint32(/* id 7, wireType 2 =*/58).fork()).ldelim();
                 if (message.screens != null && message.screens.length)
                     for (let i = 0; i < message.screens.length; ++i)
-                        $root.esp_control.v5.ScreenDef.encode(message.screens[i], writer.uint32(/* id 6, wireType 2 =*/50).fork()).ldelim();
+                        $root.esp_control.v5.ScreenDef.encode(message.screens[i], writer.uint32(/* id 8, wireType 2 =*/66).fork()).ldelim();
                 if (message.nodes != null && message.nodes.length)
                     for (let i = 0; i < message.nodes.length; ++i)
-                        $root.esp_control.v5.NodeDef.encode(message.nodes[i], writer.uint32(/* id 7, wireType 2 =*/58).fork()).ldelim();
+                        $root.esp_control.v5.NodeDef.encode(message.nodes[i], writer.uint32(/* id 9, wireType 2 =*/74).fork()).ldelim();
                 return writer;
             };
 
@@ -3041,34 +3063,42 @@ export const esp_control = $root.esp_control = (() => {
                             break;
                         }
                     case 2: {
-                            message.capabilities = $root.esp_control.v5.CapabilitiesDef.decode(reader, reader.uint32());
+                            message.schemaVersion = reader.uint32();
                             break;
                         }
                     case 3: {
+                            message.minAppVersion = reader.string();
+                            break;
+                        }
+                    case 4: {
+                            message.capabilities = $root.esp_control.v5.CapabilitiesDef.decode(reader, reader.uint32());
+                            break;
+                        }
+                    case 5: {
                             if (!(message.strings && message.strings.length))
                                 message.strings = [];
                             message.strings.push($root.esp_control.v5.StringEntry.decode(reader, reader.uint32()));
                             break;
                         }
-                    case 4: {
+                    case 6: {
                             if (!(message.resources && message.resources.length))
                                 message.resources = [];
                             message.resources.push($root.esp_control.v5.ResourceDef.decode(reader, reader.uint32()));
                             break;
                         }
-                    case 5: {
+                    case 7: {
                             if (!(message.actions && message.actions.length))
                                 message.actions = [];
                             message.actions.push($root.esp_control.v5.ActionDef.decode(reader, reader.uint32()));
                             break;
                         }
-                    case 6: {
+                    case 8: {
                             if (!(message.screens && message.screens.length))
                                 message.screens = [];
                             message.screens.push($root.esp_control.v5.ScreenDef.decode(reader, reader.uint32()));
                             break;
                         }
-                    case 7: {
+                    case 9: {
                             if (!(message.nodes && message.nodes.length))
                                 message.nodes = [];
                             message.nodes.push($root.esp_control.v5.NodeDef.decode(reader, reader.uint32()));
@@ -3112,6 +3142,12 @@ export const esp_control = $root.esp_control = (() => {
                 if (message.version != null && message.hasOwnProperty("version"))
                     if (!$util.isInteger(message.version))
                         return "version: integer expected";
+                if (message.schemaVersion != null && message.hasOwnProperty("schemaVersion"))
+                    if (!$util.isInteger(message.schemaVersion))
+                        return "schemaVersion: integer expected";
+                if (message.minAppVersion != null && message.hasOwnProperty("minAppVersion"))
+                    if (!$util.isString(message.minAppVersion))
+                        return "minAppVersion: string expected";
                 if (message.capabilities != null && message.hasOwnProperty("capabilities")) {
                     let error = $root.esp_control.v5.CapabilitiesDef.verify(message.capabilities);
                     if (error)
@@ -3179,6 +3215,10 @@ export const esp_control = $root.esp_control = (() => {
                 let message = new $root.esp_control.v5.ManifestBundleV5();
                 if (object.version != null)
                     message.version = object.version >>> 0;
+                if (object.schemaVersion != null)
+                    message.schemaVersion = object.schemaVersion >>> 0;
+                if (object.minAppVersion != null)
+                    message.minAppVersion = String(object.minAppVersion);
                 if (object.capabilities != null) {
                     if (typeof object.capabilities !== "object")
                         throw TypeError(".esp_control.v5.ManifestBundleV5.capabilities: object expected");
@@ -3259,10 +3299,16 @@ export const esp_control = $root.esp_control = (() => {
                 }
                 if (options.defaults) {
                     object.version = 0;
+                    object.schemaVersion = 0;
+                    object.minAppVersion = "";
                     object.capabilities = null;
                 }
                 if (message.version != null && message.hasOwnProperty("version"))
                     object.version = message.version;
+                if (message.schemaVersion != null && message.hasOwnProperty("schemaVersion"))
+                    object.schemaVersion = message.schemaVersion;
+                if (message.minAppVersion != null && message.hasOwnProperty("minAppVersion"))
+                    object.minAppVersion = message.minAppVersion;
                 if (message.capabilities != null && message.hasOwnProperty("capabilities"))
                     object.capabilities = $root.esp_control.v5.CapabilitiesDef.toObject(message.capabilities, options);
                 if (message.strings && message.strings.length) {

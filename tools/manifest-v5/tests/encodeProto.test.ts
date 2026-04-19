@@ -41,6 +41,43 @@ describe('encodeManifest', () => {
     expect(widgetKinds).not.toContain('WIDGET_KIND_READ_ONLY');
   });
 
+  it('round-trips the remaining frozen widget kinds on the wire', () => {
+    const manifest = {
+      version: 5,
+      schemaVersion: 1,
+      minAppVersion: '1.0.0',
+      capabilities: { required: [], optional: [] },
+      resources: [],
+      actions: [],
+      screens: [],
+      nodes: [
+        { id: 'w.text_input', kind: 'widget', widget: 'text_input' },
+        { id: 'w.badge', kind: 'widget', widget: 'badge' },
+        { id: 'w.progress', kind: 'widget', widget: 'progress' },
+        { id: 'w.timer', kind: 'widget', widget: 'timer' },
+      ],
+    } as Parameters<typeof normalize>[0];
+    const decoded = decodeManifest(encodeManifest(normalize(manifest)));
+    const widgetKinds = (decoded.nodes ?? [])
+      .filter((node) => String(node.kind) === 'NODE_KIND_WIDGET')
+      .map((node) => String(node.widgetKind));
+
+    expect(widgetKinds).toEqual(
+      expect.arrayContaining([
+        'WIDGET_KIND_TEXT_INPUT',
+        'WIDGET_KIND_BADGE',
+        'WIDGET_KIND_PROGRESS',
+        'WIDGET_KIND_TIMER',
+      ]),
+    );
+  });
+
+  it('preserves schema metadata on the wire', () => {
+    const decoded = decodeManifest(encodeManifest(normalize(DEMO_MANIFEST)));
+    expect(decoded.schemaVersion).toBe(1);
+    expect(decoded.minAppVersion).toBe('1.0.0');
+  });
+
   it('throws when linting or references fail', () => {
     expect(() => normalize(UNKNOWN_VAR_MANIFEST)).toThrow(/unknown resource/);
   });

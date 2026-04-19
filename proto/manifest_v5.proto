@@ -116,12 +116,14 @@ message NodeDef {
 
 message ManifestBundleV5 {
   uint32 version = 1;
-  CapabilitiesDef capabilities = 2;
-  repeated StringEntry strings = 3;
-  repeated ResourceDef resources = 4;
-  repeated ActionDef actions = 5;
-  repeated ScreenDef screens = 6;
-  repeated NodeDef nodes = 7;
+  uint32 schema_version = 2;
+  string min_app_version = 3;
+  CapabilitiesDef capabilities = 4;
+  repeated StringEntry strings = 5;
+  repeated ResourceDef resources = 6;
+  repeated ActionDef actions = 7;
+  repeated ScreenDef screens = 8;
+  repeated NodeDef nodes = 9;
 }
 
 enum Status {

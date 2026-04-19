@@ -6,6 +6,8 @@ const root = pb.esp_control.v5;
 export function encodeManifest(manifest: NormalizedManifest): Uint8Array {
   const message = root.ManifestBundleV5.create({
     version: manifest.version,
+    schemaVersion: manifest.schemaVersion,
+    minAppVersion: manifest.minAppVersion,
     capabilities: { featureIdxs: manifest.capabilities.featureIdxs },
     strings: manifest.strings.map((value) => ({ value })),
     resources: manifest.resources,

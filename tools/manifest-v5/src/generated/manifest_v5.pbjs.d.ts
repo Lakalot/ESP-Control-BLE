@@ -1039,6 +1039,12 @@ export namespace esp_control {
             /** ManifestBundleV5 version */
             version?: (number|null);
 
+            /** ManifestBundleV5 schemaVersion */
+            schemaVersion?: (number|null);
+
+            /** ManifestBundleV5 minAppVersion */
+            minAppVersion?: (string|null);
+
             /** ManifestBundleV5 capabilities */
             capabilities?: (esp_control.v5.ICapabilitiesDef|null);
 
@@ -1069,6 +1075,12 @@ export namespace esp_control {
 
             /** ManifestBundleV5 version. */
             public version: number;
+
+            /** ManifestBundleV5 schemaVersion. */
+            public schemaVersion: number;
+
+            /** ManifestBundleV5 minAppVersion. */
+            public minAppVersion: string;
 
             /** ManifestBundleV5 capabilities. */
             public capabilities?: (esp_control.v5.ICapabilitiesDef|null);

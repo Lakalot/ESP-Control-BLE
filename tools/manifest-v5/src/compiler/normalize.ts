@@ -10,6 +10,8 @@ type Manifest = Static<typeof ManifestSpec>;
 
 export interface NormalizedManifest {
   version: 5;
+  schemaVersion: number;
+  minAppVersion: string;
   capabilities: { featureIdxs: number[] };
   strings: string[];
   resources: NormalizedResource[];
@@ -202,6 +204,8 @@ export function normalize(input: Manifest): NormalizedManifest {
 
   return {
     version: 5,
+    schemaVersion: input.schemaVersion,
+    minAppVersion: input.minAppVersion,
     capabilities: { featureIdxs },
     strings: strings.toArray().slice(),
     resources,
