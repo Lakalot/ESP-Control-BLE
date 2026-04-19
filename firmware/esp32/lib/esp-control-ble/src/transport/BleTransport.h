@@ -14,11 +14,14 @@ public:
   void begin(const char* deviceName, AuthHandler* auth,
              CommandRegistry* registry, const uint8_t* manifest, uint16_t manifestLen);
 
+  void notifyRawV5(const uint8_t* data, size_t len);
 private:
   AuthHandler*     _auth     = nullptr;
   CommandRegistry* _registry = nullptr;
 
   NimBLECharacteristic* _cmdChar = nullptr;
+  NimBLECharacteristic* _v5DataChar = nullptr; // NEW
+
   const uint8_t* _manifest = nullptr;
   uint16_t _manifestLen = 0;
   bool _manifestChunked = false;

@@ -2,12 +2,22 @@
 #include <Arduino.h>
 #include <pgmspace.h>
 
+#include "../protocol/ProtocolV5.h"
+
 // ── Static instance ────────────────────────────────────────
 BleTransport* BleTransport::_instance = nullptr;
 
 void BleTransport::staticNotify(const uint8_t* data, uint16_t len) {
   if (_instance) _instance->sendNotify(data, len);
 }
+
+void BleTransport::notifyRawV5(const uint8_t* data, size_t len) {
+  if (_v5DataChar) {
+    _v5DataChar->setValue(data, (uint16_t)len);
+    _v5DataChar->notify();
+  }
+}
+
 
 // ── NimBLE Callbacks ───────────────────────────────────────
 
@@ -119,6 +129,12 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   if (!s_cmdCallbacks) s_cmdCallbacks = new EcbCmdCallbacks(this);
   _cmdChar->setCallbacks(s_cmdCallbacks);
 
+  _v5DataChar = service->createCharacteristic(
+    ECB_V5_DATA_CHAR_UUID,
+    NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
+  );
+  // Optional: add callbacks for V5 if needed
+  
   service->start();
 
   NimBLEAdvertising* advertising = NimBLEDevice::getAdvertising();
