@@ -1,11 +1,12 @@
 {
-  "name": "esp-control-ble",
-  "version": "0.1.0",
-  "description": "Reusable BLE control library for ESP32 with auth, manifest, and command dispatch",
-  "keywords": ["esp32", "ble", "nimble", "control"],
+  "name": "EspControlBle",
+  "version": "0.5.0",
   "frameworks": "arduino",
-  "platforms": "espressif32",
-  "dependencies": {
-    "h2zero/NimBLE-Arduino": "^1.4.2"
-  }
+  "platforms": "espressif32, native",
+  "dependencies": [
+    { "name": "NimBLE-Arduino", "version": "^1.4.2", "platforms": "espressif32" },
+    { "name": "Nanopb", "version": "^0.4.9" },
+    { "name": "Embedded Template Library", "version": "^20.40.0" }
+  ],
+  "build": { "srcDir": "src" }
 }
