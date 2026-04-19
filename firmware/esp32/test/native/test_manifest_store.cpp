@@ -1,0 +1,30 @@
+#define MANIFEST_V5_DEFINE_DATA
+#include "../../src/manifest_v5_data.h"
+#include <unity.h>
+#include "protocol/ManifestStore.h"
+
+using ecb::v5::ManifestStore;
+
+void setUp() {}
+void tearDown() {}
+
+static void test_bytes_and_length_match_embed() {
+  ManifestStore store(MANIFEST_V5_DATA, MANIFEST_V5_LEN);
+  TEST_ASSERT_EQUAL_PTR(MANIFEST_V5_DATA, store.bytes());
+  TEST_ASSERT_EQUAL(MANIFEST_V5_LEN, store.length());
+}
+
+static void test_crc32_is_deterministic() {
+  ManifestStore store(MANIFEST_V5_DATA, MANIFEST_V5_LEN);
+  uint32_t a = store.crc32();
+  uint32_t b = store.crc32();
+  TEST_ASSERT_EQUAL_UINT32(a, b);
+  TEST_ASSERT_NOT_EQUAL(0u, a);
+}
+
+int main(int, char**) {
+  UNITY_BEGIN();
+  RUN_TEST(test_bytes_and_length_match_embed);
+  RUN_TEST(test_crc32_is_deterministic);
+  return UNITY_END();
+}
