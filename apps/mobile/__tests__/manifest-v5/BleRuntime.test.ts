@@ -69,4 +69,48 @@ describe('BleRuntime', () => {
     const result = await runtime.invokeAction('relay.toggle', { value: true });
     expect(result.status).toBe('ok');
   }, 10000);
+
+  it('loads manifest via frames', async () => {
+    const device = createFixtureBleDevice();
+    const runtime = new BleRuntime(device);
+    
+    // Ensure manifestBytes is NOT set so it hits the real implementation
+    // (device as any).manifestBytes = undefined; 
+    
+    const manifest = testManifestBytes;
+    
+    // CRC32 of manifest
+    function crc32(buf: Uint8Array): number {
+        let crc = 0xFFFFFFFF;
+        for (let i = 0; i < buf.length; i++) {
+            crc ^= buf[i];
+            for (let j = 0; j < 8; j++) {
+                crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
+            }
+        }
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+    }
+    
+    const crc = crc32(manifest);
+    const eofBody = new Uint8Array(8);
+    const view = new DataView(eofBody.buffer);
+    view.setUint32(0, crc, true);
+    view.setUint32(4, manifest.length, true);
+    
+    // Send chunks
+    setTimeout(() => {
+        const chunkSize = 100;
+        for (let i = 0; i < manifest.length; i += chunkSize) {
+            const chunk = manifest.slice(i, i + chunkSize);
+            device.queueIncoming(encodeFrame(FrameKind.ManifestChunk, 0, chunk));
+        }
+        
+        // Send EOF
+        device.queueIncoming(encodeFrame(FrameKind.ManifestEof, 0, eofBody));
+    }, 100);
+    
+    const loadedManifest = await runtime.loadManifest();
+    expect(loadedManifest).toBeDefined();
+    expect(loadedManifest.actions.size).toBeGreaterThan(0);
+  }, 10000);
 });
