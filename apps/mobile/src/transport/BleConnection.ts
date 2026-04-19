@@ -39,19 +39,25 @@ export class BleConnection implements IBleTransport {
     // Nettoyer toute souscription précédente
     this.cleanup();
 
+    console.log('[BleConnection] connecting to', deviceId, 'serviceUUID=', serviceUUID ?? 'unknown');
     const manager = bleManagerService.getPlxManager();
     const device = await manager.connectToDevice(deviceId, {
       requestMTU: 512,
     });
+    console.log('[BleConnection] connected, discovering services...');
     await device.discoverAllServicesAndCharacteristics();
+    console.log('[BleConnection] discovery done');
 
     if (serviceUUID) {
       this.serviceUUID = serviceUUID;
+      console.log('[BleConnection] using advertised serviceUUID:', serviceUUID);
     } else {
       const services = await device.services();
+      console.log('[BleConnection] resolving serviceUUID from', services.length, 'services...');
       const resolved = await this.resolveServiceUUID(services);
       if (!resolved) throw new Error('Service ECB introuvable sur cet appareil');
       this.serviceUUID = resolved;
+      console.log('[BleConnection] resolved serviceUUID:', resolved);
     }
 
     this.device = device;
@@ -67,9 +73,10 @@ export class BleConnection implements IBleTransport {
   }
 
   private async resolveServiceUUID(services: import('react-native-ble-plx').Service[]): Promise<string | null> {
+    const manifestUuid = MANIFEST_CHAR_UUID.toLowerCase();
     for (const service of services) {
       const chars = await service.characteristics();
-      if (chars.some((c) => c.uuid.toLowerCase() === MANIFEST_CHAR_UUID.toLowerCase())) {
+      if (chars.some((c) => c.uuid.toLowerCase() === manifestUuid)) {
         return service.uuid;
       }
     }

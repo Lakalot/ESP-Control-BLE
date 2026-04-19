@@ -4,7 +4,7 @@ import { bleNotifyHandler } from '../transport/BleNotifyHandler';
 import type { IBleTransport } from '../transport/IBleTransport';
 import { AuthStatus } from '../types/protocol.types';
 
-const COMMAND_TIMEOUT_MS = 5000;
+const COMMAND_TIMEOUT_MS = 15000;
 
 export function createBleAuth(transport: IBleTransport = bleConnection) {
   return function authenticate(pin: string): Promise<void> {
