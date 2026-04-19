@@ -7,8 +7,10 @@ const proto = readFileSync(join(__dirname, '../../../proto/manifest_v5.proto'), 
 const root = pb.esp_control.v5;
 
 describe('manifest_v5.proto runtime messages', () => {
-  it('declares CommonValue', () => {
-    expect(proto).toMatch(/message CommonValue\s*\{[\s\S]*oneof kind[\s\S]*\}/);
+  it('declares CommonValue with stable scalar tags', () => {
+    expect(proto).toMatch(
+      /message CommonValue\s*\{[\s\S]*oneof kind\s*\{[\s\S]*bool bool_value\s*=\s*1;[\s\S]*int32 int_value\s*=\s*2;[\s\S]*uint32 uint_value\s*=\s*3;[\s\S]*float float_value\s*=\s*4;[\s\S]*string string_value\s*=\s*5;[\s\S]*string enum_value\s*=\s*6;[\s\S]*uint32 duration_ms_value\s*=\s*7;[\s\S]*CommonObject object_value\s*=\s*8;[\s\S]*CommonList list_value\s*=\s*9;[\s\S]*\}[\s\S]*\}/,
+    );
   });
 
   it('declares CommonObject', () => {
@@ -19,9 +21,9 @@ describe('manifest_v5.proto runtime messages', () => {
     expect(proto).toMatch(/message CommonList\s*\{[\s\S]*repeated CommonValue items\s*=\s*1;[\s\S]*\}/);
   });
 
-  it('declares InvokeAction with CommonValue payload at field 3', () => {
+  it('declares InvokeAction with stable field numbers', () => {
     expect(proto).toMatch(
-      /message InvokeAction\s*\{[\s\S]*uint32 action_id\s*=\s*1;[\s\S]*uint32 correlation_id\s*=\s*2;[\s\S]*CommonValue payload\s*=\s*3;[\s\S]*\}/,
+      /message InvokeAction\s*\{[\s\S]*uint32 action_id\s*=\s*1;[\s\S]*CommonValue payload\s*=\s*2;[\s\S]*uint32 correlation_id\s*=\s*3;[\s\S]*\}/,
     );
   });
 
@@ -31,9 +33,9 @@ describe('manifest_v5.proto runtime messages', () => {
     );
   });
 
-  it('declares ResourceSnapshot and ResourceDelta with CommonValue plus subscribe messages', () => {
+  it('declares ResourceSnapshot and ResourceDelta with stable field numbers plus subscribe messages', () => {
     expect(proto).toMatch(/message ResourceSnapshot\s*\{[\s\S]*repeated ResourceValue values\s*=\s*1;[\s\S]*uint32 generation\s*=\s*2;[\s\S]*\}/);
-    expect(proto).toMatch(/message ResourceDelta\s*\{[\s\S]*uint32 resource_id\s*=\s*1;[\s\S]*CommonValue value\s*=\s*2;[\s\S]*uint32 generation\s*=\s*3;[\s\S]*\}/);
+    expect(proto).toMatch(/message ResourceDelta\s*\{[\s\S]*uint32 resource_id\s*=\s*1;[\s\S]*CommonValue value\s*=\s*2;[\s\S]*uint32 generation\s*=\s*7;[\s\S]*\}/);
     expect(proto).toMatch(/message Subscribe\s*\{[\s\S]*repeated uint32 resource_ids\s*=\s*1;[\s\S]*\}/);
     expect(proto).toMatch(/message Unsubscribe\s*\{[\s\S]*repeated uint32 resource_ids\s*=\s*1;[\s\S]*\}/);
   });
@@ -49,7 +51,7 @@ describe('manifest_v5.proto runtime messages', () => {
               keyIdx: 1,
               value: {
                 listValue: {
-                  items: [{ uintValue: 42 }, { stringValue: 'ready' }],
+                  items: [{ intValue: -7 }, { uintValue: 42 }, { stringValue: 'ready' }],
                 },
               },
             },
@@ -79,7 +81,7 @@ describe('manifest_v5.proto runtime messages', () => {
               keyIdx: 1,
               value: {
                 listValue: {
-                  items: [{ uintValue: 42 }, { stringValue: 'ready' }],
+                  items: [{ intValue: -7 }, { uintValue: 42 }, { stringValue: 'ready' }],
                 },
               },
             },

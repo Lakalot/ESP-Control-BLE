@@ -1954,11 +1954,11 @@ export namespace esp_control {
             /** InvokeAction actionId */
             actionId?: (number|null);
 
-            /** InvokeAction correlationId */
-            correlationId?: (number|null);
-
             /** InvokeAction payload */
             payload?: (esp_control.v5.ICommonValue|null);
+
+            /** InvokeAction correlationId */
+            correlationId?: (number|null);
         }
 
         /** Represents an InvokeAction. */
@@ -1973,11 +1973,11 @@ export namespace esp_control {
             /** InvokeAction actionId. */
             public actionId: number;
 
-            /** InvokeAction correlationId. */
-            public correlationId: number;
-
             /** InvokeAction payload. */
             public payload?: (esp_control.v5.ICommonValue|null);
+
+            /** InvokeAction correlationId. */
+            public correlationId: number;
 
             /**
              * Creates a new InvokeAction instance using the specified properties.

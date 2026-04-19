@@ -73,7 +73,7 @@ message CommonList {
 message CommonValue {
   oneof kind {
     bool bool_value = 1;
-    sint32 int_value = 2;
+    int32 int_value = 2;
     uint32 uint_value = 3;
     float float_value = 4;
     string string_value = 5;
@@ -175,13 +175,13 @@ message ResourceSnapshot {
 message ResourceDelta {
   uint32 resource_id = 1;
   CommonValue value = 2;
-  uint32 generation = 3;
+  uint32 generation = 7;
 }
 
 message InvokeAction {
   uint32 action_id = 1;
-  uint32 correlation_id = 2;
-  CommonValue payload = 3;
+  CommonValue payload = 2;
+  uint32 correlation_id = 3;
 }
 
 message InvokeResult {
