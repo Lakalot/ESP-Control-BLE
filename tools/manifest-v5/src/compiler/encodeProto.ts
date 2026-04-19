@@ -11,11 +11,14 @@ export function encodeManifest(manifest: NormalizedManifest): Uint8Array {
     resources: manifest.resources,
     actions: manifest.actions,
     screens: manifest.screens,
-    nodes: manifest.nodes.map((node) => ({
-      ...node,
-      visibleIf: node.visibleIf ?? undefined,
-      enabledIf: node.enabledIf ?? undefined,
-    })),
+    nodes: manifest.nodes.map((node) => {
+      const { visibleIf, enabledIf, ...rest } = node;
+      return {
+        ...rest,
+        visibleIf: visibleIf ?? null,
+        enabledIf: enabledIf ?? null,
+      };
+    }),
   });
 
   return root.ManifestBundleV5.encode(message).finish();

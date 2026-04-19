@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -16,6 +16,30 @@ const OUT_DTS = resolve(ROOT, 'src/generated/manifest_v5.pbjs.d.ts');
 mkdirSync(dirname(OUT_JS), { recursive: true });
 
 run(process.execPath, [pbjs, '-t', 'static-module', '-w', 'es6', '-o', OUT_JS, PROTO]);       
+
+// Fix protobufjs ESM issue
+let jsContent = readFileSync(OUT_JS, 'utf8');
+
+// Replace import * as $protobuf with import $protobuf
+jsContent = jsContent.replace(
+  'import * as $protobuf from "protobufjs/minimal";',
+  'import $protobuf from "protobufjs/minimal.js";'
+);
+
+// Fix $root assignment
+jsContent = jsContent.replace(
+  'const $root = $protobuf.roots["default"] || ($protobuf.roots["default"] = {});',
+  'const $root = {};'
+);
+
+// Ensure aliases work with default import
+jsContent = jsContent.replace(
+  'const $Reader = $protobuf.Reader, $Writer = $protobuf.Writer, $util = $protobuf.util;',
+  'const $Reader = $protobuf.Reader, $Writer = $protobuf.Writer, $util = $protobuf.util || $protobuf.default.util;'
+);
+
+writeFileSync(OUT_JS, jsContent);
+
 run(process.execPath, [pbts, '-o', OUT_DTS, OUT_JS]);
 
 function run(command, args) {
