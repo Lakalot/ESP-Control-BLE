@@ -12,13 +12,13 @@ esp_control.v5.ManifestBundleV5.actions max_count:64
 esp_control.v5.ManifestBundleV5.screens max_count:16
 esp_control.v5.ManifestBundleV5.nodes max_count:256
 
-ResourceValue.string_value max_size:64
-ResourceValue.bytes_value  max_size:64
 ResourceSnapshot.values    max_count:64
 ResourceDelta.string_value max_size:64
 ResourceDelta.bytes_value  max_size:64
-InvokeAction.payload       max_size:128
-InvokeResult.payload       max_size:128
-InvokeResult.message       max_size:64
+CommonObject.fields        max_count:16
+CommonList.items           max_count:16
+CommonValue.string_value   max_size:64
+CommonValue.enum_value     max_size:32
+InvokeResult.message       max_size:96
 Subscribe.resource_ids     max_count:64
 Unsubscribe.resource_ids   max_count:64

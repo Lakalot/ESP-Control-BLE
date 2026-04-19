@@ -57,6 +57,33 @@ message Rule {
   string jsonlogic = 1;
 }
 
+message CommonField {
+  uint32 key_idx = 1;
+  CommonValue value = 2;
+}
+
+message CommonObject {
+  repeated CommonField fields = 1;
+}
+
+message CommonList {
+  repeated CommonValue items = 1;
+}
+
+message CommonValue {
+  oneof kind {
+    bool bool_value = 1;
+    sint32 int_value = 2;
+    uint32 uint_value = 3;
+    float float_value = 4;
+    string string_value = 5;
+    string enum_value = 6;
+    uint32 duration_ms_value = 7;
+    CommonObject object_value = 8;
+    CommonList list_value = 9;
+  }
+}
+
 message CapabilitiesDef {
   repeated uint32 feature_idxs = 1;
 }
@@ -137,13 +164,7 @@ enum Status {
 
 message ResourceValue {
   uint32 resource_id = 1;
-  oneof value {
-    bool bool_value = 2;
-    int32 int_value = 3;
-    uint32 uint_value = 4;
-    string string_value = 5;
-    bytes bytes_value = 6;
-  }
+  CommonValue value = 2;
 }
 
 message ResourceSnapshot {
@@ -165,14 +186,14 @@ message ResourceDelta {
 
 message InvokeAction {
   uint32 action_id = 1;
-  bytes payload = 2;
-  uint32 correlation_id = 3;
+  uint32 correlation_id = 2;
+  CommonValue payload = 3;
 }
 
 message InvokeResult {
   uint32 correlation_id = 1;
   Status status = 2;
-  bytes payload = 3;
+  CommonValue payload = 3;
   string message = 4;
 }
 

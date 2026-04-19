@@ -253,6 +253,451 @@ export namespace esp_control {
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
+        /** Properties of a CommonField. */
+        interface ICommonField {
+
+            /** CommonField keyIdx */
+            keyIdx?: (number|null);
+
+            /** CommonField value */
+            value?: (esp_control.v5.ICommonValue|null);
+        }
+
+        /** Represents a CommonField. */
+        class CommonField implements ICommonField {
+
+            /**
+             * Constructs a new CommonField.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: esp_control.v5.ICommonField);
+
+            /** CommonField keyIdx. */
+            public keyIdx: number;
+
+            /** CommonField value. */
+            public value?: (esp_control.v5.ICommonValue|null);
+
+            /**
+             * Creates a new CommonField instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns CommonField instance
+             */
+            public static create(properties?: esp_control.v5.ICommonField): esp_control.v5.CommonField;
+
+            /**
+             * Encodes the specified CommonField message. Does not implicitly {@link esp_control.v5.CommonField.verify|verify} messages.
+             * @param message CommonField message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(message: esp_control.v5.ICommonField, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified CommonField message, length delimited. Does not implicitly {@link esp_control.v5.CommonField.verify|verify} messages.
+             * @param message CommonField message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: esp_control.v5.ICommonField, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a CommonField message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns CommonField
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): esp_control.v5.CommonField;
+
+            /**
+             * Decodes a CommonField message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns CommonField
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): esp_control.v5.CommonField;
+
+            /**
+             * Verifies a CommonField message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            public static verify(message: { [k: string]: any }): (string|null);
+
+            /**
+             * Creates a CommonField message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns CommonField
+             */
+            public static fromObject(object: { [k: string]: any }): esp_control.v5.CommonField;
+
+            /**
+             * Creates a plain object from a CommonField message. Also converts values to other types if specified.
+             * @param message CommonField
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            public static toObject(message: esp_control.v5.CommonField, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+            /**
+             * Converts this CommonField to JSON.
+             * @returns JSON object
+             */
+            public toJSON(): { [k: string]: any };
+
+            /**
+             * Gets the default type url for CommonField
+             * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns The default type url
+             */
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
+        /** Properties of a CommonObject. */
+        interface ICommonObject {
+
+            /** CommonObject fields */
+            fields?: (esp_control.v5.ICommonField[]|null);
+        }
+
+        /** Represents a CommonObject. */
+        class CommonObject implements ICommonObject {
+
+            /**
+             * Constructs a new CommonObject.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: esp_control.v5.ICommonObject);
+
+            /** CommonObject fields. */
+            public fields: esp_control.v5.ICommonField[];
+
+            /**
+             * Creates a new CommonObject instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns CommonObject instance
+             */
+            public static create(properties?: esp_control.v5.ICommonObject): esp_control.v5.CommonObject;
+
+            /**
+             * Encodes the specified CommonObject message. Does not implicitly {@link esp_control.v5.CommonObject.verify|verify} messages.
+             * @param message CommonObject message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(message: esp_control.v5.ICommonObject, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified CommonObject message, length delimited. Does not implicitly {@link esp_control.v5.CommonObject.verify|verify} messages.
+             * @param message CommonObject message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: esp_control.v5.ICommonObject, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a CommonObject message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns CommonObject
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): esp_control.v5.CommonObject;
+
+            /**
+             * Decodes a CommonObject message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns CommonObject
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): esp_control.v5.CommonObject;
+
+            /**
+             * Verifies a CommonObject message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            public static verify(message: { [k: string]: any }): (string|null);
+
+            /**
+             * Creates a CommonObject message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns CommonObject
+             */
+            public static fromObject(object: { [k: string]: any }): esp_control.v5.CommonObject;
+
+            /**
+             * Creates a plain object from a CommonObject message. Also converts values to other types if specified.
+             * @param message CommonObject
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            public static toObject(message: esp_control.v5.CommonObject, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+            /**
+             * Converts this CommonObject to JSON.
+             * @returns JSON object
+             */
+            public toJSON(): { [k: string]: any };
+
+            /**
+             * Gets the default type url for CommonObject
+             * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns The default type url
+             */
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
+        /** Properties of a CommonList. */
+        interface ICommonList {
+
+            /** CommonList items */
+            items?: (esp_control.v5.ICommonValue[]|null);
+        }
+
+        /** Represents a CommonList. */
+        class CommonList implements ICommonList {
+
+            /**
+             * Constructs a new CommonList.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: esp_control.v5.ICommonList);
+
+            /** CommonList items. */
+            public items: esp_control.v5.ICommonValue[];
+
+            /**
+             * Creates a new CommonList instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns CommonList instance
+             */
+            public static create(properties?: esp_control.v5.ICommonList): esp_control.v5.CommonList;
+
+            /**
+             * Encodes the specified CommonList message. Does not implicitly {@link esp_control.v5.CommonList.verify|verify} messages.
+             * @param message CommonList message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(message: esp_control.v5.ICommonList, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified CommonList message, length delimited. Does not implicitly {@link esp_control.v5.CommonList.verify|verify} messages.
+             * @param message CommonList message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: esp_control.v5.ICommonList, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a CommonList message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns CommonList
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): esp_control.v5.CommonList;
+
+            /**
+             * Decodes a CommonList message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns CommonList
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): esp_control.v5.CommonList;
+
+            /**
+             * Verifies a CommonList message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            public static verify(message: { [k: string]: any }): (string|null);
+
+            /**
+             * Creates a CommonList message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns CommonList
+             */
+            public static fromObject(object: { [k: string]: any }): esp_control.v5.CommonList;
+
+            /**
+             * Creates a plain object from a CommonList message. Also converts values to other types if specified.
+             * @param message CommonList
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            public static toObject(message: esp_control.v5.CommonList, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+            /**
+             * Converts this CommonList to JSON.
+             * @returns JSON object
+             */
+            public toJSON(): { [k: string]: any };
+
+            /**
+             * Gets the default type url for CommonList
+             * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns The default type url
+             */
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
+        /** Properties of a CommonValue. */
+        interface ICommonValue {
+
+            /** CommonValue boolValue */
+            boolValue?: (boolean|null);
+
+            /** CommonValue intValue */
+            intValue?: (number|null);
+
+            /** CommonValue uintValue */
+            uintValue?: (number|null);
+
+            /** CommonValue floatValue */
+            floatValue?: (number|null);
+
+            /** CommonValue stringValue */
+            stringValue?: (string|null);
+
+            /** CommonValue enumValue */
+            enumValue?: (string|null);
+
+            /** CommonValue durationMsValue */
+            durationMsValue?: (number|null);
+
+            /** CommonValue objectValue */
+            objectValue?: (esp_control.v5.ICommonObject|null);
+
+            /** CommonValue listValue */
+            listValue?: (esp_control.v5.ICommonList|null);
+        }
+
+        /** Represents a CommonValue. */
+        class CommonValue implements ICommonValue {
+
+            /**
+             * Constructs a new CommonValue.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: esp_control.v5.ICommonValue);
+
+            /** CommonValue boolValue. */
+            public boolValue?: (boolean|null);
+
+            /** CommonValue intValue. */
+            public intValue?: (number|null);
+
+            /** CommonValue uintValue. */
+            public uintValue?: (number|null);
+
+            /** CommonValue floatValue. */
+            public floatValue?: (number|null);
+
+            /** CommonValue stringValue. */
+            public stringValue?: (string|null);
+
+            /** CommonValue enumValue. */
+            public enumValue?: (string|null);
+
+            /** CommonValue durationMsValue. */
+            public durationMsValue?: (number|null);
+
+            /** CommonValue objectValue. */
+            public objectValue?: (esp_control.v5.ICommonObject|null);
+
+            /** CommonValue listValue. */
+            public listValue?: (esp_control.v5.ICommonList|null);
+
+            /** CommonValue kind. */
+            public kind?: ("boolValue"|"intValue"|"uintValue"|"floatValue"|"stringValue"|"enumValue"|"durationMsValue"|"objectValue"|"listValue");
+
+            /**
+             * Creates a new CommonValue instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns CommonValue instance
+             */
+            public static create(properties?: esp_control.v5.ICommonValue): esp_control.v5.CommonValue;
+
+            /**
+             * Encodes the specified CommonValue message. Does not implicitly {@link esp_control.v5.CommonValue.verify|verify} messages.
+             * @param message CommonValue message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(message: esp_control.v5.ICommonValue, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified CommonValue message, length delimited. Does not implicitly {@link esp_control.v5.CommonValue.verify|verify} messages.
+             * @param message CommonValue message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: esp_control.v5.ICommonValue, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a CommonValue message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns CommonValue
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): esp_control.v5.CommonValue;
+
+            /**
+             * Decodes a CommonValue message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns CommonValue
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): esp_control.v5.CommonValue;
+
+            /**
+             * Verifies a CommonValue message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            public static verify(message: { [k: string]: any }): (string|null);
+
+            /**
+             * Creates a CommonValue message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns CommonValue
+             */
+            public static fromObject(object: { [k: string]: any }): esp_control.v5.CommonValue;
+
+            /**
+             * Creates a plain object from a CommonValue message. Also converts values to other types if specified.
+             * @param message CommonValue
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            public static toObject(message: esp_control.v5.CommonValue, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+            /**
+             * Converts this CommonValue to JSON.
+             * @returns JSON object
+             */
+            public toJSON(): { [k: string]: any };
+
+            /**
+             * Gets the default type url for CommonValue
+             * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns The default type url
+             */
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
         /** Properties of a CapabilitiesDef. */
         interface ICapabilitiesDef {
 
@@ -1194,20 +1639,8 @@ export namespace esp_control {
             /** ResourceValue resourceId */
             resourceId?: (number|null);
 
-            /** ResourceValue boolValue */
-            boolValue?: (boolean|null);
-
-            /** ResourceValue intValue */
-            intValue?: (number|null);
-
-            /** ResourceValue uintValue */
-            uintValue?: (number|null);
-
-            /** ResourceValue stringValue */
-            stringValue?: (string|null);
-
-            /** ResourceValue bytesValue */
-            bytesValue?: (Uint8Array|null);
+            /** ResourceValue value */
+            value?: (esp_control.v5.ICommonValue|null);
         }
 
         /** Represents a ResourceValue. */
@@ -1222,23 +1655,8 @@ export namespace esp_control {
             /** ResourceValue resourceId. */
             public resourceId: number;
 
-            /** ResourceValue boolValue. */
-            public boolValue?: (boolean|null);
-
-            /** ResourceValue intValue. */
-            public intValue?: (number|null);
-
-            /** ResourceValue uintValue. */
-            public uintValue?: (number|null);
-
-            /** ResourceValue stringValue. */
-            public stringValue?: (string|null);
-
-            /** ResourceValue bytesValue. */
-            public bytesValue?: (Uint8Array|null);
-
             /** ResourceValue value. */
-            public value?: ("boolValue"|"intValue"|"uintValue"|"stringValue"|"bytesValue");
+            public value?: (esp_control.v5.ICommonValue|null);
 
             /**
              * Creates a new ResourceValue instance using the specified properties.
@@ -1563,11 +1981,11 @@ export namespace esp_control {
             /** InvokeAction actionId */
             actionId?: (number|null);
 
-            /** InvokeAction payload */
-            payload?: (Uint8Array|null);
-
             /** InvokeAction correlationId */
             correlationId?: (number|null);
+
+            /** InvokeAction payload */
+            payload?: (esp_control.v5.ICommonValue|null);
         }
 
         /** Represents an InvokeAction. */
@@ -1582,11 +2000,11 @@ export namespace esp_control {
             /** InvokeAction actionId. */
             public actionId: number;
 
-            /** InvokeAction payload. */
-            public payload: Uint8Array;
-
             /** InvokeAction correlationId. */
             public correlationId: number;
+
+            /** InvokeAction payload. */
+            public payload?: (esp_control.v5.ICommonValue|null);
 
             /**
              * Creates a new InvokeAction instance using the specified properties.
@@ -1676,7 +2094,7 @@ export namespace esp_control {
             status?: (esp_control.v5.Status|null);
 
             /** InvokeResult payload */
-            payload?: (Uint8Array|null);
+            payload?: (esp_control.v5.ICommonValue|null);
 
             /** InvokeResult message */
             message?: (string|null);
@@ -1698,7 +2116,7 @@ export namespace esp_control {
             public status: esp_control.v5.Status;
 
             /** InvokeResult payload. */
-            public payload: Uint8Array;
+            public payload?: (esp_control.v5.ICommonValue|null);
 
             /** InvokeResult message. */
             public message: string;
