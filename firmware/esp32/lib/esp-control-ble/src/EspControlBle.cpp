@@ -1,4 +1,5 @@
 #include "EspControlBle.h"
+#include "protocol/ManifestStore.h"
 #include <Arduino.h>
 #include <pgmspace.h>
 
@@ -14,7 +15,7 @@ void logManifestSummary(const uint8_t* manifestData, uint16_t manifestLen) {
 } // namespace
 
 EspControl::EspControl(const char* deviceName, const char* pin)
-  : _deviceName(deviceName), _pin(pin), _transport(_registry), _transportV5(nullptr) {}
+  : _deviceName(deviceName), _pin(pin), _transportV5(nullptr) {}
 
 void EspControl::registerCallback(uint8_t cmdId, EcbCommandFn callback) {
   _registry.registerCommand(cmdId, callback);
