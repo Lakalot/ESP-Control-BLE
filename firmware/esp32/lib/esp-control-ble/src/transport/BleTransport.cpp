@@ -85,7 +85,7 @@ void BleTransport::loadOrCreateUuid() {
 void BleTransport::begin(const char* deviceName, AuthHandler* auth,
                           CommandRegistry* registry,
                           const uint8_t* manifest, uint16_t manifestLen) {
-  loadOrCreateUuid();
+  // loadOrCreateUuid();
 
   _auth      = auth;
   _registry  = registry;
@@ -101,7 +101,7 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   if (!s_serverCallbacks) s_serverCallbacks = new EcbServerCallbacks(this);
   server->setCallbacks(s_serverCallbacks);
 
-  NimBLEService* service = server->createService(_serviceUuid);
+  NimBLEService* service = server->createService(ECB_V5_SERVICE_UUID);
 
   NimBLECharacteristic* manifestChar = service->createCharacteristic(
     ECB_MANIFEST_CHAR_UUID,
@@ -123,7 +123,7 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   }
 
   _cmdChar = service->createCharacteristic(
-    ECB_CMD_CHAR_UUID,
+    ECB_V5_CMD_CHAR_UUID,
     NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
   );
   if (!s_cmdCallbacks) s_cmdCallbacks = new EcbCmdCallbacks(this);
@@ -138,7 +138,7 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   service->start();
 
   NimBLEAdvertising* advertising = NimBLEDevice::getAdvertising();
-  advertising->addServiceUUID(_serviceUuid);
+  advertising->addServiceUUID(ECB_V5_SERVICE_UUID);
   advertising->setScanResponse(true);
   advertising->start();
 
