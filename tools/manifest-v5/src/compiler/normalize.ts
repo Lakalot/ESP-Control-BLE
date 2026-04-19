@@ -97,16 +97,16 @@ const NODE_KIND_MAP: Record<string, number> = {
 };
 
 const WIDGET_KIND_MAP: Record<string, number> = {
-  button: 1,
-  toggle: 2,
-  slider: 3,
-  select: 4,
-  stat: 5,
-  text: 6,
-  text_input: 6,
-  badge: 5,
-  progress: 5,
-  timer: 5,
+  text: 1,
+  stat: 2,
+  toggle: 3,
+  button: 4,
+  slider: 5,
+  select: 6,
+  text_input: 7,
+  badge: 8,
+  progress: 9,
+  timer: 10,
 };
 
 export function normalize(input: Manifest): NormalizedManifest {

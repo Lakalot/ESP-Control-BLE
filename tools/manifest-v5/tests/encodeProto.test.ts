@@ -27,6 +27,20 @@ describe('encodeManifest', () => {
     expect(normalize(DEMO_MANIFEST).capabilities.featureIdxs).toHaveLength(2);
   });
 
+  it('round-trips frozen widget kinds on the wire', () => {
+    const decoded = decodeManifest(encodeManifest(normalize(DEMO_MANIFEST)));
+    const widgetKinds = (decoded.nodes ?? [])
+      .filter((node) => String(node.kind) === 'NODE_KIND_WIDGET')
+      .map((node) => String(node.widgetKind));
+
+    expect(widgetKinds).toContain('WIDGET_KIND_BUTTON');
+    expect(widgetKinds).toContain('WIDGET_KIND_SLIDER');
+    expect(widgetKinds).toContain('WIDGET_KIND_STAT');
+    expect(widgetKinds).not.toContain('WIDGET_KIND_ACTION');
+    expect(widgetKinds).not.toContain('WIDGET_KIND_RANGE');
+    expect(widgetKinds).not.toContain('WIDGET_KIND_READ_ONLY');
+  });
+
   it('throws when linting or references fail', () => {
     expect(() => normalize(UNKNOWN_VAR_MANIFEST)).toThrow(/unknown resource/);
   });

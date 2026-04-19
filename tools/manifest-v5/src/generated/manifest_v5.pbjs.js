@@ -114,24 +114,30 @@ export const esp_control = $root.esp_control = (() => {
          * @name esp_control.v5.WidgetKind
          * @enum {number}
          * @property {number} WIDGET_KIND_UNSPECIFIED=0 WIDGET_KIND_UNSPECIFIED value
-         * @property {number} WIDGET_KIND_ACTION=1 WIDGET_KIND_ACTION value
-         * @property {number} WIDGET_KIND_TOGGLE=2 WIDGET_KIND_TOGGLE value
-         * @property {number} WIDGET_KIND_RANGE=3 WIDGET_KIND_RANGE value
-         * @property {number} WIDGET_KIND_SELECT=4 WIDGET_KIND_SELECT value
-         * @property {number} WIDGET_KIND_READ_ONLY=5 WIDGET_KIND_READ_ONLY value
-         * @property {number} WIDGET_KIND_TEXT=6 WIDGET_KIND_TEXT value
-         * @property {number} WIDGET_KIND_DIVIDER=7 WIDGET_KIND_DIVIDER value
+         * @property {number} WIDGET_KIND_TEXT=1 WIDGET_KIND_TEXT value
+         * @property {number} WIDGET_KIND_STAT=2 WIDGET_KIND_STAT value
+         * @property {number} WIDGET_KIND_TOGGLE=3 WIDGET_KIND_TOGGLE value
+         * @property {number} WIDGET_KIND_BUTTON=4 WIDGET_KIND_BUTTON value
+         * @property {number} WIDGET_KIND_SLIDER=5 WIDGET_KIND_SLIDER value
+         * @property {number} WIDGET_KIND_SELECT=6 WIDGET_KIND_SELECT value
+         * @property {number} WIDGET_KIND_TEXT_INPUT=7 WIDGET_KIND_TEXT_INPUT value
+         * @property {number} WIDGET_KIND_BADGE=8 WIDGET_KIND_BADGE value
+         * @property {number} WIDGET_KIND_PROGRESS=9 WIDGET_KIND_PROGRESS value
+         * @property {number} WIDGET_KIND_TIMER=10 WIDGET_KIND_TIMER value
          */
         v5.WidgetKind = (function() {
             const valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "WIDGET_KIND_UNSPECIFIED"] = 0;
-            values[valuesById[1] = "WIDGET_KIND_ACTION"] = 1;
-            values[valuesById[2] = "WIDGET_KIND_TOGGLE"] = 2;
-            values[valuesById[3] = "WIDGET_KIND_RANGE"] = 3;
-            values[valuesById[4] = "WIDGET_KIND_SELECT"] = 4;
-            values[valuesById[5] = "WIDGET_KIND_READ_ONLY"] = 5;
-            values[valuesById[6] = "WIDGET_KIND_TEXT"] = 6;
-            values[valuesById[7] = "WIDGET_KIND_DIVIDER"] = 7;
+            values[valuesById[1] = "WIDGET_KIND_TEXT"] = 1;
+            values[valuesById[2] = "WIDGET_KIND_STAT"] = 2;
+            values[valuesById[3] = "WIDGET_KIND_TOGGLE"] = 3;
+            values[valuesById[4] = "WIDGET_KIND_BUTTON"] = 4;
+            values[valuesById[5] = "WIDGET_KIND_SLIDER"] = 5;
+            values[valuesById[6] = "WIDGET_KIND_SELECT"] = 6;
+            values[valuesById[7] = "WIDGET_KIND_TEXT_INPUT"] = 7;
+            values[valuesById[8] = "WIDGET_KIND_BADGE"] = 8;
+            values[valuesById[9] = "WIDGET_KIND_PROGRESS"] = 9;
+            values[valuesById[10] = "WIDGET_KIND_TIMER"] = 10;
             return values;
         })();
 
@@ -2590,6 +2596,9 @@ export const esp_control = $root.esp_control = (() => {
                     case 5:
                     case 6:
                     case 7:
+                    case 8:
+                    case 9:
+                    case 10:
                         break;
                     }
                 if (message.titleIdx != null && message.hasOwnProperty("titleIdx"))
@@ -2691,33 +2700,45 @@ export const esp_control = $root.esp_control = (() => {
                 case 0:
                     message.widgetKind = 0;
                     break;
-                case "WIDGET_KIND_ACTION":
+                case "WIDGET_KIND_TEXT":
                 case 1:
                     message.widgetKind = 1;
                     break;
-                case "WIDGET_KIND_TOGGLE":
+                case "WIDGET_KIND_STAT":
                 case 2:
                     message.widgetKind = 2;
                     break;
-                case "WIDGET_KIND_RANGE":
+                case "WIDGET_KIND_TOGGLE":
                 case 3:
                     message.widgetKind = 3;
                     break;
-                case "WIDGET_KIND_SELECT":
+                case "WIDGET_KIND_BUTTON":
                 case 4:
                     message.widgetKind = 4;
                     break;
-                case "WIDGET_KIND_READ_ONLY":
+                case "WIDGET_KIND_SLIDER":
                 case 5:
                     message.widgetKind = 5;
                     break;
-                case "WIDGET_KIND_TEXT":
+                case "WIDGET_KIND_SELECT":
                 case 6:
                     message.widgetKind = 6;
                     break;
-                case "WIDGET_KIND_DIVIDER":
+                case "WIDGET_KIND_TEXT_INPUT":
                 case 7:
                     message.widgetKind = 7;
+                    break;
+                case "WIDGET_KIND_BADGE":
+                case 8:
+                    message.widgetKind = 8;
+                    break;
+                case "WIDGET_KIND_PROGRESS":
+                case 9:
+                    message.widgetKind = 9;
+                    break;
+                case "WIDGET_KIND_TIMER":
+                case 10:
+                    message.widgetKind = 10;
                     break;
                 }
                 if (object.titleIdx != null)

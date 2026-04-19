@@ -47,13 +47,16 @@ export namespace esp_control {
         /** WidgetKind enum. */
         enum WidgetKind {
             WIDGET_KIND_UNSPECIFIED = 0,
-            WIDGET_KIND_ACTION = 1,
-            WIDGET_KIND_TOGGLE = 2,
-            WIDGET_KIND_RANGE = 3,
-            WIDGET_KIND_SELECT = 4,
-            WIDGET_KIND_READ_ONLY = 5,
-            WIDGET_KIND_TEXT = 6,
-            WIDGET_KIND_DIVIDER = 7
+            WIDGET_KIND_TEXT = 1,
+            WIDGET_KIND_STAT = 2,
+            WIDGET_KIND_TOGGLE = 3,
+            WIDGET_KIND_BUTTON = 4,
+            WIDGET_KIND_SLIDER = 5,
+            WIDGET_KIND_SELECT = 6,
+            WIDGET_KIND_TEXT_INPUT = 7,
+            WIDGET_KIND_BADGE = 8,
+            WIDGET_KIND_PROGRESS = 9,
+            WIDGET_KIND_TIMER = 10
         }
 
         /** Properties of a StringEntry. */
