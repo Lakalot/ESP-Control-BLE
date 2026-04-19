@@ -77,7 +77,8 @@ export function useBleConnection() {
       setConnectedDevice(device);
 
       try {
-        await bleConnection.connect(device.id);
+        const serviceUUID = device.serviceUUIDs?.[0] ?? undefined;
+        await bleConnection.connect(device.id, serviceUUID);
         setConnectionState('authenticating');
         const authenticate = createBleAuth(bleConnection);
         await authenticate(pin);

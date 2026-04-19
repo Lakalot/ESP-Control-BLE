@@ -1,5 +1,5 @@
 export interface IBleTransport {
-  connect(deviceId: string): Promise<void>;
+  connect(deviceId: string, serviceUUID?: string): Promise<void>;
   disconnect(): Promise<void>;
   readManifest(): Promise<Uint8Array>;
   writeCommand(data: Uint8Array): Promise<void>;

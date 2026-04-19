@@ -35,7 +35,7 @@ export class BleConnection implements IBleTransport {
   private notifySubscription: { remove(): void } | null = null;
   private intentionalDisconnect = false;
 
-  async connect(deviceId: string): Promise<void> {
+  async connect(deviceId: string, serviceUUID?: string): Promise<void> {
     // Nettoyer toute souscription précédente
     this.cleanup();
 
@@ -44,10 +44,16 @@ export class BleConnection implements IBleTransport {
       requestMTU: 512,
     });
     await device.discoverAllServicesAndCharacteristics();
-    const services = await device.services();
-    const serviceUUID = await this.resolveServiceUUID(services);
-    if (!serviceUUID) throw new Error('Service ECB introuvable sur cet appareil');
-    this.serviceUUID = serviceUUID;
+
+    if (serviceUUID) {
+      this.serviceUUID = serviceUUID;
+    } else {
+      const services = await device.services();
+      const resolved = await this.resolveServiceUUID(services);
+      if (!resolved) throw new Error('Service ECB introuvable sur cet appareil');
+      this.serviceUUID = resolved;
+    }
+
     this.device = device;
     this.reconnectAttempts = 0;
     this.intentionalDisconnect = false;
@@ -81,7 +87,7 @@ export class BleConnection implements IBleTransport {
     await new Promise((r) => setTimeout(r, delay));
 
     try {
-      await this.connect(deviceId);
+      await this.connect(deviceId, this.serviceUUID ?? undefined);
     } catch {
       await this.handleUnexpectedDisconnect(deviceId);
     }
