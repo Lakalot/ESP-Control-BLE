@@ -20,6 +20,7 @@ export type RuntimeWidgetKind =
 export type RuntimeRule = unknown;
 
 export interface RuntimeResource {
+  runtimeId: number;
   slug: string;
   label: string | undefined;
   unit: string | undefined;
@@ -31,6 +32,7 @@ export interface RuntimeResource {
 }
 
 export interface RuntimeAction {
+  runtimeId: number;
   slug: string;
   label: string | undefined;
   dangerLevel: RuntimeDangerLevel;

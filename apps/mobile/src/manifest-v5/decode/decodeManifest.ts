@@ -91,6 +91,7 @@ export function decodeManifest(bytes: Uint8Array): RuntimeManifest {
   for (const r of msg.resources ?? []) {
     const slug = sReq(r.slugIdx, 'resource.slug');
     resources.set(slug, {
+      runtimeId: r.id!,
       slug,
       label: s(r.labelIdx),
       unit: s(r.unitIdx),
@@ -108,6 +109,7 @@ export function decodeManifest(bytes: Uint8Array): RuntimeManifest {
     const inputSchema = s(a.inputSchemaIdx) ?? '{}';
     const resultSchemaStr = s(a.resultSchemaIdx);
     actions.set(slug, {
+      runtimeId: a.id!,
       slug,
       label: s(a.labelIdx),
       dangerLevel: mapLookup(DANGER_LEVEL, a.dangerLevel!, 'action.dangerLevel'),
