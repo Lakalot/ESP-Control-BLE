@@ -14,7 +14,7 @@ export interface SubscriptionUpdate {
 }
 
 export interface SnapshotMap {
-  get(resourceId: number): any;
+  get(resourceId: number | string): any;
 }
 
 export type SubscriptionListener = (update: SubscriptionUpdate) => void;

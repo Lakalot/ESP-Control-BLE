@@ -31,6 +31,7 @@ import { getManifestRuntime } from '../../src/settings/manifestRuntimeFlag';
 import { BleRuntime } from '../../src/manifest-v5/runtime/BleRuntime';
 import { createRealBleDevice } from '../../src/hooks/useBle';
 import { ManifestScreenRenderer } from '../../src/manifest-v5/render/ManifestScreenRenderer';
+import { ManifestV5Runtime } from '../../src/manifest-v5/runtime/ManifestV5Runtime';
 import { loadBundledFixtureRuntime } from '../../src/manifest-v5/runtime/bundledFixtureRuntime';
 import { bundledFixture } from '../../src/manifest-v5/runtime/bundledFixture';
 import '../../src/manifest-v5/render/widgets';
@@ -54,26 +55,21 @@ const STATE_CONFIG: Record<string, { label: string; color: string; bg: string }>
   error: { label: 'Erreur', color: palette.danger, bg: withAlpha(palette.danger, 0.14) },
 };
 
-function V5PilotRenderer() {
-  const flag = getManifestRuntime();
-  const [rt, setRt] = useState<null | Awaited<ReturnType<typeof loadBundledFixtureRuntime>>>(null);
+function V5PilotRenderer({ deviceId }: { deviceId: string }) {
+  const [runtime, setRuntime] = useState<ManifestV5Runtime | null>(null);
   useEffect(() => {
-    if (flag === 'v5-ble') {
-        const device = createRealBleDevice(); // Assume this exists in useBle hook
-        setRt(new BleRuntime(device as any));
-    } else {
-        loadBundledFixtureRuntime().then(setRt);
-    }
-  }, [flag]);
-  if (!rt) return <ActivityIndicator />;
-  return <ManifestScreenRenderer runtime={rt} screenSlug="controls" />;
+    setRuntime(new BleRuntime(createRealBleDevice(deviceId)));
+  }, [deviceId]);
+  if (!runtime) return <ActivityIndicator />;
+  return <ManifestScreenRenderer runtime={runtime} screenSlug="controls" />;
 }
 
 export default function ControlScreen() {
   const route = useRoute();
   const runtimeMode = getManifestRuntime();
-  if (runtimeMode === 'v5' || runtimeMode === 'v5-ble') {
-    return <V5PilotRenderer />;
+  if (runtimeMode === 'v5') {
+    const { device } = route.params as RouteParams;
+    return <V5PilotRenderer deviceId={device.id} />;
   }
 
   const navigation = useNavigation<any>();

@@ -46,10 +46,10 @@ jobs:
         working-directory: apps/mobile
         run: npm run copy-v5-proto
 
-      - name: typecheck mobile
+      - name: typecheck
         working-directory: apps/mobile
         run: npx tsc --noEmit
 
-      - name: test mobile
+      - name: test
         working-directory: apps/mobile
         run: npm test -- --ci

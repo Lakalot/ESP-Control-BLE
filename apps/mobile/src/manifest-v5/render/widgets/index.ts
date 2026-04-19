@@ -1,0 +1,12 @@
+import './TextWidget';
+import './StatWidget';
+import './BadgeWidget';
+import './ToggleWidget';
+import './SliderWidget';
+import './ButtonWidget';
+import './TimerWidget';
+import './DividerWidget';
+import './FieldTextWidget';
+import './FieldNumberWidget';
+import './FieldDurationWidget';
+import './FieldSelectWidget';
