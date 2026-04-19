@@ -1,0 +1,5 @@
+{
+  "name": "esp-control-ble-workspace",
+  "private": true,
+  "packageManager": "pnpm@9.12.3"
+}
