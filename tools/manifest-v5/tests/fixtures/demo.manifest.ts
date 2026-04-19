@@ -145,7 +145,7 @@ export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
       id: 'lighting.section',
       kind: 'section',
       title: 'Lighting',
-      children: ['lighting.toggle', 'lighting.range'],
+      children: ['lighting.toggle', 'lighting.slider'],
     },
     {
       id: 'lighting.toggle',
@@ -159,7 +159,7 @@ export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
       tone: 'tone.success',
     },
     {
-      id: 'lighting.range',
+      id: 'lighting.slider',
       kind: 'widget',
       widget: 'slider',
       title: 'Brightness',
@@ -212,7 +212,7 @@ export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
       visibleIf: {
         '==': [{ var: 'runtime.role' }, 'admin'],
       },
-      children: ['advanced.debug', 'advanced.divider', 'advanced.reset'],
+      children: ['advanced.debug', 'advanced.note', 'advanced.reset'],
     },
     {
       id: 'advanced.debug',
@@ -225,7 +225,7 @@ export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
       },
     },
     {
-      id: 'advanced.divider',
+      id: 'advanced.note',
       kind: 'widget',
       widget: 'text',
       text: 'Advanced settings',

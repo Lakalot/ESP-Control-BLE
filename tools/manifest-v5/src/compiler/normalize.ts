@@ -97,13 +97,16 @@ const NODE_KIND_MAP: Record<string, number> = {
 };
 
 const WIDGET_KIND_MAP: Record<string, number> = {
-  action: 1,
+  button: 1,
   toggle: 2,
-  range: 3,
+  slider: 3,
   select: 4,
-  read_only: 5,
+  stat: 5,
   text: 6,
-  divider: 7,
+  text_input: 6,
+  badge: 5,
+  progress: 5,
+  timer: 5,
 };
 
 export function normalize(input: Manifest): NormalizedManifest {
@@ -130,7 +133,9 @@ export function normalize(input: Manifest): NormalizedManifest {
   const toRule = (rule: unknown): { jsonlogic: string } | null =>
     rule === undefined || rule === null ? null : { jsonlogic: JSON.stringify(rule) };
 
-  const featureIdxs = input.capabilities.features.map((feature) => strings.intern(feature));  
+  const featureIdxs = [...input.capabilities.required, ...input.capabilities.optional].map(
+    (feature) => strings.intern(feature),
+  );
   const resources = input.resources.map((resource) => ({
     id: ids.resources.get(resource.id)!,
     slugIdx: strings.intern(resource.id),
