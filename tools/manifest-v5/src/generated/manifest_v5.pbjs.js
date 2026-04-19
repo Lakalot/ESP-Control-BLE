@@ -5034,11 +5034,7 @@ export const esp_control = $root.esp_control = (() => {
              * @memberof esp_control.v5
              * @interface IResourceDelta
              * @property {number|null} [resourceId] ResourceDelta resourceId
-             * @property {boolean|null} [boolValue] ResourceDelta boolValue
-             * @property {number|null} [intValue] ResourceDelta intValue
-             * @property {number|null} [uintValue] ResourceDelta uintValue
-             * @property {string|null} [stringValue] ResourceDelta stringValue
-             * @property {Uint8Array|null} [bytesValue] ResourceDelta bytesValue
+             * @property {esp_control.v5.ICommonValue|null} [value] ResourceDelta value
              * @property {number|null} [generation] ResourceDelta generation
              */
 
@@ -5066,44 +5062,12 @@ export const esp_control = $root.esp_control = (() => {
             ResourceDelta.prototype.resourceId = 0;
 
             /**
-             * ResourceDelta boolValue.
-             * @member {boolean|null|undefined} boolValue
+             * ResourceDelta value.
+             * @member {esp_control.v5.ICommonValue|null|undefined} value
              * @memberof esp_control.v5.ResourceDelta
              * @instance
              */
-            ResourceDelta.prototype.boolValue = null;
-
-            /**
-             * ResourceDelta intValue.
-             * @member {number|null|undefined} intValue
-             * @memberof esp_control.v5.ResourceDelta
-             * @instance
-             */
-            ResourceDelta.prototype.intValue = null;
-
-            /**
-             * ResourceDelta uintValue.
-             * @member {number|null|undefined} uintValue
-             * @memberof esp_control.v5.ResourceDelta
-             * @instance
-             */
-            ResourceDelta.prototype.uintValue = null;
-
-            /**
-             * ResourceDelta stringValue.
-             * @member {string|null|undefined} stringValue
-             * @memberof esp_control.v5.ResourceDelta
-             * @instance
-             */
-            ResourceDelta.prototype.stringValue = null;
-
-            /**
-             * ResourceDelta bytesValue.
-             * @member {Uint8Array|null|undefined} bytesValue
-             * @memberof esp_control.v5.ResourceDelta
-             * @instance
-             */
-            ResourceDelta.prototype.bytesValue = null;
+            ResourceDelta.prototype.value = null;
 
             /**
              * ResourceDelta generation.
@@ -5112,20 +5076,6 @@ export const esp_control = $root.esp_control = (() => {
              * @instance
              */
             ResourceDelta.prototype.generation = 0;
-
-            // OneOf field names bound to virtual getters and setters
-            let $oneOfFields;
-
-            /**
-             * ResourceDelta value.
-             * @member {"boolValue"|"intValue"|"uintValue"|"stringValue"|"bytesValue"|undefined} value
-             * @memberof esp_control.v5.ResourceDelta
-             * @instance
-             */
-            Object.defineProperty(ResourceDelta.prototype, "value", {
-                get: $util.oneOfGetter($oneOfFields = ["boolValue", "intValue", "uintValue", "stringValue", "bytesValue"]),
-                set: $util.oneOfSetter($oneOfFields)
-            });
 
             /**
              * Creates a new ResourceDelta instance using the specified properties.
@@ -5153,18 +5103,10 @@ export const esp_control = $root.esp_control = (() => {
                     writer = $Writer.create();
                 if (message.resourceId != null && Object.hasOwnProperty.call(message, "resourceId"))
                     writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.resourceId);
-                if (message.boolValue != null && Object.hasOwnProperty.call(message, "boolValue"))
-                    writer.uint32(/* id 2, wireType 0 =*/16).bool(message.boolValue);
-                if (message.intValue != null && Object.hasOwnProperty.call(message, "intValue"))
-                    writer.uint32(/* id 3, wireType 0 =*/24).int32(message.intValue);
-                if (message.uintValue != null && Object.hasOwnProperty.call(message, "uintValue"))
-                    writer.uint32(/* id 4, wireType 0 =*/32).uint32(message.uintValue);
-                if (message.stringValue != null && Object.hasOwnProperty.call(message, "stringValue"))
-                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.stringValue);
-                if (message.bytesValue != null && Object.hasOwnProperty.call(message, "bytesValue"))
-                    writer.uint32(/* id 6, wireType 2 =*/50).bytes(message.bytesValue);
+                if (message.value != null && Object.hasOwnProperty.call(message, "value"))
+                    $root.esp_control.v5.CommonValue.encode(message.value, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
                 if (message.generation != null && Object.hasOwnProperty.call(message, "generation"))
-                    writer.uint32(/* id 7, wireType 0 =*/56).uint32(message.generation);
+                    writer.uint32(/* id 3, wireType 0 =*/24).uint32(message.generation);
                 return writer;
             };
 
@@ -5206,26 +5148,10 @@ export const esp_control = $root.esp_control = (() => {
                             break;
                         }
                     case 2: {
-                            message.boolValue = reader.bool();
+                            message.value = $root.esp_control.v5.CommonValue.decode(reader, reader.uint32());
                             break;
                         }
                     case 3: {
-                            message.intValue = reader.int32();
-                            break;
-                        }
-                    case 4: {
-                            message.uintValue = reader.uint32();
-                            break;
-                        }
-                    case 5: {
-                            message.stringValue = reader.string();
-                            break;
-                        }
-                    case 6: {
-                            message.bytesValue = reader.bytes();
-                            break;
-                        }
-                    case 7: {
                             message.generation = reader.uint32();
                             break;
                         }
@@ -5264,42 +5190,13 @@ export const esp_control = $root.esp_control = (() => {
             ResourceDelta.verify = function verify(message) {
                 if (typeof message !== "object" || message === null)
                     return "object expected";
-                let properties = {};
                 if (message.resourceId != null && message.hasOwnProperty("resourceId"))
                     if (!$util.isInteger(message.resourceId))
                         return "resourceId: integer expected";
-                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
-                    properties.value = 1;
-                    if (typeof message.boolValue !== "boolean")
-                        return "boolValue: boolean expected";
-                }
-                if (message.intValue != null && message.hasOwnProperty("intValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!$util.isInteger(message.intValue))
-                        return "intValue: integer expected";
-                }
-                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!$util.isInteger(message.uintValue))
-                        return "uintValue: integer expected";
-                }
-                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!$util.isString(message.stringValue))
-                        return "stringValue: string expected";
-                }
-                if (message.bytesValue != null && message.hasOwnProperty("bytesValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!(message.bytesValue && typeof message.bytesValue.length === "number" || $util.isString(message.bytesValue)))
-                        return "bytesValue: buffer expected";
+                if (message.value != null && message.hasOwnProperty("value")) {
+                    let error = $root.esp_control.v5.CommonValue.verify(message.value);
+                    if (error)
+                        return "value." + error;
                 }
                 if (message.generation != null && message.hasOwnProperty("generation"))
                     if (!$util.isInteger(message.generation))
@@ -5321,19 +5218,11 @@ export const esp_control = $root.esp_control = (() => {
                 let message = new $root.esp_control.v5.ResourceDelta();
                 if (object.resourceId != null)
                     message.resourceId = object.resourceId >>> 0;
-                if (object.boolValue != null)
-                    message.boolValue = Boolean(object.boolValue);
-                if (object.intValue != null)
-                    message.intValue = object.intValue | 0;
-                if (object.uintValue != null)
-                    message.uintValue = object.uintValue >>> 0;
-                if (object.stringValue != null)
-                    message.stringValue = String(object.stringValue);
-                if (object.bytesValue != null)
-                    if (typeof object.bytesValue === "string")
-                        $util.base64.decode(object.bytesValue, message.bytesValue = $util.newBuffer($util.base64.length(object.bytesValue)), 0);
-                    else if (object.bytesValue.length >= 0)
-                        message.bytesValue = object.bytesValue;
+                if (object.value != null) {
+                    if (typeof object.value !== "object")
+                        throw TypeError(".esp_control.v5.ResourceDelta.value: object expected");
+                    message.value = $root.esp_control.v5.CommonValue.fromObject(object.value);
+                }
                 if (object.generation != null)
                     message.generation = object.generation >>> 0;
                 return message;
@@ -5354,35 +5243,13 @@ export const esp_control = $root.esp_control = (() => {
                 let object = {};
                 if (options.defaults) {
                     object.resourceId = 0;
+                    object.value = null;
                     object.generation = 0;
                 }
                 if (message.resourceId != null && message.hasOwnProperty("resourceId"))
                     object.resourceId = message.resourceId;
-                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
-                    object.boolValue = message.boolValue;
-                    if (options.oneofs)
-                        object.value = "boolValue";
-                }
-                if (message.intValue != null && message.hasOwnProperty("intValue")) {
-                    object.intValue = message.intValue;
-                    if (options.oneofs)
-                        object.value = "intValue";
-                }
-                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
-                    object.uintValue = message.uintValue;
-                    if (options.oneofs)
-                        object.value = "uintValue";
-                }
-                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
-                    object.stringValue = message.stringValue;
-                    if (options.oneofs)
-                        object.value = "stringValue";
-                }
-                if (message.bytesValue != null && message.hasOwnProperty("bytesValue")) {
-                    object.bytesValue = options.bytes === String ? $util.base64.encode(message.bytesValue, 0, message.bytesValue.length) : options.bytes === Array ? Array.prototype.slice.call(message.bytesValue) : message.bytesValue;
-                    if (options.oneofs)
-                        object.value = "bytesValue";
-                }
+                if (message.value != null && message.hasOwnProperty("value"))
+                    object.value = $root.esp_control.v5.CommonValue.toObject(message.value, options);
                 if (message.generation != null && message.hasOwnProperty("generation"))
                     object.generation = message.generation;
                 return object;

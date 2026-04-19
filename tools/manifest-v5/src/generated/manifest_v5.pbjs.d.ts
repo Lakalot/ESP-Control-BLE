@@ -1845,20 +1845,8 @@ export namespace esp_control {
             /** ResourceDelta resourceId */
             resourceId?: (number|null);
 
-            /** ResourceDelta boolValue */
-            boolValue?: (boolean|null);
-
-            /** ResourceDelta intValue */
-            intValue?: (number|null);
-
-            /** ResourceDelta uintValue */
-            uintValue?: (number|null);
-
-            /** ResourceDelta stringValue */
-            stringValue?: (string|null);
-
-            /** ResourceDelta bytesValue */
-            bytesValue?: (Uint8Array|null);
+            /** ResourceDelta value */
+            value?: (esp_control.v5.ICommonValue|null);
 
             /** ResourceDelta generation */
             generation?: (number|null);
@@ -1876,26 +1864,11 @@ export namespace esp_control {
             /** ResourceDelta resourceId. */
             public resourceId: number;
 
-            /** ResourceDelta boolValue. */
-            public boolValue?: (boolean|null);
-
-            /** ResourceDelta intValue. */
-            public intValue?: (number|null);
-
-            /** ResourceDelta uintValue. */
-            public uintValue?: (number|null);
-
-            /** ResourceDelta stringValue. */
-            public stringValue?: (string|null);
-
-            /** ResourceDelta bytesValue. */
-            public bytesValue?: (Uint8Array|null);
+            /** ResourceDelta value. */
+            public value?: (esp_control.v5.ICommonValue|null);
 
             /** ResourceDelta generation. */
             public generation: number;
-
-            /** ResourceDelta value. */
-            public value?: ("boolValue"|"intValue"|"uintValue"|"stringValue"|"bytesValue");
 
             /**
              * Creates a new ResourceDelta instance using the specified properties.

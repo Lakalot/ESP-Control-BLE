@@ -174,14 +174,8 @@ message ResourceSnapshot {
 
 message ResourceDelta {
   uint32 resource_id = 1;
-  oneof value {
-    bool bool_value = 2;
-    int32 int_value = 3;
-    uint32 uint_value = 4;
-    string string_value = 5;
-    bytes bytes_value = 6;
-  }
-  uint32 generation = 7;
+  CommonValue value = 2;
+  uint32 generation = 3;
 }
 
 message InvokeAction {
