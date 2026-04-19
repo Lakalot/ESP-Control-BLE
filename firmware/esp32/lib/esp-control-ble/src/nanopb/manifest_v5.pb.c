@@ -43,7 +43,7 @@ PB_BIND(esp_control_v5_ManifestBundleV5, esp_control_v5_ManifestBundleV5, 4)
 PB_BIND(esp_control_v5_ResourceValue, esp_control_v5_ResourceValue, AUTO)
 
 
-PB_BIND(esp_control_v5_ResourceSnapshot, esp_control_v5_ResourceSnapshot, AUTO)
+PB_BIND(esp_control_v5_ResourceSnapshot, esp_control_v5_ResourceSnapshot, 4)
 
 
 PB_BIND(esp_control_v5_ResourceDelta, esp_control_v5_ResourceDelta, AUTO)
@@ -55,10 +55,10 @@ PB_BIND(esp_control_v5_InvokeAction, esp_control_v5_InvokeAction, AUTO)
 PB_BIND(esp_control_v5_InvokeResult, esp_control_v5_InvokeResult, AUTO)
 
 
-PB_BIND(esp_control_v5_Subscribe, esp_control_v5_Subscribe, AUTO)
+PB_BIND(esp_control_v5_Subscribe, esp_control_v5_Subscribe, 2)
 
 
-PB_BIND(esp_control_v5_Unsubscribe, esp_control_v5_Unsubscribe, AUTO)
+PB_BIND(esp_control_v5_Unsubscribe, esp_control_v5_Unsubscribe, 2)
 
 
 
