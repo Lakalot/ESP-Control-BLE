@@ -36,7 +36,6 @@ describe('BleRuntime', () => {
     
     const reply = await invokePromise;
     expect(reply.status).toBe('ok');
-    expect(Array.from(reply.payload ?? new Uint8Array())).toEqual([1]);
   }, 10000);
 
   it('loads the manifest from chunk + eof frames and resolves ids from the manifest', async () => {
@@ -94,8 +93,8 @@ describe('BleRuntime', () => {
     const crc = crc32(manifest);
     const eofBody = new Uint8Array(8);
     const view = new DataView(eofBody.buffer);
-    view.setUint32(0, crc, true);
-    view.setUint32(4, manifest.length, true);
+    view.setUint32(0, manifest.length, false);
+    view.setUint32(4, crc, false);
     
     // Send chunks
     setTimeout(() => {

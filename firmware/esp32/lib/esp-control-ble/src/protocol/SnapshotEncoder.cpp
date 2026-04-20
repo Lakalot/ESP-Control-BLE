@@ -20,6 +20,10 @@ static bool fillCommonValue(esp_control_v5_CommonValue& dst, const ResourceValue
       dst.which_kind = esp_control_v5_CommonValue_uint_value_tag;
       dst.kind.uint_value = src.uintValue;
       return true;
+    case ResourceValueKind::Float:
+      dst.which_kind = esp_control_v5_CommonValue_float_value_tag;
+      dst.kind.float_value = src.floatValue;
+      return true;
     default:
       return false;
   }

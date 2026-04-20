@@ -38,6 +38,34 @@ describe('NodeRenderer', () => {
     expect(getByText('Hello')).toBeTruthy();
   });
 
+  it('renders section nodes inside a section card and keeps visible widget content', () => {
+    const m = tinyManifest();
+    (m.nodes as Map<string, any>).set('root', {
+      kind: 'section',
+      slug: 'root',
+      label: 'Lighting',
+      tone: undefined,
+      visibleIf: undefined,
+      enabledIf: undefined,
+      childrenSlugs: ['label'],
+      columns: undefined,
+    });
+
+    const { getByText } = render(
+      <NodeRenderer
+        manifest={m}
+        slug="root"
+        snapshot={new Map()}
+        ctx={{}}
+        onInvoke={() => {}}
+        pendingActions={new Set()}
+      />,
+    );
+
+    expect(getByText('Lighting')).toBeTruthy();
+    expect(getByText('Hello')).toBeTruthy();
+  });
+
   it('hides nodes whose visibleIf is false', () => {
     const m = tinyManifest();
     (m.nodes as Map<string, any>).set('label', {

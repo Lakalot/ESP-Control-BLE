@@ -15,12 +15,17 @@ CACHE = PROJECT / "build_cache"
 CACHE.mkdir(exist_ok=True)
 TARGET = CACHE / "manifest_v5_demo.pb"
 FIXTURE = PROJECT / "test" / "native" / "fixtures" / "manifest_v5_tiny.pb"
+LOCAL_COMPILED = PROJECT.parent.parent / "tools" / "manifest-v5" / ".tmp" / "manifest_v5_demo.pb"
 URL = os.environ.get("MANIFEST_V5_ARTIFACT_URL", "")
 
 def fetch():
     if env.subst("$PIOENV") == "native_v5":
         shutil.copyfile(FIXTURE, TARGET)
         print(f"[fetch_plan_a_artifact] native env -> copied fixture into {TARGET}")
+        return
+    if LOCAL_COMPILED.exists():
+        shutil.copyfile(LOCAL_COMPILED, TARGET)
+        print(f"[fetch_plan_a_artifact] using local compiled manifest -> {TARGET}")
         return
     if not URL:
         if not TARGET.exists():

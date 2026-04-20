@@ -16,8 +16,9 @@ public:
   void begin(const char* deviceName, AuthHandler* auth,
              CommandRegistry* registry, const uint8_t* manifest, uint16_t manifestLen);
 
-  void setV5Transport(ecb::v5::BleTransportV5* t); // ADDED
+  void setV5Transport(ecb::v5::BleTransportV5* t);
   void notifyRawV5(const uint8_t* data, size_t len);
+  void sendV5Manifest();
 private:
   AuthHandler*     _auth     = nullptr;
   CommandRegistry* _registry = nullptr;

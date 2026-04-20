@@ -7,8 +7,7 @@ import { bleManagerService } from '../../transport/BleManager';
 import type { FixtureBleDevice } from './BleRuntime.fixture';
 
 const ECB_V5_SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
-const ECB_V5_CMD_CHAR_UUID = '12345678-1234-1234-1234-123456789abe';
-const ECB_V5_NOTIFY_CHAR_UUID = '12345678-1234-1234-1234-123456789abd';
+const ECB_V5_DATA_CHAR_UUID = '12345678-1234-1234-1234-123456789abf';
 
 function uint8ArrayToBase64(bytes: Uint8Array): string {
   let binary = '';
@@ -41,7 +40,7 @@ export class RealBleDevice implements FixtureBleDevice {
 
     this.notifySubscription = device.monitorCharacteristicForService(
       ECB_V5_SERVICE_UUID,
-      ECB_V5_NOTIFY_CHAR_UUID,
+      ECB_V5_DATA_CHAR_UUID,
       (_err, characteristic) => {
         if (characteristic?.value) {
           const chunk = base64ToUint8Array(characteristic.value);
@@ -55,7 +54,7 @@ export class RealBleDevice implements FixtureBleDevice {
     if (!this.device) throw new Error('RealBleDevice: not connected');
     await this.device.writeCharacteristicWithResponseForService(
       ECB_V5_SERVICE_UUID,
-      ECB_V5_CMD_CHAR_UUID,
+      ECB_V5_DATA_CHAR_UUID,
       uint8ArrayToBase64(frame),
     );
   }
@@ -69,6 +68,20 @@ export class RealBleDevice implements FixtureBleDevice {
 
   /** Not used in production — present to satisfy FixtureBleDevice interface. */
   queueIncoming(_chunk: Uint8Array): void {}
+
+  async disconnect(): Promise<void> {
+    this.notifySubscription?.remove();
+    this.notifySubscription = null;
+    this.notifyListeners = [];
+    if (this.device) {
+      try {
+        await this.device.cancelConnection();
+      } catch {
+        // Ignore errors during disconnect (device may already be gone)
+      }
+      this.device = null;
+    }
+  }
 }
 
 /**

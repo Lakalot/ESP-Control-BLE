@@ -1,9 +1,12 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { useDeviceUi } from '../runtime/useDeviceUi';
 import { buildRuleContext } from '../rules/ruleContext';
 import { NodeRenderer } from './NodeRenderer';
 import type { ManifestV5Runtime } from '../runtime/ManifestV5Runtime';
+import { V5ScreenShell } from './primitives/V5ScreenShell';
+import { V5StatusText } from './primitives/V5StatusText';
+import { V5ErrorPanel } from './primitives/V5ErrorPanel';
 
 export interface ManifestScreenRendererProps {
   runtime: ManifestV5Runtime;
@@ -35,15 +38,37 @@ export function ManifestScreenRenderer({ runtime, screenSlug }: ManifestScreenRe
     [snapshot, screenSlug],
   );
 
-  if (state.matches('loading_manifest')) return <ActivityIndicator />;
-  if (state.matches('error')) return <Text>Error: {state.context.error}</Text>;
+  if (state.matches('loading_manifest')) {
+    return (
+      <V5ScreenShell>
+        <ActivityIndicator />
+      </V5ScreenShell>
+    );
+  }
+
+  if (state.matches('error')) {
+    return (
+      <V5ScreenShell>
+        <V5ErrorPanel title="Unable to load manifest">
+          {String(state.context.error ?? 'Unknown error')}
+        </V5ErrorPanel>
+      </V5ScreenShell>
+    );
+  }
+
   if (!manifest) return null;
 
-  const screen = manifest.screens.get(screenSlug);
-  if (!screen) return <Text>Unknown screen: {screenSlug}</Text>;
+  const screen = manifest.screens.get(screenSlug) ?? manifest.screens.values().next().value;
+  if (!screen) {
+    return (
+      <V5ScreenShell>
+        <V5StatusText>No screens in manifest</V5StatusText>
+      </V5ScreenShell>
+    );
+  }
 
   return (
-    <View style={{ padding: 16 }}>
+    <V5ScreenShell>
       <NodeRenderer
         manifest={manifest}
         slug={screen.rootNodeSlug}
@@ -52,6 +77,6 @@ export function ManifestScreenRenderer({ runtime, screenSlug }: ManifestScreenRe
         onInvoke={onInvoke}
         pendingActions={pendingActions}
       />
-    </View>
+    </V5ScreenShell>
   );
 }

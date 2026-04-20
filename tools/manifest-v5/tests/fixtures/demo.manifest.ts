@@ -30,9 +30,8 @@ export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
       label: 'Temperature',
       valueType: 'float',
       unit: 'C',
-      readMode: 'poll',
-      staleAfterMs: 3000,
-      pollMs: 2000,
+      readMode: 'subscribe',
+      staleAfterMs: 5000,
     },
     {
       id: 'fan.profile',
@@ -47,9 +46,8 @@ export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
       label: 'Load',
       valueType: 'uint',
       unit: '%',
-      readMode: 'poll',
+      readMode: 'subscribe',
       staleAfterMs: 3000,
-      pollMs: 1000,
     },
     {
       id: 'device.debug',

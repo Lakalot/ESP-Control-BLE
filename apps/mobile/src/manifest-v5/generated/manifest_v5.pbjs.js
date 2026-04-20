@@ -114,24 +114,30 @@ export const esp_control = $root.esp_control = (() => {
          * @name esp_control.v5.WidgetKind
          * @enum {number}
          * @property {number} WIDGET_KIND_UNSPECIFIED=0 WIDGET_KIND_UNSPECIFIED value
-         * @property {number} WIDGET_KIND_ACTION=1 WIDGET_KIND_ACTION value
-         * @property {number} WIDGET_KIND_TOGGLE=2 WIDGET_KIND_TOGGLE value
-         * @property {number} WIDGET_KIND_RANGE=3 WIDGET_KIND_RANGE value
-         * @property {number} WIDGET_KIND_SELECT=4 WIDGET_KIND_SELECT value
-         * @property {number} WIDGET_KIND_READ_ONLY=5 WIDGET_KIND_READ_ONLY value
-         * @property {number} WIDGET_KIND_TEXT=6 WIDGET_KIND_TEXT value
-         * @property {number} WIDGET_KIND_DIVIDER=7 WIDGET_KIND_DIVIDER value
+         * @property {number} WIDGET_KIND_TEXT=1 WIDGET_KIND_TEXT value
+         * @property {number} WIDGET_KIND_STAT=2 WIDGET_KIND_STAT value
+         * @property {number} WIDGET_KIND_TOGGLE=3 WIDGET_KIND_TOGGLE value
+         * @property {number} WIDGET_KIND_BUTTON=4 WIDGET_KIND_BUTTON value
+         * @property {number} WIDGET_KIND_SLIDER=5 WIDGET_KIND_SLIDER value
+         * @property {number} WIDGET_KIND_SELECT=6 WIDGET_KIND_SELECT value
+         * @property {number} WIDGET_KIND_TEXT_INPUT=7 WIDGET_KIND_TEXT_INPUT value
+         * @property {number} WIDGET_KIND_BADGE=8 WIDGET_KIND_BADGE value
+         * @property {number} WIDGET_KIND_PROGRESS=9 WIDGET_KIND_PROGRESS value
+         * @property {number} WIDGET_KIND_TIMER=10 WIDGET_KIND_TIMER value
          */
         v5.WidgetKind = (function() {
             const valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "WIDGET_KIND_UNSPECIFIED"] = 0;
-            values[valuesById[1] = "WIDGET_KIND_ACTION"] = 1;
-            values[valuesById[2] = "WIDGET_KIND_TOGGLE"] = 2;
-            values[valuesById[3] = "WIDGET_KIND_RANGE"] = 3;
-            values[valuesById[4] = "WIDGET_KIND_SELECT"] = 4;
-            values[valuesById[5] = "WIDGET_KIND_READ_ONLY"] = 5;
-            values[valuesById[6] = "WIDGET_KIND_TEXT"] = 6;
-            values[valuesById[7] = "WIDGET_KIND_DIVIDER"] = 7;
+            values[valuesById[1] = "WIDGET_KIND_TEXT"] = 1;
+            values[valuesById[2] = "WIDGET_KIND_STAT"] = 2;
+            values[valuesById[3] = "WIDGET_KIND_TOGGLE"] = 3;
+            values[valuesById[4] = "WIDGET_KIND_BUTTON"] = 4;
+            values[valuesById[5] = "WIDGET_KIND_SLIDER"] = 5;
+            values[valuesById[6] = "WIDGET_KIND_SELECT"] = 6;
+            values[valuesById[7] = "WIDGET_KIND_TEXT_INPUT"] = 7;
+            values[valuesById[8] = "WIDGET_KIND_BADGE"] = 8;
+            values[valuesById[9] = "WIDGET_KIND_PROGRESS"] = 9;
+            values[valuesById[10] = "WIDGET_KIND_TIMER"] = 10;
             return values;
         })();
 
@@ -543,6 +549,1159 @@ export const esp_control = $root.esp_control = (() => {
             };
 
             return Rule;
+        })();
+
+        v5.CommonField = (function() {
+
+            /**
+             * Properties of a CommonField.
+             * @memberof esp_control.v5
+             * @interface ICommonField
+             * @property {number|null} [keyIdx] CommonField keyIdx
+             * @property {esp_control.v5.ICommonValue|null} [value] CommonField value
+             */
+
+            /**
+             * Constructs a new CommonField.
+             * @memberof esp_control.v5
+             * @classdesc Represents a CommonField.
+             * @implements ICommonField
+             * @constructor
+             * @param {esp_control.v5.ICommonField=} [properties] Properties to set
+             */
+            function CommonField(properties) {
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * CommonField keyIdx.
+             * @member {number} keyIdx
+             * @memberof esp_control.v5.CommonField
+             * @instance
+             */
+            CommonField.prototype.keyIdx = 0;
+
+            /**
+             * CommonField value.
+             * @member {esp_control.v5.ICommonValue|null|undefined} value
+             * @memberof esp_control.v5.CommonField
+             * @instance
+             */
+            CommonField.prototype.value = null;
+
+            /**
+             * Creates a new CommonField instance using the specified properties.
+             * @function create
+             * @memberof esp_control.v5.CommonField
+             * @static
+             * @param {esp_control.v5.ICommonField=} [properties] Properties to set
+             * @returns {esp_control.v5.CommonField} CommonField instance
+             */
+            CommonField.create = function create(properties) {
+                return new CommonField(properties);
+            };
+
+            /**
+             * Encodes the specified CommonField message. Does not implicitly {@link esp_control.v5.CommonField.verify|verify} messages.
+             * @function encode
+             * @memberof esp_control.v5.CommonField
+             * @static
+             * @param {esp_control.v5.ICommonField} message CommonField message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CommonField.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.keyIdx != null && Object.hasOwnProperty.call(message, "keyIdx"))
+                    writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.keyIdx);
+                if (message.value != null && Object.hasOwnProperty.call(message, "value"))
+                    $root.esp_control.v5.CommonValue.encode(message.value, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
+                return writer;
+            };
+
+            /**
+             * Encodes the specified CommonField message, length delimited. Does not implicitly {@link esp_control.v5.CommonField.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof esp_control.v5.CommonField
+             * @static
+             * @param {esp_control.v5.ICommonField} message CommonField message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CommonField.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a CommonField message from the specified reader or buffer.
+             * @function decode
+             * @memberof esp_control.v5.CommonField
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {esp_control.v5.CommonField} CommonField
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CommonField.decode = function decode(reader, length, error) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.v5.CommonField();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            message.keyIdx = reader.uint32();
+                            break;
+                        }
+                    case 2: {
+                            message.value = $root.esp_control.v5.CommonValue.decode(reader, reader.uint32());
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a CommonField message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof esp_control.v5.CommonField
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {esp_control.v5.CommonField} CommonField
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CommonField.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a CommonField message.
+             * @function verify
+             * @memberof esp_control.v5.CommonField
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            CommonField.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.keyIdx != null && message.hasOwnProperty("keyIdx"))
+                    if (!$util.isInteger(message.keyIdx))
+                        return "keyIdx: integer expected";
+                if (message.value != null && message.hasOwnProperty("value")) {
+                    let error = $root.esp_control.v5.CommonValue.verify(message.value);
+                    if (error)
+                        return "value." + error;
+                }
+                return null;
+            };
+
+            /**
+             * Creates a CommonField message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof esp_control.v5.CommonField
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {esp_control.v5.CommonField} CommonField
+             */
+            CommonField.fromObject = function fromObject(object) {
+                if (object instanceof $root.esp_control.v5.CommonField)
+                    return object;
+                let message = new $root.esp_control.v5.CommonField();
+                if (object.keyIdx != null)
+                    message.keyIdx = object.keyIdx >>> 0;
+                if (object.value != null) {
+                    if (typeof object.value !== "object")
+                        throw TypeError(".esp_control.v5.CommonField.value: object expected");
+                    message.value = $root.esp_control.v5.CommonValue.fromObject(object.value);
+                }
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a CommonField message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof esp_control.v5.CommonField
+             * @static
+             * @param {esp_control.v5.CommonField} message CommonField
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            CommonField.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.defaults) {
+                    object.keyIdx = 0;
+                    object.value = null;
+                }
+                if (message.keyIdx != null && message.hasOwnProperty("keyIdx"))
+                    object.keyIdx = message.keyIdx;
+                if (message.value != null && message.hasOwnProperty("value"))
+                    object.value = $root.esp_control.v5.CommonValue.toObject(message.value, options);
+                return object;
+            };
+
+            /**
+             * Converts this CommonField to JSON.
+             * @function toJSON
+             * @memberof esp_control.v5.CommonField
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            CommonField.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for CommonField
+             * @function getTypeUrl
+             * @memberof esp_control.v5.CommonField
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            CommonField.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/esp_control.v5.CommonField";
+            };
+
+            return CommonField;
+        })();
+
+        v5.CommonObject = (function() {
+
+            /**
+             * Properties of a CommonObject.
+             * @memberof esp_control.v5
+             * @interface ICommonObject
+             * @property {Array.<esp_control.v5.ICommonField>|null} [fields] CommonObject fields
+             */
+
+            /**
+             * Constructs a new CommonObject.
+             * @memberof esp_control.v5
+             * @classdesc Represents a CommonObject.
+             * @implements ICommonObject
+             * @constructor
+             * @param {esp_control.v5.ICommonObject=} [properties] Properties to set
+             */
+            function CommonObject(properties) {
+                this.fields = [];
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * CommonObject fields.
+             * @member {Array.<esp_control.v5.ICommonField>} fields
+             * @memberof esp_control.v5.CommonObject
+             * @instance
+             */
+            CommonObject.prototype.fields = $util.emptyArray;
+
+            /**
+             * Creates a new CommonObject instance using the specified properties.
+             * @function create
+             * @memberof esp_control.v5.CommonObject
+             * @static
+             * @param {esp_control.v5.ICommonObject=} [properties] Properties to set
+             * @returns {esp_control.v5.CommonObject} CommonObject instance
+             */
+            CommonObject.create = function create(properties) {
+                return new CommonObject(properties);
+            };
+
+            /**
+             * Encodes the specified CommonObject message. Does not implicitly {@link esp_control.v5.CommonObject.verify|verify} messages.
+             * @function encode
+             * @memberof esp_control.v5.CommonObject
+             * @static
+             * @param {esp_control.v5.ICommonObject} message CommonObject message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CommonObject.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.fields != null && message.fields.length)
+                    for (let i = 0; i < message.fields.length; ++i)
+                        $root.esp_control.v5.CommonField.encode(message.fields[i], writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
+                return writer;
+            };
+
+            /**
+             * Encodes the specified CommonObject message, length delimited. Does not implicitly {@link esp_control.v5.CommonObject.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof esp_control.v5.CommonObject
+             * @static
+             * @param {esp_control.v5.ICommonObject} message CommonObject message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CommonObject.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a CommonObject message from the specified reader or buffer.
+             * @function decode
+             * @memberof esp_control.v5.CommonObject
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {esp_control.v5.CommonObject} CommonObject
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CommonObject.decode = function decode(reader, length, error) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.v5.CommonObject();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            if (!(message.fields && message.fields.length))
+                                message.fields = [];
+                            message.fields.push($root.esp_control.v5.CommonField.decode(reader, reader.uint32()));
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a CommonObject message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof esp_control.v5.CommonObject
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {esp_control.v5.CommonObject} CommonObject
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CommonObject.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a CommonObject message.
+             * @function verify
+             * @memberof esp_control.v5.CommonObject
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            CommonObject.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.fields != null && message.hasOwnProperty("fields")) {
+                    if (!Array.isArray(message.fields))
+                        return "fields: array expected";
+                    for (let i = 0; i < message.fields.length; ++i) {
+                        let error = $root.esp_control.v5.CommonField.verify(message.fields[i]);
+                        if (error)
+                            return "fields." + error;
+                    }
+                }
+                return null;
+            };
+
+            /**
+             * Creates a CommonObject message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof esp_control.v5.CommonObject
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {esp_control.v5.CommonObject} CommonObject
+             */
+            CommonObject.fromObject = function fromObject(object) {
+                if (object instanceof $root.esp_control.v5.CommonObject)
+                    return object;
+                let message = new $root.esp_control.v5.CommonObject();
+                if (object.fields) {
+                    if (!Array.isArray(object.fields))
+                        throw TypeError(".esp_control.v5.CommonObject.fields: array expected");
+                    message.fields = [];
+                    for (let i = 0; i < object.fields.length; ++i) {
+                        if (typeof object.fields[i] !== "object")
+                            throw TypeError(".esp_control.v5.CommonObject.fields: object expected");
+                        message.fields[i] = $root.esp_control.v5.CommonField.fromObject(object.fields[i]);
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a CommonObject message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof esp_control.v5.CommonObject
+             * @static
+             * @param {esp_control.v5.CommonObject} message CommonObject
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            CommonObject.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.arrays || options.defaults)
+                    object.fields = [];
+                if (message.fields && message.fields.length) {
+                    object.fields = [];
+                    for (let j = 0; j < message.fields.length; ++j)
+                        object.fields[j] = $root.esp_control.v5.CommonField.toObject(message.fields[j], options);
+                }
+                return object;
+            };
+
+            /**
+             * Converts this CommonObject to JSON.
+             * @function toJSON
+             * @memberof esp_control.v5.CommonObject
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            CommonObject.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for CommonObject
+             * @function getTypeUrl
+             * @memberof esp_control.v5.CommonObject
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            CommonObject.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/esp_control.v5.CommonObject";
+            };
+
+            return CommonObject;
+        })();
+
+        v5.CommonList = (function() {
+
+            /**
+             * Properties of a CommonList.
+             * @memberof esp_control.v5
+             * @interface ICommonList
+             * @property {Array.<esp_control.v5.ICommonValue>|null} [items] CommonList items
+             */
+
+            /**
+             * Constructs a new CommonList.
+             * @memberof esp_control.v5
+             * @classdesc Represents a CommonList.
+             * @implements ICommonList
+             * @constructor
+             * @param {esp_control.v5.ICommonList=} [properties] Properties to set
+             */
+            function CommonList(properties) {
+                this.items = [];
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * CommonList items.
+             * @member {Array.<esp_control.v5.ICommonValue>} items
+             * @memberof esp_control.v5.CommonList
+             * @instance
+             */
+            CommonList.prototype.items = $util.emptyArray;
+
+            /**
+             * Creates a new CommonList instance using the specified properties.
+             * @function create
+             * @memberof esp_control.v5.CommonList
+             * @static
+             * @param {esp_control.v5.ICommonList=} [properties] Properties to set
+             * @returns {esp_control.v5.CommonList} CommonList instance
+             */
+            CommonList.create = function create(properties) {
+                return new CommonList(properties);
+            };
+
+            /**
+             * Encodes the specified CommonList message. Does not implicitly {@link esp_control.v5.CommonList.verify|verify} messages.
+             * @function encode
+             * @memberof esp_control.v5.CommonList
+             * @static
+             * @param {esp_control.v5.ICommonList} message CommonList message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CommonList.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.items != null && message.items.length)
+                    for (let i = 0; i < message.items.length; ++i)
+                        $root.esp_control.v5.CommonValue.encode(message.items[i], writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
+                return writer;
+            };
+
+            /**
+             * Encodes the specified CommonList message, length delimited. Does not implicitly {@link esp_control.v5.CommonList.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof esp_control.v5.CommonList
+             * @static
+             * @param {esp_control.v5.ICommonList} message CommonList message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CommonList.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a CommonList message from the specified reader or buffer.
+             * @function decode
+             * @memberof esp_control.v5.CommonList
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {esp_control.v5.CommonList} CommonList
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CommonList.decode = function decode(reader, length, error) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.v5.CommonList();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            if (!(message.items && message.items.length))
+                                message.items = [];
+                            message.items.push($root.esp_control.v5.CommonValue.decode(reader, reader.uint32()));
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a CommonList message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof esp_control.v5.CommonList
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {esp_control.v5.CommonList} CommonList
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CommonList.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a CommonList message.
+             * @function verify
+             * @memberof esp_control.v5.CommonList
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            CommonList.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.items != null && message.hasOwnProperty("items")) {
+                    if (!Array.isArray(message.items))
+                        return "items: array expected";
+                    for (let i = 0; i < message.items.length; ++i) {
+                        let error = $root.esp_control.v5.CommonValue.verify(message.items[i]);
+                        if (error)
+                            return "items." + error;
+                    }
+                }
+                return null;
+            };
+
+            /**
+             * Creates a CommonList message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof esp_control.v5.CommonList
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {esp_control.v5.CommonList} CommonList
+             */
+            CommonList.fromObject = function fromObject(object) {
+                if (object instanceof $root.esp_control.v5.CommonList)
+                    return object;
+                let message = new $root.esp_control.v5.CommonList();
+                if (object.items) {
+                    if (!Array.isArray(object.items))
+                        throw TypeError(".esp_control.v5.CommonList.items: array expected");
+                    message.items = [];
+                    for (let i = 0; i < object.items.length; ++i) {
+                        if (typeof object.items[i] !== "object")
+                            throw TypeError(".esp_control.v5.CommonList.items: object expected");
+                        message.items[i] = $root.esp_control.v5.CommonValue.fromObject(object.items[i]);
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a CommonList message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof esp_control.v5.CommonList
+             * @static
+             * @param {esp_control.v5.CommonList} message CommonList
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            CommonList.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.arrays || options.defaults)
+                    object.items = [];
+                if (message.items && message.items.length) {
+                    object.items = [];
+                    for (let j = 0; j < message.items.length; ++j)
+                        object.items[j] = $root.esp_control.v5.CommonValue.toObject(message.items[j], options);
+                }
+                return object;
+            };
+
+            /**
+             * Converts this CommonList to JSON.
+             * @function toJSON
+             * @memberof esp_control.v5.CommonList
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            CommonList.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for CommonList
+             * @function getTypeUrl
+             * @memberof esp_control.v5.CommonList
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            CommonList.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/esp_control.v5.CommonList";
+            };
+
+            return CommonList;
+        })();
+
+        v5.CommonValue = (function() {
+
+            /**
+             * Properties of a CommonValue.
+             * @memberof esp_control.v5
+             * @interface ICommonValue
+             * @property {boolean|null} [boolValue] CommonValue boolValue
+             * @property {number|null} [intValue] CommonValue intValue
+             * @property {number|null} [uintValue] CommonValue uintValue
+             * @property {number|null} [floatValue] CommonValue floatValue
+             * @property {string|null} [stringValue] CommonValue stringValue
+             * @property {string|null} [enumValue] CommonValue enumValue
+             * @property {number|null} [durationMsValue] CommonValue durationMsValue
+             * @property {esp_control.v5.ICommonObject|null} [objectValue] CommonValue objectValue
+             * @property {esp_control.v5.ICommonList|null} [listValue] CommonValue listValue
+             */
+
+            /**
+             * Constructs a new CommonValue.
+             * @memberof esp_control.v5
+             * @classdesc Represents a CommonValue.
+             * @implements ICommonValue
+             * @constructor
+             * @param {esp_control.v5.ICommonValue=} [properties] Properties to set
+             */
+            function CommonValue(properties) {
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * CommonValue boolValue.
+             * @member {boolean|null|undefined} boolValue
+             * @memberof esp_control.v5.CommonValue
+             * @instance
+             */
+            CommonValue.prototype.boolValue = null;
+
+            /**
+             * CommonValue intValue.
+             * @member {number|null|undefined} intValue
+             * @memberof esp_control.v5.CommonValue
+             * @instance
+             */
+            CommonValue.prototype.intValue = null;
+
+            /**
+             * CommonValue uintValue.
+             * @member {number|null|undefined} uintValue
+             * @memberof esp_control.v5.CommonValue
+             * @instance
+             */
+            CommonValue.prototype.uintValue = null;
+
+            /**
+             * CommonValue floatValue.
+             * @member {number|null|undefined} floatValue
+             * @memberof esp_control.v5.CommonValue
+             * @instance
+             */
+            CommonValue.prototype.floatValue = null;
+
+            /**
+             * CommonValue stringValue.
+             * @member {string|null|undefined} stringValue
+             * @memberof esp_control.v5.CommonValue
+             * @instance
+             */
+            CommonValue.prototype.stringValue = null;
+
+            /**
+             * CommonValue enumValue.
+             * @member {string|null|undefined} enumValue
+             * @memberof esp_control.v5.CommonValue
+             * @instance
+             */
+            CommonValue.prototype.enumValue = null;
+
+            /**
+             * CommonValue durationMsValue.
+             * @member {number|null|undefined} durationMsValue
+             * @memberof esp_control.v5.CommonValue
+             * @instance
+             */
+            CommonValue.prototype.durationMsValue = null;
+
+            /**
+             * CommonValue objectValue.
+             * @member {esp_control.v5.ICommonObject|null|undefined} objectValue
+             * @memberof esp_control.v5.CommonValue
+             * @instance
+             */
+            CommonValue.prototype.objectValue = null;
+
+            /**
+             * CommonValue listValue.
+             * @member {esp_control.v5.ICommonList|null|undefined} listValue
+             * @memberof esp_control.v5.CommonValue
+             * @instance
+             */
+            CommonValue.prototype.listValue = null;
+
+            // OneOf field names bound to virtual getters and setters
+            let $oneOfFields;
+
+            /**
+             * CommonValue kind.
+             * @member {"boolValue"|"intValue"|"uintValue"|"floatValue"|"stringValue"|"enumValue"|"durationMsValue"|"objectValue"|"listValue"|undefined} kind
+             * @memberof esp_control.v5.CommonValue
+             * @instance
+             */
+            Object.defineProperty(CommonValue.prototype, "kind", {
+                get: $util.oneOfGetter($oneOfFields = ["boolValue", "intValue", "uintValue", "floatValue", "stringValue", "enumValue", "durationMsValue", "objectValue", "listValue"]),
+                set: $util.oneOfSetter($oneOfFields)
+            });
+
+            /**
+             * Creates a new CommonValue instance using the specified properties.
+             * @function create
+             * @memberof esp_control.v5.CommonValue
+             * @static
+             * @param {esp_control.v5.ICommonValue=} [properties] Properties to set
+             * @returns {esp_control.v5.CommonValue} CommonValue instance
+             */
+            CommonValue.create = function create(properties) {
+                return new CommonValue(properties);
+            };
+
+            /**
+             * Encodes the specified CommonValue message. Does not implicitly {@link esp_control.v5.CommonValue.verify|verify} messages.
+             * @function encode
+             * @memberof esp_control.v5.CommonValue
+             * @static
+             * @param {esp_control.v5.ICommonValue} message CommonValue message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CommonValue.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.boolValue != null && Object.hasOwnProperty.call(message, "boolValue"))
+                    writer.uint32(/* id 1, wireType 0 =*/8).bool(message.boolValue);
+                if (message.intValue != null && Object.hasOwnProperty.call(message, "intValue"))
+                    writer.uint32(/* id 2, wireType 0 =*/16).int32(message.intValue);
+                if (message.uintValue != null && Object.hasOwnProperty.call(message, "uintValue"))
+                    writer.uint32(/* id 3, wireType 0 =*/24).uint32(message.uintValue);
+                if (message.floatValue != null && Object.hasOwnProperty.call(message, "floatValue"))
+                    writer.uint32(/* id 4, wireType 5 =*/37).float(message.floatValue);
+                if (message.stringValue != null && Object.hasOwnProperty.call(message, "stringValue"))
+                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.stringValue);
+                if (message.enumValue != null && Object.hasOwnProperty.call(message, "enumValue"))
+                    writer.uint32(/* id 6, wireType 2 =*/50).string(message.enumValue);
+                if (message.durationMsValue != null && Object.hasOwnProperty.call(message, "durationMsValue"))
+                    writer.uint32(/* id 7, wireType 0 =*/56).uint32(message.durationMsValue);
+                if (message.objectValue != null && Object.hasOwnProperty.call(message, "objectValue"))
+                    $root.esp_control.v5.CommonObject.encode(message.objectValue, writer.uint32(/* id 8, wireType 2 =*/66).fork()).ldelim();
+                if (message.listValue != null && Object.hasOwnProperty.call(message, "listValue"))
+                    $root.esp_control.v5.CommonList.encode(message.listValue, writer.uint32(/* id 9, wireType 2 =*/74).fork()).ldelim();
+                return writer;
+            };
+
+            /**
+             * Encodes the specified CommonValue message, length delimited. Does not implicitly {@link esp_control.v5.CommonValue.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof esp_control.v5.CommonValue
+             * @static
+             * @param {esp_control.v5.ICommonValue} message CommonValue message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CommonValue.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a CommonValue message from the specified reader or buffer.
+             * @function decode
+             * @memberof esp_control.v5.CommonValue
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {esp_control.v5.CommonValue} CommonValue
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CommonValue.decode = function decode(reader, length, error) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.v5.CommonValue();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            message.boolValue = reader.bool();
+                            break;
+                        }
+                    case 2: {
+                            message.intValue = reader.int32();
+                            break;
+                        }
+                    case 3: {
+                            message.uintValue = reader.uint32();
+                            break;
+                        }
+                    case 4: {
+                            message.floatValue = reader.float();
+                            break;
+                        }
+                    case 5: {
+                            message.stringValue = reader.string();
+                            break;
+                        }
+                    case 6: {
+                            message.enumValue = reader.string();
+                            break;
+                        }
+                    case 7: {
+                            message.durationMsValue = reader.uint32();
+                            break;
+                        }
+                    case 8: {
+                            message.objectValue = $root.esp_control.v5.CommonObject.decode(reader, reader.uint32());
+                            break;
+                        }
+                    case 9: {
+                            message.listValue = $root.esp_control.v5.CommonList.decode(reader, reader.uint32());
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a CommonValue message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof esp_control.v5.CommonValue
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {esp_control.v5.CommonValue} CommonValue
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CommonValue.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a CommonValue message.
+             * @function verify
+             * @memberof esp_control.v5.CommonValue
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            CommonValue.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                let properties = {};
+                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
+                    properties.kind = 1;
+                    if (typeof message.boolValue !== "boolean")
+                        return "boolValue: boolean expected";
+                }
+                if (message.intValue != null && message.hasOwnProperty("intValue")) {
+                    if (properties.kind === 1)
+                        return "kind: multiple values";
+                    properties.kind = 1;
+                    if (!$util.isInteger(message.intValue))
+                        return "intValue: integer expected";
+                }
+                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
+                    if (properties.kind === 1)
+                        return "kind: multiple values";
+                    properties.kind = 1;
+                    if (!$util.isInteger(message.uintValue))
+                        return "uintValue: integer expected";
+                }
+                if (message.floatValue != null && message.hasOwnProperty("floatValue")) {
+                    if (properties.kind === 1)
+                        return "kind: multiple values";
+                    properties.kind = 1;
+                    if (typeof message.floatValue !== "number")
+                        return "floatValue: number expected";
+                }
+                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
+                    if (properties.kind === 1)
+                        return "kind: multiple values";
+                    properties.kind = 1;
+                    if (!$util.isString(message.stringValue))
+                        return "stringValue: string expected";
+                }
+                if (message.enumValue != null && message.hasOwnProperty("enumValue")) {
+                    if (properties.kind === 1)
+                        return "kind: multiple values";
+                    properties.kind = 1;
+                    if (!$util.isString(message.enumValue))
+                        return "enumValue: string expected";
+                }
+                if (message.durationMsValue != null && message.hasOwnProperty("durationMsValue")) {
+                    if (properties.kind === 1)
+                        return "kind: multiple values";
+                    properties.kind = 1;
+                    if (!$util.isInteger(message.durationMsValue))
+                        return "durationMsValue: integer expected";
+                }
+                if (message.objectValue != null && message.hasOwnProperty("objectValue")) {
+                    if (properties.kind === 1)
+                        return "kind: multiple values";
+                    properties.kind = 1;
+                    {
+                        let error = $root.esp_control.v5.CommonObject.verify(message.objectValue);
+                        if (error)
+                            return "objectValue." + error;
+                    }
+                }
+                if (message.listValue != null && message.hasOwnProperty("listValue")) {
+                    if (properties.kind === 1)
+                        return "kind: multiple values";
+                    properties.kind = 1;
+                    {
+                        let error = $root.esp_control.v5.CommonList.verify(message.listValue);
+                        if (error)
+                            return "listValue." + error;
+                    }
+                }
+                return null;
+            };
+
+            /**
+             * Creates a CommonValue message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof esp_control.v5.CommonValue
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {esp_control.v5.CommonValue} CommonValue
+             */
+            CommonValue.fromObject = function fromObject(object) {
+                if (object instanceof $root.esp_control.v5.CommonValue)
+                    return object;
+                let message = new $root.esp_control.v5.CommonValue();
+                if (object.boolValue != null)
+                    message.boolValue = Boolean(object.boolValue);
+                if (object.intValue != null)
+                    message.intValue = object.intValue | 0;
+                if (object.uintValue != null)
+                    message.uintValue = object.uintValue >>> 0;
+                if (object.floatValue != null)
+                    message.floatValue = Number(object.floatValue);
+                if (object.stringValue != null)
+                    message.stringValue = String(object.stringValue);
+                if (object.enumValue != null)
+                    message.enumValue = String(object.enumValue);
+                if (object.durationMsValue != null)
+                    message.durationMsValue = object.durationMsValue >>> 0;
+                if (object.objectValue != null) {
+                    if (typeof object.objectValue !== "object")
+                        throw TypeError(".esp_control.v5.CommonValue.objectValue: object expected");
+                    message.objectValue = $root.esp_control.v5.CommonObject.fromObject(object.objectValue);
+                }
+                if (object.listValue != null) {
+                    if (typeof object.listValue !== "object")
+                        throw TypeError(".esp_control.v5.CommonValue.listValue: object expected");
+                    message.listValue = $root.esp_control.v5.CommonList.fromObject(object.listValue);
+                }
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a CommonValue message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof esp_control.v5.CommonValue
+             * @static
+             * @param {esp_control.v5.CommonValue} message CommonValue
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            CommonValue.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
+                    object.boolValue = message.boolValue;
+                    if (options.oneofs)
+                        object.kind = "boolValue";
+                }
+                if (message.intValue != null && message.hasOwnProperty("intValue")) {
+                    object.intValue = message.intValue;
+                    if (options.oneofs)
+                        object.kind = "intValue";
+                }
+                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
+                    object.uintValue = message.uintValue;
+                    if (options.oneofs)
+                        object.kind = "uintValue";
+                }
+                if (message.floatValue != null && message.hasOwnProperty("floatValue")) {
+                    object.floatValue = options.json && !isFinite(message.floatValue) ? String(message.floatValue) : message.floatValue;
+                    if (options.oneofs)
+                        object.kind = "floatValue";
+                }
+                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
+                    object.stringValue = message.stringValue;
+                    if (options.oneofs)
+                        object.kind = "stringValue";
+                }
+                if (message.enumValue != null && message.hasOwnProperty("enumValue")) {
+                    object.enumValue = message.enumValue;
+                    if (options.oneofs)
+                        object.kind = "enumValue";
+                }
+                if (message.durationMsValue != null && message.hasOwnProperty("durationMsValue")) {
+                    object.durationMsValue = message.durationMsValue;
+                    if (options.oneofs)
+                        object.kind = "durationMsValue";
+                }
+                if (message.objectValue != null && message.hasOwnProperty("objectValue")) {
+                    object.objectValue = $root.esp_control.v5.CommonObject.toObject(message.objectValue, options);
+                    if (options.oneofs)
+                        object.kind = "objectValue";
+                }
+                if (message.listValue != null && message.hasOwnProperty("listValue")) {
+                    object.listValue = $root.esp_control.v5.CommonList.toObject(message.listValue, options);
+                    if (options.oneofs)
+                        object.kind = "listValue";
+                }
+                return object;
+            };
+
+            /**
+             * Converts this CommonValue to JSON.
+             * @function toJSON
+             * @memberof esp_control.v5.CommonValue
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            CommonValue.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for CommonValue
+             * @function getTypeUrl
+             * @memberof esp_control.v5.CommonValue
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            CommonValue.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/esp_control.v5.CommonValue";
+            };
+
+            return CommonValue;
         })();
 
         v5.CapabilitiesDef = (function() {
@@ -2590,6 +3749,9 @@ export const esp_control = $root.esp_control = (() => {
                     case 5:
                     case 6:
                     case 7:
+                    case 8:
+                    case 9:
+                    case 10:
                         break;
                     }
                 if (message.titleIdx != null && message.hasOwnProperty("titleIdx"))
@@ -2691,33 +3853,45 @@ export const esp_control = $root.esp_control = (() => {
                 case 0:
                     message.widgetKind = 0;
                     break;
-                case "WIDGET_KIND_ACTION":
+                case "WIDGET_KIND_TEXT":
                 case 1:
                     message.widgetKind = 1;
                     break;
-                case "WIDGET_KIND_TOGGLE":
+                case "WIDGET_KIND_STAT":
                 case 2:
                     message.widgetKind = 2;
                     break;
-                case "WIDGET_KIND_RANGE":
+                case "WIDGET_KIND_TOGGLE":
                 case 3:
                     message.widgetKind = 3;
                     break;
-                case "WIDGET_KIND_SELECT":
+                case "WIDGET_KIND_BUTTON":
                 case 4:
                     message.widgetKind = 4;
                     break;
-                case "WIDGET_KIND_READ_ONLY":
+                case "WIDGET_KIND_SLIDER":
                 case 5:
                     message.widgetKind = 5;
                     break;
-                case "WIDGET_KIND_TEXT":
+                case "WIDGET_KIND_SELECT":
                 case 6:
                     message.widgetKind = 6;
                     break;
-                case "WIDGET_KIND_DIVIDER":
+                case "WIDGET_KIND_TEXT_INPUT":
                 case 7:
                     message.widgetKind = 7;
+                    break;
+                case "WIDGET_KIND_BADGE":
+                case 8:
+                    message.widgetKind = 8;
+                    break;
+                case "WIDGET_KIND_PROGRESS":
+                case 9:
+                    message.widgetKind = 9;
+                    break;
+                case "WIDGET_KIND_TIMER":
+                case 10:
+                    message.widgetKind = 10;
                     break;
                 }
                 if (object.titleIdx != null)
@@ -2852,6 +4026,8 @@ export const esp_control = $root.esp_control = (() => {
              * @memberof esp_control.v5
              * @interface IManifestBundleV5
              * @property {number|null} [version] ManifestBundleV5 version
+             * @property {number|null} [schemaVersion] ManifestBundleV5 schemaVersion
+             * @property {string|null} [minAppVersion] ManifestBundleV5 minAppVersion
              * @property {esp_control.v5.ICapabilitiesDef|null} [capabilities] ManifestBundleV5 capabilities
              * @property {Array.<esp_control.v5.IStringEntry>|null} [strings] ManifestBundleV5 strings
              * @property {Array.<esp_control.v5.IResourceDef>|null} [resources] ManifestBundleV5 resources
@@ -2887,6 +4063,22 @@ export const esp_control = $root.esp_control = (() => {
              * @instance
              */
             ManifestBundleV5.prototype.version = 0;
+
+            /**
+             * ManifestBundleV5 schemaVersion.
+             * @member {number} schemaVersion
+             * @memberof esp_control.v5.ManifestBundleV5
+             * @instance
+             */
+            ManifestBundleV5.prototype.schemaVersion = 0;
+
+            /**
+             * ManifestBundleV5 minAppVersion.
+             * @member {string} minAppVersion
+             * @memberof esp_control.v5.ManifestBundleV5
+             * @instance
+             */
+            ManifestBundleV5.prototype.minAppVersion = "";
 
             /**
              * ManifestBundleV5 capabilities.
@@ -2962,23 +4154,27 @@ export const esp_control = $root.esp_control = (() => {
                     writer = $Writer.create();
                 if (message.version != null && Object.hasOwnProperty.call(message, "version"))
                     writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.version);
+                if (message.schemaVersion != null && Object.hasOwnProperty.call(message, "schemaVersion"))
+                    writer.uint32(/* id 2, wireType 0 =*/16).uint32(message.schemaVersion);
+                if (message.minAppVersion != null && Object.hasOwnProperty.call(message, "minAppVersion"))
+                    writer.uint32(/* id 3, wireType 2 =*/26).string(message.minAppVersion);
                 if (message.capabilities != null && Object.hasOwnProperty.call(message, "capabilities"))
-                    $root.esp_control.v5.CapabilitiesDef.encode(message.capabilities, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
+                    $root.esp_control.v5.CapabilitiesDef.encode(message.capabilities, writer.uint32(/* id 4, wireType 2 =*/34).fork()).ldelim();
                 if (message.strings != null && message.strings.length)
                     for (let i = 0; i < message.strings.length; ++i)
-                        $root.esp_control.v5.StringEntry.encode(message.strings[i], writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                        $root.esp_control.v5.StringEntry.encode(message.strings[i], writer.uint32(/* id 5, wireType 2 =*/42).fork()).ldelim();
                 if (message.resources != null && message.resources.length)
                     for (let i = 0; i < message.resources.length; ++i)
-                        $root.esp_control.v5.ResourceDef.encode(message.resources[i], writer.uint32(/* id 4, wireType 2 =*/34).fork()).ldelim();
+                        $root.esp_control.v5.ResourceDef.encode(message.resources[i], writer.uint32(/* id 6, wireType 2 =*/50).fork()).ldelim();
                 if (message.actions != null && message.actions.length)
                     for (let i = 0; i < message.actions.length; ++i)
-                        $root.esp_control.v5.ActionDef.encode(message.actions[i], writer.uint32(/* id 5, wireType 2 =*/42).fork()).ldelim();
+                        $root.esp_control.v5.ActionDef.encode(message.actions[i], writer.uint32(/* id 7, wireType 2 =*/58).fork()).ldelim();
                 if (message.screens != null && message.screens.length)
                     for (let i = 0; i < message.screens.length; ++i)
-                        $root.esp_control.v5.ScreenDef.encode(message.screens[i], writer.uint32(/* id 6, wireType 2 =*/50).fork()).ldelim();
+                        $root.esp_control.v5.ScreenDef.encode(message.screens[i], writer.uint32(/* id 8, wireType 2 =*/66).fork()).ldelim();
                 if (message.nodes != null && message.nodes.length)
                     for (let i = 0; i < message.nodes.length; ++i)
-                        $root.esp_control.v5.NodeDef.encode(message.nodes[i], writer.uint32(/* id 7, wireType 2 =*/58).fork()).ldelim();
+                        $root.esp_control.v5.NodeDef.encode(message.nodes[i], writer.uint32(/* id 9, wireType 2 =*/74).fork()).ldelim();
                 return writer;
             };
 
@@ -3020,34 +4216,42 @@ export const esp_control = $root.esp_control = (() => {
                             break;
                         }
                     case 2: {
-                            message.capabilities = $root.esp_control.v5.CapabilitiesDef.decode(reader, reader.uint32());
+                            message.schemaVersion = reader.uint32();
                             break;
                         }
                     case 3: {
+                            message.minAppVersion = reader.string();
+                            break;
+                        }
+                    case 4: {
+                            message.capabilities = $root.esp_control.v5.CapabilitiesDef.decode(reader, reader.uint32());
+                            break;
+                        }
+                    case 5: {
                             if (!(message.strings && message.strings.length))
                                 message.strings = [];
                             message.strings.push($root.esp_control.v5.StringEntry.decode(reader, reader.uint32()));
                             break;
                         }
-                    case 4: {
+                    case 6: {
                             if (!(message.resources && message.resources.length))
                                 message.resources = [];
                             message.resources.push($root.esp_control.v5.ResourceDef.decode(reader, reader.uint32()));
                             break;
                         }
-                    case 5: {
+                    case 7: {
                             if (!(message.actions && message.actions.length))
                                 message.actions = [];
                             message.actions.push($root.esp_control.v5.ActionDef.decode(reader, reader.uint32()));
                             break;
                         }
-                    case 6: {
+                    case 8: {
                             if (!(message.screens && message.screens.length))
                                 message.screens = [];
                             message.screens.push($root.esp_control.v5.ScreenDef.decode(reader, reader.uint32()));
                             break;
                         }
-                    case 7: {
+                    case 9: {
                             if (!(message.nodes && message.nodes.length))
                                 message.nodes = [];
                             message.nodes.push($root.esp_control.v5.NodeDef.decode(reader, reader.uint32()));
@@ -3091,6 +4295,12 @@ export const esp_control = $root.esp_control = (() => {
                 if (message.version != null && message.hasOwnProperty("version"))
                     if (!$util.isInteger(message.version))
                         return "version: integer expected";
+                if (message.schemaVersion != null && message.hasOwnProperty("schemaVersion"))
+                    if (!$util.isInteger(message.schemaVersion))
+                        return "schemaVersion: integer expected";
+                if (message.minAppVersion != null && message.hasOwnProperty("minAppVersion"))
+                    if (!$util.isString(message.minAppVersion))
+                        return "minAppVersion: string expected";
                 if (message.capabilities != null && message.hasOwnProperty("capabilities")) {
                     let error = $root.esp_control.v5.CapabilitiesDef.verify(message.capabilities);
                     if (error)
@@ -3158,6 +4368,10 @@ export const esp_control = $root.esp_control = (() => {
                 let message = new $root.esp_control.v5.ManifestBundleV5();
                 if (object.version != null)
                     message.version = object.version >>> 0;
+                if (object.schemaVersion != null)
+                    message.schemaVersion = object.schemaVersion >>> 0;
+                if (object.minAppVersion != null)
+                    message.minAppVersion = String(object.minAppVersion);
                 if (object.capabilities != null) {
                     if (typeof object.capabilities !== "object")
                         throw TypeError(".esp_control.v5.ManifestBundleV5.capabilities: object expected");
@@ -3238,10 +4452,16 @@ export const esp_control = $root.esp_control = (() => {
                 }
                 if (options.defaults) {
                     object.version = 0;
+                    object.schemaVersion = 0;
+                    object.minAppVersion = "";
                     object.capabilities = null;
                 }
                 if (message.version != null && message.hasOwnProperty("version"))
                     object.version = message.version;
+                if (message.schemaVersion != null && message.hasOwnProperty("schemaVersion"))
+                    object.schemaVersion = message.schemaVersion;
+                if (message.minAppVersion != null && message.hasOwnProperty("minAppVersion"))
+                    object.minAppVersion = message.minAppVersion;
                 if (message.capabilities != null && message.hasOwnProperty("capabilities"))
                     object.capabilities = $root.esp_control.v5.CapabilitiesDef.toObject(message.capabilities, options);
                 if (message.strings && message.strings.length) {
@@ -3330,11 +4550,7 @@ export const esp_control = $root.esp_control = (() => {
              * @memberof esp_control.v5
              * @interface IResourceValue
              * @property {number|null} [resourceId] ResourceValue resourceId
-             * @property {boolean|null} [boolValue] ResourceValue boolValue
-             * @property {number|null} [intValue] ResourceValue intValue
-             * @property {number|null} [uintValue] ResourceValue uintValue
-             * @property {string|null} [stringValue] ResourceValue stringValue
-             * @property {Uint8Array|null} [bytesValue] ResourceValue bytesValue
+             * @property {esp_control.v5.ICommonValue|null} [value] ResourceValue value
              */
 
             /**
@@ -3361,58 +4577,12 @@ export const esp_control = $root.esp_control = (() => {
             ResourceValue.prototype.resourceId = 0;
 
             /**
-             * ResourceValue boolValue.
-             * @member {boolean|null|undefined} boolValue
-             * @memberof esp_control.v5.ResourceValue
-             * @instance
-             */
-            ResourceValue.prototype.boolValue = null;
-
-            /**
-             * ResourceValue intValue.
-             * @member {number|null|undefined} intValue
-             * @memberof esp_control.v5.ResourceValue
-             * @instance
-             */
-            ResourceValue.prototype.intValue = null;
-
-            /**
-             * ResourceValue uintValue.
-             * @member {number|null|undefined} uintValue
-             * @memberof esp_control.v5.ResourceValue
-             * @instance
-             */
-            ResourceValue.prototype.uintValue = null;
-
-            /**
-             * ResourceValue stringValue.
-             * @member {string|null|undefined} stringValue
-             * @memberof esp_control.v5.ResourceValue
-             * @instance
-             */
-            ResourceValue.prototype.stringValue = null;
-
-            /**
-             * ResourceValue bytesValue.
-             * @member {Uint8Array|null|undefined} bytesValue
-             * @memberof esp_control.v5.ResourceValue
-             * @instance
-             */
-            ResourceValue.prototype.bytesValue = null;
-
-            // OneOf field names bound to virtual getters and setters
-            let $oneOfFields;
-
-            /**
              * ResourceValue value.
-             * @member {"boolValue"|"intValue"|"uintValue"|"stringValue"|"bytesValue"|undefined} value
+             * @member {esp_control.v5.ICommonValue|null|undefined} value
              * @memberof esp_control.v5.ResourceValue
              * @instance
              */
-            Object.defineProperty(ResourceValue.prototype, "value", {
-                get: $util.oneOfGetter($oneOfFields = ["boolValue", "intValue", "uintValue", "stringValue", "bytesValue"]),
-                set: $util.oneOfSetter($oneOfFields)
-            });
+            ResourceValue.prototype.value = null;
 
             /**
              * Creates a new ResourceValue instance using the specified properties.
@@ -3440,16 +4610,8 @@ export const esp_control = $root.esp_control = (() => {
                     writer = $Writer.create();
                 if (message.resourceId != null && Object.hasOwnProperty.call(message, "resourceId"))
                     writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.resourceId);
-                if (message.boolValue != null && Object.hasOwnProperty.call(message, "boolValue"))
-                    writer.uint32(/* id 2, wireType 0 =*/16).bool(message.boolValue);
-                if (message.intValue != null && Object.hasOwnProperty.call(message, "intValue"))
-                    writer.uint32(/* id 3, wireType 0 =*/24).int32(message.intValue);
-                if (message.uintValue != null && Object.hasOwnProperty.call(message, "uintValue"))
-                    writer.uint32(/* id 4, wireType 0 =*/32).uint32(message.uintValue);
-                if (message.stringValue != null && Object.hasOwnProperty.call(message, "stringValue"))
-                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.stringValue);
-                if (message.bytesValue != null && Object.hasOwnProperty.call(message, "bytesValue"))
-                    writer.uint32(/* id 6, wireType 2 =*/50).bytes(message.bytesValue);
+                if (message.value != null && Object.hasOwnProperty.call(message, "value"))
+                    $root.esp_control.v5.CommonValue.encode(message.value, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
                 return writer;
             };
 
@@ -3491,23 +4653,7 @@ export const esp_control = $root.esp_control = (() => {
                             break;
                         }
                     case 2: {
-                            message.boolValue = reader.bool();
-                            break;
-                        }
-                    case 3: {
-                            message.intValue = reader.int32();
-                            break;
-                        }
-                    case 4: {
-                            message.uintValue = reader.uint32();
-                            break;
-                        }
-                    case 5: {
-                            message.stringValue = reader.string();
-                            break;
-                        }
-                    case 6: {
-                            message.bytesValue = reader.bytes();
+                            message.value = $root.esp_control.v5.CommonValue.decode(reader, reader.uint32());
                             break;
                         }
                     default:
@@ -3545,42 +4691,13 @@ export const esp_control = $root.esp_control = (() => {
             ResourceValue.verify = function verify(message) {
                 if (typeof message !== "object" || message === null)
                     return "object expected";
-                let properties = {};
                 if (message.resourceId != null && message.hasOwnProperty("resourceId"))
                     if (!$util.isInteger(message.resourceId))
                         return "resourceId: integer expected";
-                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
-                    properties.value = 1;
-                    if (typeof message.boolValue !== "boolean")
-                        return "boolValue: boolean expected";
-                }
-                if (message.intValue != null && message.hasOwnProperty("intValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!$util.isInteger(message.intValue))
-                        return "intValue: integer expected";
-                }
-                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!$util.isInteger(message.uintValue))
-                        return "uintValue: integer expected";
-                }
-                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!$util.isString(message.stringValue))
-                        return "stringValue: string expected";
-                }
-                if (message.bytesValue != null && message.hasOwnProperty("bytesValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!(message.bytesValue && typeof message.bytesValue.length === "number" || $util.isString(message.bytesValue)))
-                        return "bytesValue: buffer expected";
+                if (message.value != null && message.hasOwnProperty("value")) {
+                    let error = $root.esp_control.v5.CommonValue.verify(message.value);
+                    if (error)
+                        return "value." + error;
                 }
                 return null;
             };
@@ -3599,19 +4716,11 @@ export const esp_control = $root.esp_control = (() => {
                 let message = new $root.esp_control.v5.ResourceValue();
                 if (object.resourceId != null)
                     message.resourceId = object.resourceId >>> 0;
-                if (object.boolValue != null)
-                    message.boolValue = Boolean(object.boolValue);
-                if (object.intValue != null)
-                    message.intValue = object.intValue | 0;
-                if (object.uintValue != null)
-                    message.uintValue = object.uintValue >>> 0;
-                if (object.stringValue != null)
-                    message.stringValue = String(object.stringValue);
-                if (object.bytesValue != null)
-                    if (typeof object.bytesValue === "string")
-                        $util.base64.decode(object.bytesValue, message.bytesValue = $util.newBuffer($util.base64.length(object.bytesValue)), 0);
-                    else if (object.bytesValue.length >= 0)
-                        message.bytesValue = object.bytesValue;
+                if (object.value != null) {
+                    if (typeof object.value !== "object")
+                        throw TypeError(".esp_control.v5.ResourceValue.value: object expected");
+                    message.value = $root.esp_control.v5.CommonValue.fromObject(object.value);
+                }
                 return message;
             };
 
@@ -3628,35 +4737,14 @@ export const esp_control = $root.esp_control = (() => {
                 if (!options)
                     options = {};
                 let object = {};
-                if (options.defaults)
+                if (options.defaults) {
                     object.resourceId = 0;
+                    object.value = null;
+                }
                 if (message.resourceId != null && message.hasOwnProperty("resourceId"))
                     object.resourceId = message.resourceId;
-                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
-                    object.boolValue = message.boolValue;
-                    if (options.oneofs)
-                        object.value = "boolValue";
-                }
-                if (message.intValue != null && message.hasOwnProperty("intValue")) {
-                    object.intValue = message.intValue;
-                    if (options.oneofs)
-                        object.value = "intValue";
-                }
-                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
-                    object.uintValue = message.uintValue;
-                    if (options.oneofs)
-                        object.value = "uintValue";
-                }
-                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
-                    object.stringValue = message.stringValue;
-                    if (options.oneofs)
-                        object.value = "stringValue";
-                }
-                if (message.bytesValue != null && message.hasOwnProperty("bytesValue")) {
-                    object.bytesValue = options.bytes === String ? $util.base64.encode(message.bytesValue, 0, message.bytesValue.length) : options.bytes === Array ? Array.prototype.slice.call(message.bytesValue) : message.bytesValue;
-                    if (options.oneofs)
-                        object.value = "bytesValue";
-                }
+                if (message.value != null && message.hasOwnProperty("value"))
+                    object.value = $root.esp_control.v5.CommonValue.toObject(message.value, options);
                 return object;
             };
 
@@ -3946,11 +5034,7 @@ export const esp_control = $root.esp_control = (() => {
              * @memberof esp_control.v5
              * @interface IResourceDelta
              * @property {number|null} [resourceId] ResourceDelta resourceId
-             * @property {boolean|null} [boolValue] ResourceDelta boolValue
-             * @property {number|null} [intValue] ResourceDelta intValue
-             * @property {number|null} [uintValue] ResourceDelta uintValue
-             * @property {string|null} [stringValue] ResourceDelta stringValue
-             * @property {Uint8Array|null} [bytesValue] ResourceDelta bytesValue
+             * @property {esp_control.v5.ICommonValue|null} [value] ResourceDelta value
              * @property {number|null} [generation] ResourceDelta generation
              */
 
@@ -3978,44 +5062,12 @@ export const esp_control = $root.esp_control = (() => {
             ResourceDelta.prototype.resourceId = 0;
 
             /**
-             * ResourceDelta boolValue.
-             * @member {boolean|null|undefined} boolValue
+             * ResourceDelta value.
+             * @member {esp_control.v5.ICommonValue|null|undefined} value
              * @memberof esp_control.v5.ResourceDelta
              * @instance
              */
-            ResourceDelta.prototype.boolValue = null;
-
-            /**
-             * ResourceDelta intValue.
-             * @member {number|null|undefined} intValue
-             * @memberof esp_control.v5.ResourceDelta
-             * @instance
-             */
-            ResourceDelta.prototype.intValue = null;
-
-            /**
-             * ResourceDelta uintValue.
-             * @member {number|null|undefined} uintValue
-             * @memberof esp_control.v5.ResourceDelta
-             * @instance
-             */
-            ResourceDelta.prototype.uintValue = null;
-
-            /**
-             * ResourceDelta stringValue.
-             * @member {string|null|undefined} stringValue
-             * @memberof esp_control.v5.ResourceDelta
-             * @instance
-             */
-            ResourceDelta.prototype.stringValue = null;
-
-            /**
-             * ResourceDelta bytesValue.
-             * @member {Uint8Array|null|undefined} bytesValue
-             * @memberof esp_control.v5.ResourceDelta
-             * @instance
-             */
-            ResourceDelta.prototype.bytesValue = null;
+            ResourceDelta.prototype.value = null;
 
             /**
              * ResourceDelta generation.
@@ -4024,20 +5076,6 @@ export const esp_control = $root.esp_control = (() => {
              * @instance
              */
             ResourceDelta.prototype.generation = 0;
-
-            // OneOf field names bound to virtual getters and setters
-            let $oneOfFields;
-
-            /**
-             * ResourceDelta value.
-             * @member {"boolValue"|"intValue"|"uintValue"|"stringValue"|"bytesValue"|undefined} value
-             * @memberof esp_control.v5.ResourceDelta
-             * @instance
-             */
-            Object.defineProperty(ResourceDelta.prototype, "value", {
-                get: $util.oneOfGetter($oneOfFields = ["boolValue", "intValue", "uintValue", "stringValue", "bytesValue"]),
-                set: $util.oneOfSetter($oneOfFields)
-            });
 
             /**
              * Creates a new ResourceDelta instance using the specified properties.
@@ -4065,16 +5103,8 @@ export const esp_control = $root.esp_control = (() => {
                     writer = $Writer.create();
                 if (message.resourceId != null && Object.hasOwnProperty.call(message, "resourceId"))
                     writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.resourceId);
-                if (message.boolValue != null && Object.hasOwnProperty.call(message, "boolValue"))
-                    writer.uint32(/* id 2, wireType 0 =*/16).bool(message.boolValue);
-                if (message.intValue != null && Object.hasOwnProperty.call(message, "intValue"))
-                    writer.uint32(/* id 3, wireType 0 =*/24).int32(message.intValue);
-                if (message.uintValue != null && Object.hasOwnProperty.call(message, "uintValue"))
-                    writer.uint32(/* id 4, wireType 0 =*/32).uint32(message.uintValue);
-                if (message.stringValue != null && Object.hasOwnProperty.call(message, "stringValue"))
-                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.stringValue);
-                if (message.bytesValue != null && Object.hasOwnProperty.call(message, "bytesValue"))
-                    writer.uint32(/* id 6, wireType 2 =*/50).bytes(message.bytesValue);
+                if (message.value != null && Object.hasOwnProperty.call(message, "value"))
+                    $root.esp_control.v5.CommonValue.encode(message.value, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
                 if (message.generation != null && Object.hasOwnProperty.call(message, "generation"))
                     writer.uint32(/* id 7, wireType 0 =*/56).uint32(message.generation);
                 return writer;
@@ -4118,23 +5148,7 @@ export const esp_control = $root.esp_control = (() => {
                             break;
                         }
                     case 2: {
-                            message.boolValue = reader.bool();
-                            break;
-                        }
-                    case 3: {
-                            message.intValue = reader.int32();
-                            break;
-                        }
-                    case 4: {
-                            message.uintValue = reader.uint32();
-                            break;
-                        }
-                    case 5: {
-                            message.stringValue = reader.string();
-                            break;
-                        }
-                    case 6: {
-                            message.bytesValue = reader.bytes();
+                            message.value = $root.esp_control.v5.CommonValue.decode(reader, reader.uint32());
                             break;
                         }
                     case 7: {
@@ -4176,42 +5190,13 @@ export const esp_control = $root.esp_control = (() => {
             ResourceDelta.verify = function verify(message) {
                 if (typeof message !== "object" || message === null)
                     return "object expected";
-                let properties = {};
                 if (message.resourceId != null && message.hasOwnProperty("resourceId"))
                     if (!$util.isInteger(message.resourceId))
                         return "resourceId: integer expected";
-                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
-                    properties.value = 1;
-                    if (typeof message.boolValue !== "boolean")
-                        return "boolValue: boolean expected";
-                }
-                if (message.intValue != null && message.hasOwnProperty("intValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!$util.isInteger(message.intValue))
-                        return "intValue: integer expected";
-                }
-                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!$util.isInteger(message.uintValue))
-                        return "uintValue: integer expected";
-                }
-                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!$util.isString(message.stringValue))
-                        return "stringValue: string expected";
-                }
-                if (message.bytesValue != null && message.hasOwnProperty("bytesValue")) {
-                    if (properties.value === 1)
-                        return "value: multiple values";
-                    properties.value = 1;
-                    if (!(message.bytesValue && typeof message.bytesValue.length === "number" || $util.isString(message.bytesValue)))
-                        return "bytesValue: buffer expected";
+                if (message.value != null && message.hasOwnProperty("value")) {
+                    let error = $root.esp_control.v5.CommonValue.verify(message.value);
+                    if (error)
+                        return "value." + error;
                 }
                 if (message.generation != null && message.hasOwnProperty("generation"))
                     if (!$util.isInteger(message.generation))
@@ -4233,19 +5218,11 @@ export const esp_control = $root.esp_control = (() => {
                 let message = new $root.esp_control.v5.ResourceDelta();
                 if (object.resourceId != null)
                     message.resourceId = object.resourceId >>> 0;
-                if (object.boolValue != null)
-                    message.boolValue = Boolean(object.boolValue);
-                if (object.intValue != null)
-                    message.intValue = object.intValue | 0;
-                if (object.uintValue != null)
-                    message.uintValue = object.uintValue >>> 0;
-                if (object.stringValue != null)
-                    message.stringValue = String(object.stringValue);
-                if (object.bytesValue != null)
-                    if (typeof object.bytesValue === "string")
-                        $util.base64.decode(object.bytesValue, message.bytesValue = $util.newBuffer($util.base64.length(object.bytesValue)), 0);
-                    else if (object.bytesValue.length >= 0)
-                        message.bytesValue = object.bytesValue;
+                if (object.value != null) {
+                    if (typeof object.value !== "object")
+                        throw TypeError(".esp_control.v5.ResourceDelta.value: object expected");
+                    message.value = $root.esp_control.v5.CommonValue.fromObject(object.value);
+                }
                 if (object.generation != null)
                     message.generation = object.generation >>> 0;
                 return message;
@@ -4266,35 +5243,13 @@ export const esp_control = $root.esp_control = (() => {
                 let object = {};
                 if (options.defaults) {
                     object.resourceId = 0;
+                    object.value = null;
                     object.generation = 0;
                 }
                 if (message.resourceId != null && message.hasOwnProperty("resourceId"))
                     object.resourceId = message.resourceId;
-                if (message.boolValue != null && message.hasOwnProperty("boolValue")) {
-                    object.boolValue = message.boolValue;
-                    if (options.oneofs)
-                        object.value = "boolValue";
-                }
-                if (message.intValue != null && message.hasOwnProperty("intValue")) {
-                    object.intValue = message.intValue;
-                    if (options.oneofs)
-                        object.value = "intValue";
-                }
-                if (message.uintValue != null && message.hasOwnProperty("uintValue")) {
-                    object.uintValue = message.uintValue;
-                    if (options.oneofs)
-                        object.value = "uintValue";
-                }
-                if (message.stringValue != null && message.hasOwnProperty("stringValue")) {
-                    object.stringValue = message.stringValue;
-                    if (options.oneofs)
-                        object.value = "stringValue";
-                }
-                if (message.bytesValue != null && message.hasOwnProperty("bytesValue")) {
-                    object.bytesValue = options.bytes === String ? $util.base64.encode(message.bytesValue, 0, message.bytesValue.length) : options.bytes === Array ? Array.prototype.slice.call(message.bytesValue) : message.bytesValue;
-                    if (options.oneofs)
-                        object.value = "bytesValue";
-                }
+                if (message.value != null && message.hasOwnProperty("value"))
+                    object.value = $root.esp_control.v5.CommonValue.toObject(message.value, options);
                 if (message.generation != null && message.hasOwnProperty("generation"))
                     object.generation = message.generation;
                 return object;
@@ -4336,7 +5291,7 @@ export const esp_control = $root.esp_control = (() => {
              * @memberof esp_control.v5
              * @interface IInvokeAction
              * @property {number|null} [actionId] InvokeAction actionId
-             * @property {Uint8Array|null} [payload] InvokeAction payload
+             * @property {esp_control.v5.ICommonValue|null} [payload] InvokeAction payload
              * @property {number|null} [correlationId] InvokeAction correlationId
              */
 
@@ -4365,11 +5320,11 @@ export const esp_control = $root.esp_control = (() => {
 
             /**
              * InvokeAction payload.
-             * @member {Uint8Array} payload
+             * @member {esp_control.v5.ICommonValue|null|undefined} payload
              * @memberof esp_control.v5.InvokeAction
              * @instance
              */
-            InvokeAction.prototype.payload = $util.newBuffer([]);
+            InvokeAction.prototype.payload = null;
 
             /**
              * InvokeAction correlationId.
@@ -4406,7 +5361,7 @@ export const esp_control = $root.esp_control = (() => {
                 if (message.actionId != null && Object.hasOwnProperty.call(message, "actionId"))
                     writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.actionId);
                 if (message.payload != null && Object.hasOwnProperty.call(message, "payload"))
-                    writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.payload);
+                    $root.esp_control.v5.CommonValue.encode(message.payload, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
                 if (message.correlationId != null && Object.hasOwnProperty.call(message, "correlationId"))
                     writer.uint32(/* id 3, wireType 0 =*/24).uint32(message.correlationId);
                 return writer;
@@ -4450,7 +5405,7 @@ export const esp_control = $root.esp_control = (() => {
                             break;
                         }
                     case 2: {
-                            message.payload = reader.bytes();
+                            message.payload = $root.esp_control.v5.CommonValue.decode(reader, reader.uint32());
                             break;
                         }
                     case 3: {
@@ -4495,9 +5450,11 @@ export const esp_control = $root.esp_control = (() => {
                 if (message.actionId != null && message.hasOwnProperty("actionId"))
                     if (!$util.isInteger(message.actionId))
                         return "actionId: integer expected";
-                if (message.payload != null && message.hasOwnProperty("payload"))
-                    if (!(message.payload && typeof message.payload.length === "number" || $util.isString(message.payload)))
-                        return "payload: buffer expected";
+                if (message.payload != null && message.hasOwnProperty("payload")) {
+                    let error = $root.esp_control.v5.CommonValue.verify(message.payload);
+                    if (error)
+                        return "payload." + error;
+                }
                 if (message.correlationId != null && message.hasOwnProperty("correlationId"))
                     if (!$util.isInteger(message.correlationId))
                         return "correlationId: integer expected";
@@ -4518,11 +5475,11 @@ export const esp_control = $root.esp_control = (() => {
                 let message = new $root.esp_control.v5.InvokeAction();
                 if (object.actionId != null)
                     message.actionId = object.actionId >>> 0;
-                if (object.payload != null)
-                    if (typeof object.payload === "string")
-                        $util.base64.decode(object.payload, message.payload = $util.newBuffer($util.base64.length(object.payload)), 0);
-                    else if (object.payload.length >= 0)
-                        message.payload = object.payload;
+                if (object.payload != null) {
+                    if (typeof object.payload !== "object")
+                        throw TypeError(".esp_control.v5.InvokeAction.payload: object expected");
+                    message.payload = $root.esp_control.v5.CommonValue.fromObject(object.payload);
+                }
                 if (object.correlationId != null)
                     message.correlationId = object.correlationId >>> 0;
                 return message;
@@ -4543,19 +5500,13 @@ export const esp_control = $root.esp_control = (() => {
                 let object = {};
                 if (options.defaults) {
                     object.actionId = 0;
-                    if (options.bytes === String)
-                        object.payload = "";
-                    else {
-                        object.payload = [];
-                        if (options.bytes !== Array)
-                            object.payload = $util.newBuffer(object.payload);
-                    }
+                    object.payload = null;
                     object.correlationId = 0;
                 }
                 if (message.actionId != null && message.hasOwnProperty("actionId"))
                     object.actionId = message.actionId;
                 if (message.payload != null && message.hasOwnProperty("payload"))
-                    object.payload = options.bytes === String ? $util.base64.encode(message.payload, 0, message.payload.length) : options.bytes === Array ? Array.prototype.slice.call(message.payload) : message.payload;
+                    object.payload = $root.esp_control.v5.CommonValue.toObject(message.payload, options);
                 if (message.correlationId != null && message.hasOwnProperty("correlationId"))
                     object.correlationId = message.correlationId;
                 return object;
@@ -4598,7 +5549,7 @@ export const esp_control = $root.esp_control = (() => {
              * @interface IInvokeResult
              * @property {number|null} [correlationId] InvokeResult correlationId
              * @property {esp_control.v5.Status|null} [status] InvokeResult status
-             * @property {Uint8Array|null} [payload] InvokeResult payload
+             * @property {esp_control.v5.ICommonValue|null} [payload] InvokeResult payload
              * @property {string|null} [message] InvokeResult message
              */
 
@@ -4635,11 +5586,11 @@ export const esp_control = $root.esp_control = (() => {
 
             /**
              * InvokeResult payload.
-             * @member {Uint8Array} payload
+             * @member {esp_control.v5.ICommonValue|null|undefined} payload
              * @memberof esp_control.v5.InvokeResult
              * @instance
              */
-            InvokeResult.prototype.payload = $util.newBuffer([]);
+            InvokeResult.prototype.payload = null;
 
             /**
              * InvokeResult message.
@@ -4678,7 +5629,7 @@ export const esp_control = $root.esp_control = (() => {
                 if (message.status != null && Object.hasOwnProperty.call(message, "status"))
                     writer.uint32(/* id 2, wireType 0 =*/16).int32(message.status);
                 if (message.payload != null && Object.hasOwnProperty.call(message, "payload"))
-                    writer.uint32(/* id 3, wireType 2 =*/26).bytes(message.payload);
+                    $root.esp_control.v5.CommonValue.encode(message.payload, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
                 if (message.message != null && Object.hasOwnProperty.call(message, "message"))
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.message);
                 return writer;
@@ -4726,7 +5677,7 @@ export const esp_control = $root.esp_control = (() => {
                             break;
                         }
                     case 3: {
-                            message.payload = reader.bytes();
+                            message.payload = $root.esp_control.v5.CommonValue.decode(reader, reader.uint32());
                             break;
                         }
                     case 4: {
@@ -4783,9 +5734,11 @@ export const esp_control = $root.esp_control = (() => {
                     case 5:
                         break;
                     }
-                if (message.payload != null && message.hasOwnProperty("payload"))
-                    if (!(message.payload && typeof message.payload.length === "number" || $util.isString(message.payload)))
-                        return "payload: buffer expected";
+                if (message.payload != null && message.hasOwnProperty("payload")) {
+                    let error = $root.esp_control.v5.CommonValue.verify(message.payload);
+                    if (error)
+                        return "payload." + error;
+                }
                 if (message.message != null && message.hasOwnProperty("message"))
                     if (!$util.isString(message.message))
                         return "message: string expected";
@@ -4838,11 +5791,11 @@ export const esp_control = $root.esp_control = (() => {
                     message.status = 5;
                     break;
                 }
-                if (object.payload != null)
-                    if (typeof object.payload === "string")
-                        $util.base64.decode(object.payload, message.payload = $util.newBuffer($util.base64.length(object.payload)), 0);
-                    else if (object.payload.length >= 0)
-                        message.payload = object.payload;
+                if (object.payload != null) {
+                    if (typeof object.payload !== "object")
+                        throw TypeError(".esp_control.v5.InvokeResult.payload: object expected");
+                    message.payload = $root.esp_control.v5.CommonValue.fromObject(object.payload);
+                }
                 if (object.message != null)
                     message.message = String(object.message);
                 return message;
@@ -4864,13 +5817,7 @@ export const esp_control = $root.esp_control = (() => {
                 if (options.defaults) {
                     object.correlationId = 0;
                     object.status = options.enums === String ? "STATUS_UNSPECIFIED" : 0;
-                    if (options.bytes === String)
-                        object.payload = "";
-                    else {
-                        object.payload = [];
-                        if (options.bytes !== Array)
-                            object.payload = $util.newBuffer(object.payload);
-                    }
+                    object.payload = null;
                     object.message = "";
                 }
                 if (message.correlationId != null && message.hasOwnProperty("correlationId"))
@@ -4878,7 +5825,7 @@ export const esp_control = $root.esp_control = (() => {
                 if (message.status != null && message.hasOwnProperty("status"))
                     object.status = options.enums === String ? $root.esp_control.v5.Status[message.status] === undefined ? message.status : $root.esp_control.v5.Status[message.status] : message.status;
                 if (message.payload != null && message.hasOwnProperty("payload"))
-                    object.payload = options.bytes === String ? $util.base64.encode(message.payload, 0, message.payload.length) : options.bytes === Array ? Array.prototype.slice.call(message.payload) : message.payload;
+                    object.payload = $root.esp_control.v5.CommonValue.toObject(message.payload, options);
                 if (message.message != null && message.hasOwnProperty("message"))
                     object.message = message.message;
                 return object;

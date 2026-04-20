@@ -57,13 +57,26 @@ function V5PilotRenderer({ deviceId }: { deviceId: string }) {
   const [runtime, setRuntime] = useState<ManifestV5Runtime | null>(null);
   useEffect(() => {
     let cancelled = false;
+    let bleDevice: import('../../src/manifest-v5/runtime/RealBleDevice').RealBleDevice | null = null;
     createRealBleDevice(deviceId).then((device) => {
-      if (!cancelled) setRuntime(new BleRuntime(device));
+      bleDevice = device;
+      if (!cancelled) {
+        setRuntime(new BleRuntime(device));
+      } else {
+        // Component unmounted before device was ready — disconnect immediately
+        device.disconnect().catch(() => {});
+      }
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (bleDevice) {
+        bleDevice.disconnect().catch(() => {});
+        bleDevice = null;
+      }
+    };
   }, [deviceId]);
   if (!runtime) return <ActivityIndicator />;
-  return <ManifestScreenRenderer runtime={runtime} screenSlug="controls" />;
+  return <ManifestScreenRenderer runtime={runtime} screenSlug="home" />;
 }
 
 export default function ControlScreen() {

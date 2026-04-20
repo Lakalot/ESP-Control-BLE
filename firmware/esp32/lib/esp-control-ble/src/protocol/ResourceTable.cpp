@@ -42,6 +42,10 @@ void ResourceTable::setUint(uint32_t id, uint32_t v) {
   auto* e = upsert(id, ResourceValueKind::Uint);
   if (e) e->uintValue = v;
 }
+void ResourceTable::setFloat(uint32_t id, float v) {
+  auto* e = upsert(id, ResourceValueKind::Float);
+  if (e) e->floatValue = v;
+}
 void ResourceTable::setString(uint32_t id, const char* s) {
   auto* e = upsert(id, ResourceValueKind::String);
   if (!e) return;

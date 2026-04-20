@@ -1,2 +1,2 @@
-#define MANIFEST_V5_DEFINE_DATA
-#include "../../../src/manifest_v5_data.h"
+// Manifest data is defined in src/main.cpp via MANIFEST_V5_DEFINE_DATA.
+// This file is intentionally empty.

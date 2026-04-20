@@ -24,8 +24,16 @@ const NODE_KIND: Record<number, RuntimeNodeKind> = {
   1: 'stack', 2: 'row', 3: 'grid', 4: 'section', 5: 'widget',
 };
 const WIDGET_KIND: Record<number, RuntimeWidgetKind> = {
-  1: 'button', 2: 'toggle', 3: 'slider', 4: 'select', 5: 'stat',
-  6: 'text', 7: 'divider',
+  1: 'text',
+  2: 'stat',
+  3: 'toggle',
+  4: 'button',
+  5: 'slider',
+  6: 'select',
+  7: 'text_input',
+  8: 'badge',
+  9: 'progress',
+  10: 'timer',
 };
 const FIELD_KIND: Record<number, RuntimeFormField['kind']> = {
   10: 'text', 11: 'number', 12: 'duration', 13: 'select',

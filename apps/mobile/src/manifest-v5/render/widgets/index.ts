@@ -3,6 +3,7 @@ import './StatWidget';
 import './BadgeWidget';
 import './ToggleWidget';
 import './SliderWidget';
+import './SelectWidget';
 import './ButtonWidget';
 import './TimerWidget';
 import './DividerWidget';

@@ -4,21 +4,42 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ManifestScreenRenderer } from '@/manifest-v5/render/ManifestScreenRenderer';
 import { FixtureRuntime } from '@/manifest-v5/runtime/FixtureRuntime';
+import type { ManifestV5Runtime } from '@/manifest-v5/runtime/ManifestV5Runtime';
 import '@/manifest-v5/render/widgets';
 
 const FIXTURE = resolve(__dirname, '..', '..', 'assets', 'manifest_v5_demo.pb');
 
 describe('ManifestScreenRenderer', () => {
-  it('renders the controls screen end-to-end from the demo fixture', async () => {
+  it('renders the first available screen inside the premium V5 shell', async () => {
     const runtime = new FixtureRuntime({
       manifestBytes: new Uint8Array(readFileSync(FIXTURE)),
       initialState: { 'relay.auto': { kind: 'bool', value: true } },
     });
-    const { findByText } = render(
+    const { findByTestId, findByText, queryByText } = render(
       <ManifestScreenRenderer runtime={runtime} screenSlug="controls" />,
     );
-    // Demo fixture must define a screen with a visible widget labelled 'Toggle' or similar —
-    // assert any stable string the fixture ships.
-    await waitFor(() => expect(findByText(/./)).resolves.toBeTruthy());
+
+    await waitFor(() => expect(queryByText('Unknown screen: controls')).toBeNull());
+    await expect(findByTestId('v5-screen-shell')).resolves.toBeTruthy();
+    await expect(findByText('Manifest V5 demo')).resolves.toBeTruthy();
+  });
+
+  it('renders the premium shell around manifest loading errors', async () => {
+    const runtime: ManifestV5Runtime = {
+      loadManifest: async () => {
+        throw new Error('boom');
+      },
+      snapshot: async () => new Map(),
+      subscribe: () => () => {},
+      invokeAction: async () => ({ status: 'ok', payload: new Uint8Array(), message: '' }),
+    };
+
+    const { findByTestId, findByText } = render(
+      <ManifestScreenRenderer runtime={runtime} screenSlug="home" />,
+    );
+
+    await expect(findByTestId('v5-screen-shell')).resolves.toBeTruthy();
+    await expect(findByTestId('v5-error-panel')).resolves.toBeTruthy();
+    await expect(findByText(/boom/)).resolves.toBeTruthy();
   });
 });

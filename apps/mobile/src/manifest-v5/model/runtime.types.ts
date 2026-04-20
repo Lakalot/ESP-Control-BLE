@@ -11,8 +11,9 @@ export type RuntimeNodeKind =
   | 'stack' | 'row' | 'grid' | 'section' | 'tabs' | 'form' | 'widget';
 
 export type RuntimeWidgetKind =
-  | 'stat' | 'badge' | 'toggle' | 'slider' | 'select' | 'button' | 'timer'
-  | 'text' | 'chart_sparkline' | 'field_text' | 'field_number'
+  | 'text' | 'stat' | 'toggle' | 'button' | 'slider' | 'select'
+  | 'text_input' | 'badge' | 'progress' | 'timer'
+  | 'chart_sparkline' | 'field_text' | 'field_number'
   | 'field_duration' | 'field_select' | 'divider';
 
 /** Rule tree as decoded from the protobuf JsonLogic string. `unknown` is used

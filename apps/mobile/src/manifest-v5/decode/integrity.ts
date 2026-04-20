@@ -8,8 +8,16 @@ export class ManifestDecodeError extends Error {
 }
 
 export const SUPPORTED_CAPABILITIES = new Set([
-  'widget.button', 'widget.toggle', 'widget.slider', 'widget.select', 'widget.stat',
-  'widget.text', 'widget.divider', 'widget.timer',
+  'widget.text',
+  'widget.stat',
+  'widget.toggle',
+  'widget.button',
+  'widget.slider',
+  'widget.select',
+  'widget.text_input',
+  'widget.badge',
+  'widget.progress',
+  'widget.timer',
 ]);
 
 export function isCompatibleAppVersion(version: string): boolean {

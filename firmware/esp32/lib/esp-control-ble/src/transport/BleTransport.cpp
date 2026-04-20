@@ -42,6 +42,12 @@ class EcbV5DataCallbacks : public NimBLECharacteristicCallbacks {
 public:
   EcbV5DataCallbacks(BleTransport* t) : _transport(t) {}
 
+  void onSubscribe(NimBLECharacteristic* pChar, ble_gap_conn_desc* desc, uint16_t subValue) override {
+    if (subValue == 0) return;
+    Serial.println("[ECB V5] Client subscribed to V5 data char, sending manifest");
+    _transport->sendV5Manifest();
+  }
+
   void onWrite(NimBLECharacteristic* pChar) override {
     NimBLEAttValue v = pChar->getValue();
     _transport->handleV5Write(v.data(), (uint16_t)v.size());
@@ -96,6 +102,13 @@ void BleTransport::loadOrCreateUuid() {
 
 void BleTransport::setV5Transport(ecb::v5::BleTransportV5* t) {
   _v5Transport = t;
+}
+
+void BleTransport::sendV5Manifest() {
+  if (_v5Transport) {
+    Serial.println("[ECB V5] Triggering manifest send via V5 transport");
+    _v5Transport->sendManifest();
+  }
 }
 
 void BleTransport::begin(const char* deviceName, AuthHandler* auth,
@@ -218,6 +231,7 @@ void BleTransport::handleSubscribe() {
 }
 
 void BleTransport::handleWrite(const uint8_t* data, uint16_t len) {
+  Serial.printf("[ECB] handleWrite len=%d cmd=%02x\n", len, data[0]);
   if (len == 0) return;
 
   // Auth response
@@ -273,25 +287,23 @@ void BleTransport::handleConnect() {
 void BleTransport::handleDisconnect() {
   Serial.println("[ECB] Client disconnected");
   _auth->reset();
+  if (_v5Transport) _v5Transport->reset();
   NimBLEDevice::startAdvertising();
 }
 
 void BleTransport::handleV5Write(const uint8_t* data, uint16_t len) {
-  if (!_v5Transport) {
-    Serial.println("[ECB] V5 transport not initialized");
-    return;
+  Serial.printf("[ECB V5] handleV5Write len=%d\n", len);
+  if (_v5Transport) {
+    ecb::v5::FrameHeader header;
+    if (len < ecb::v5::FrameCodec::kHeaderSize) {
+      Serial.println("[ECB] V5 frame too short");
+      return;
+    }
+    if (!ecb::v5::FrameCodec::decodeHeader(data, len, header)) {
+      Serial.println("[ECB] V5 header decode failed");
+      return;
+    }
+    _v5Transport->handleFrame(header.kind, data + ecb::v5::FrameCodec::kHeaderSize, header.length);
   }
-  
-  if (len < ecb::v5::FrameCodec::kHeaderSize) {
-    Serial.println("[ECB] V5 frame too short");
-    return;
-  }
-
-  ecb::v5::FrameHeader header;
-  if (!ecb::v5::FrameCodec::decodeHeader(data, len, header)) {
-    Serial.println("[ECB] V5 header decode failed");
-    return;
-  }
-  
-  _v5Transport->handleFrame(header.kind, data + ecb::v5::FrameCodec::kHeaderSize, header.length);
 }
+

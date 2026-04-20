@@ -23,6 +23,7 @@ void EspControl::registerCallback(uint8_t cmdId, EcbCommandFn callback) {
 
 void EspControl::registerActionV5(uint32_t actionId, ecb::v5::ActionHandler h) { _registryV5.registerAction(actionId, h); }
 void EspControl::publishDelta(uint32_t resourceId) { if (_transportV5) _transportV5->sendDelta(resourceId); }
+void EspControl::tick() { if (_transportV5) _transportV5->tick(); }
 
 void EspControl::begin(const uint8_t* manifestData, uint16_t manifestLen) {
   _auth.setPin(_pin);

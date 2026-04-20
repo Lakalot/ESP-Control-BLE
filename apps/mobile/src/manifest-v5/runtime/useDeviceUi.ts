@@ -17,30 +17,42 @@ export function useDeviceUi(runtime: ManifestV5Runtime): UseDeviceUiResult {
   const machine = useMemo(() => createDeviceUiMachine({ runtime }), [runtime]);
   const [state, send] = useMachine(machine);
   const [snapshot, setSnapshot] = useState<Map<string, ResourceState>>(new Map());
+  const manifest = state.context.manifest;
 
   useEffect(() => {
+    if (!manifest) return;
+
+    let cancelled = false;
     let unsub: (() => void) | undefined;
-    runtime.loadManifest().then(async (manifest) => {
-      const snap = await runtime.snapshot();
-      setSnapshot(new Map(snap as Map<string, ResourceState>));
-      const subscribeSlugs = [...manifest.resources.values()]
-        .filter((resource) => resource.readMode === 'subscribe')
-        .map((resource) => resource.slug);
-      unsub = runtime.subscribe(subscribeSlugs, (update) => {
-        setSnapshot((prev) => new Map(prev).set(update.slug, {
-          slug: update.slug,
-          value: update.value,
-          updatedAt: update.updatedAt,
-          stale: false,
-        }));
+    Promise.resolve(runtime.snapshot())
+      .then(async (snap) => {
+        if (cancelled) return;
+        setSnapshot(new Map(snap as Map<string, ResourceState>));
+        const subscribeSlugs = [...manifest.resources.values()]
+          .filter((resource) => resource.readMode === 'subscribe')
+          .map((resource) => resource.slug);
+        unsub = runtime.subscribe(subscribeSlugs, (update) => {
+          setSnapshot((prev) => new Map(prev).set(update.slug, {
+            slug: update.slug,
+            value: update.value,
+            updatedAt: update.updatedAt,
+            stale: false,
+          }));
+        });
+      })
+      .catch(() => {
+        // The XState loader owns the visible error state.
       });
-    });
-    return () => { unsub?.(); };
-  }, [runtime]);
+
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
+  }, [manifest, runtime]);
 
   return {
     state,
-    manifest: state.context.manifest,
+    manifest,
     snapshot,
     reload: () => send({ type: 'RELOAD' }),
   };

@@ -36,6 +36,36 @@ describe('decodeManifest', () => {
     }
   });
 
+  it('decodes the demo fixture using the expected v5 widget kinds and screen slug', () => {
+    const m = decodeManifest(bytes);
+
+    expect(m.screens.has('home')).toBe(true);
+
+    const banner = m.nodes.get('home.banner');
+    expect(banner?.kind).toBe('widget');
+    if (banner?.kind === 'widget') {
+      expect(banner.widget).toBe('text');
+    }
+
+    const toggle = m.nodes.get('lighting.toggle');
+    expect(toggle?.kind).toBe('widget');
+    if (toggle?.kind === 'widget') {
+      expect(toggle.widget).toBe('toggle');
+    }
+
+    const slider = m.nodes.get('lighting.slider');
+    expect(slider?.kind).toBe('widget');
+    if (slider?.kind === 'widget') {
+      expect(slider.widget).toBe('slider');
+    }
+
+    const select = m.nodes.get('telemetry.profile');
+    expect(select?.kind).toBe('widget');
+    if (select?.kind === 'widget') {
+      expect(select.widget).toBe('select');
+    }
+  });
+
   it('throws on truncated bytes', () => {
     const truncated = bytes.slice(0, Math.min(4, bytes.length));
     expect(() => decodeManifest(truncated)).toThrow();

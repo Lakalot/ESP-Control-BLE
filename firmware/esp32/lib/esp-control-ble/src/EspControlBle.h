@@ -16,6 +16,7 @@ public:
   void registerActionV5(uint32_t actionId, ecb::v5::ActionHandler handler);
   ecb::v5::ResourceTable& resources() { return _resourcesV5; }
   void publishDelta(uint32_t resourceId);
+  void tick();
 
   void begin(const uint8_t* manifestData, uint16_t manifestLen);
 
