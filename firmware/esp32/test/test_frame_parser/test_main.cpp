@@ -1,6 +1,6 @@
 #include <unity.h>
 #include <string.h>
-#include "transport/FrameCodec.h"
+#include "transport/frame/FrameCodec.h"
 
 // Helper: build a valid frame with XOR checksum
 // Frame layout: [cmdId][payloadLen][payload...][hmac x4][xorChecksum]

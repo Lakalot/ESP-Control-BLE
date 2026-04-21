@@ -1,9 +1,0 @@
-{
-  "name": "EspControlBleNative",
-  "version": "0.5.0",
-  "platforms": "native",
-  "dependencies": [
-    { "name": "Nanopb", "version": "^0.4.9" }
-  ],
-  "build": { "srcDir": "src" }
-}

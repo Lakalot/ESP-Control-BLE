@@ -1,13 +1,13 @@
 #include <unity.h>
 #include <pb_encode.h>
-#include "protocol/ActionDecoder.h"
-#include "protocol/ActionRegistryV5.h"
-#include "nanopb/manifest_v5.pb.h"
+#include "protocol/actions/ActionDecoder.h"
+#include "protocol/actions/ActionRegistry.h"
+#include "nanopb/manifest.pb.h"
 
-using ecb::v5::ActionDecoder;
-using ecb::v5::ActionRegistry;
-using ecb::v5::ActionContext;
-using ecb::v5::ActionStatus;
+using ecb::ActionDecoder;
+using ecb::ActionRegistry;
+using ecb::ActionContext;
+using ecb::ActionStatus;
 
 void setUp() {}
 void tearDown() {}
@@ -27,11 +27,11 @@ static void register_and_dispatch_flows() {
   uint8_t wire[128] = {0};
   size_t wireLen = 0;
   {
-    esp_control_v5_InvokeAction req = esp_control_v5_InvokeAction_init_zero;
+    esp_control_InvokeAction req = esp_control_InvokeAction_init_zero;
     req.action_id = 7;
     req.correlation_id = 99;
     pb_ostream_t os = pb_ostream_from_buffer(wire, sizeof(wire));
-    TEST_ASSERT_TRUE(pb_encode(&os, esp_control_v5_InvokeAction_fields, &req));
+    TEST_ASSERT_TRUE(pb_encode(&os, esp_control_InvokeAction_fields, &req));
     wireLen = os.bytes_written;
   }
   uint8_t reply[128] = {0};
@@ -47,11 +47,11 @@ static void test_unknown_action_produces_error_reply() {
   ActionRegistry reg;
   uint8_t wire[64] = {0};
   size_t wireLen;
-  esp_control_v5_InvokeAction req = esp_control_v5_InvokeAction_init_zero;
+  esp_control_InvokeAction req = esp_control_InvokeAction_init_zero;
   req.action_id = 999;
   req.correlation_id = 5;
   pb_ostream_t os = pb_ostream_from_buffer(wire, sizeof(wire));
-  TEST_ASSERT_TRUE(pb_encode(&os, esp_control_v5_InvokeAction_fields, &req));
+  TEST_ASSERT_TRUE(pb_encode(&os, esp_control_InvokeAction_fields, &req));
   wireLen = os.bytes_written;
   uint8_t reply[64] = {0};
   size_t replyLen = 0;

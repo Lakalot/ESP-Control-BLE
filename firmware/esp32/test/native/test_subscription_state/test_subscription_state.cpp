@@ -1,7 +1,7 @@
 #include <unity.h>
-#include "protocol/SubscriptionState.h"
+#include "protocol/subscriptions/SubscriptionState.h"
 
-using ecb::v5::SubscriptionState;
+using ecb::SubscriptionState;
 
 void setUp() {}
 void tearDown() {}

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "protocol/ActionRegistryV5.h"
-#include "protocol/ResourceTable.h"
-#include "protocol/SubscriptionState.h"
-#include "transport/BleTransport.h"
-#include "transport/BleTransportV5.h"
+#include "protocol/actions/ActionRegistry.h"
+#include "protocol/resources/ResourceTable.h"
+#include "protocol/subscriptions/SubscriptionState.h"
+#include "transport/ble/BleTransport.h"
+#include "transport/ble/DataBleTransport.h"
 
 class EspControl {
 public:
@@ -12,26 +12,27 @@ public:
 
   void registerCallback(uint8_t cmdId, EcbCommandFn callback);
 
-  // V5 API — additive alongside v4.
-  void registerActionV5(uint32_t actionId, ecb::v5::ActionHandler handler);
-  ecb::v5::ResourceTable& resources() { return _resourcesV5; }
+  // Data API — additive alongside v4.
+  void registerAction(uint32_t actionId, ecb::ActionHandler handler);
+  ecb::ResourceTable& resources() { return _resources; }
   void publishDelta(uint32_t resourceId);
   void tick();
 
   void begin(const uint8_t* manifestData, uint16_t manifestLen);
 
 private:
+  static void sendDataFrame(void* context, const uint8_t* data, size_t len);
+
   const char*                 _deviceName;
   const char*                 _pin;
   AuthHandler                 _auth;
   CommandRegistry             _registry;
   BleTransport                _transport;
 
-  ecb::v5::ActionRegistry     _registryV5;
-  ecb::v5::ResourceTable      _resourcesV5;
-  ecb::v5::SubscriptionState  _subsV5;
-  ecb::v5::BleTransportV5*    _transportV5;
-  const uint8_t*              _manifestDataV5;
-  uint16_t                    _manifestLenV5;
+  ecb::ActionRegistry     _actionRegistry;
+  ecb::ResourceTable      _resources;
+  ecb::SubscriptionState  _subs;
+  ecb::DataBleTransport*    _dataTransport;
+  const uint8_t*              _dataManifestData;
+  uint16_t                    _dataManifestLen;
 };
-

@@ -1,7 +1,7 @@
 #include <unity.h>
 #include <string.h>
 
-#include "protocol/CommandRegistry.h"
+#include "protocol/commands/CommandRegistry.h"
 
 static uint8_t capturedBuf[128];
 static uint16_t capturedLen = 0;
