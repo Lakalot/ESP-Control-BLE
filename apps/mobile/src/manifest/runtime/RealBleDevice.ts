@@ -6,8 +6,8 @@ import { Device, Characteristic } from 'react-native-ble-plx';
 import { bleManagerService } from '../../transport/BleManager';
 import type { FixtureBleDevice } from './BleRuntime.fixture';
 
-const ECB_DATA_SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
-const ECB_DATA_DATA_CHAR_UUID = '12345678-1234-1234-1234-123456789abf';
+const ECB_DATA_SERVICE_UUID = 'feccc3c2-7a95-4c26-91e6-f86158095207';
+const ECB_DATA_DATA_CHAR_UUID = 'fac1a3ac-23e4-4dc0-b78a-0722bea726e5';
 
 function uint8ArrayToBase64(bytes: Uint8Array): string {
   let binary = '';

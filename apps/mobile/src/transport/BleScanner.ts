@@ -3,7 +3,7 @@ import { bleManagerService } from './BleManager';
 
 const SCAN_COOLDOWN_MS = 500;
 
-const ECB_SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
+const ECB_SERVICE_UUID = 'feccc3c2-7a95-4c26-91e6-f86158095207';
 
 export class BleScanner {
   private isScanning = false;

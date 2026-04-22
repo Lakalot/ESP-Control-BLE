@@ -20,8 +20,8 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-const MANIFEST_CHAR_UUID = '12345678-1234-1234-1234-123456789abd';
-const CMD_CHAR_UUID = '12345678-1234-1234-1234-123456789abe';
+const MANIFEST_CHAR_UUID = 'f99e14e3-b299-4545-8caa-6bc5adf3fe95';
+const CMD_CHAR_UUID = '8bf0baf5-fdba-4b82-99c6-6ae9e9c83952';
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_BASE_DELAY_MS = 1000;
