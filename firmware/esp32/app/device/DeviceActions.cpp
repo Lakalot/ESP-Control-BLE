@@ -39,9 +39,14 @@ void DeviceActions::begin() const {
 void DeviceActions::registerAll(EspControl& control, AppRuntime& runtime) const {
   control.registerAction(manifest_actions::relay_toggle, [this, &control, &runtime](ecb::ActionContext& ctx) {
     runtime.toggleRelay();
+    if (runtime.state().relayEnabled && runtime.state().brightness == 0) {
+      runtime.setBrightness(100u);
+    }
     applyLightOutput(runtime.state());
     control.resources().setBool(manifest_resources::relay_auto, runtime.state().relayEnabled);
+    control.resources().setUint(manifest_resources::light_brightness, runtime.state().brightness);
     control.publishDelta(manifest_resources::relay_auto);
+    control.publishDelta(manifest_resources::light_brightness);
     Serial.printf("[DATA] relay.toggle -> %s\n", runtime.state().relayEnabled ? "ON" : "OFF");
     ctx.replyOk(nullptr, 0);
   });
