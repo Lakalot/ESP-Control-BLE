@@ -33,14 +33,13 @@ const char* colorPresetName(uint8_t preset) {
 
 void DeviceActions::begin() const {
   pinMode(ledPin_, OUTPUT);
-  applyRelayOutput(DeviceState{});
-  applyBrightnessOutput(DeviceState{});
+  applyLightOutput(DeviceState{});
 }
 
 void DeviceActions::registerAll(EspControl& control, AppRuntime& runtime) const {
   control.registerAction(manifest_actions::relay_toggle, [this, &control, &runtime](ecb::ActionContext& ctx) {
     runtime.toggleRelay();
-    applyRelayOutput(runtime.state());
+    applyLightOutput(runtime.state());
     control.resources().setBool(manifest_resources::relay_auto, runtime.state().relayEnabled);
     control.publishDelta(manifest_resources::relay_auto);
     Serial.printf("[DATA] relay.toggle -> %s\n", runtime.state().relayEnabled ? "ON" : "OFF");
@@ -57,7 +56,7 @@ void DeviceActions::registerAll(EspControl& control, AppRuntime& runtime) const 
       return;
     }
 
-    applyBrightnessOutput(runtime.state());
+    applyLightOutput(runtime.state());
     control.resources().setUint(manifest_resources::light_brightness, runtime.state().brightness);
     control.publishDelta(manifest_resources::light_brightness);
     Serial.printf("[DATA] light.set_brightness -> %u%%\n", runtime.state().brightness);
@@ -129,8 +128,7 @@ void DeviceActions::registerAll(EspControl& control, AppRuntime& runtime) const 
 }
 
 void DeviceActions::syncResources(EspControl& control, const DeviceState& state) const {
-  applyRelayOutput(state);
-  applyBrightnessOutput(state);
+  applyLightOutput(state);
   control.resources().setBool(manifest_resources::relay_auto, state.relayEnabled);
   control.resources().setUint(manifest_resources::light_brightness, state.brightness);
   control.resources().setString(manifest_resources::fan_profile, fanProfileName(state.fanProfile));
@@ -139,11 +137,11 @@ void DeviceActions::syncResources(EspControl& control, const DeviceState& state)
   control.resources().setString(manifest_resources::device_name, state.deviceName);
 }
 
-void DeviceActions::applyRelayOutput(const DeviceState& state) const {
-  digitalWrite(ledPin_, state.relayEnabled ? HIGH : LOW);
-}
-
-void DeviceActions::applyBrightnessOutput(const DeviceState& state) const {
+void DeviceActions::applyLightOutput(const DeviceState& state) const {
+  if (!state.relayEnabled) {
+    analogWrite(ledPin_, 0);
+    return;
+  }
   analogWrite(ledPin_, map(state.brightness, 0, 100, 0, 255));
 }
 

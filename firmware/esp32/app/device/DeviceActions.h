@@ -97,8 +97,7 @@ class DeviceActions {
     return 0u;
   }
 
-  void applyRelayOutput(const DeviceState& state) const;
-  void applyBrightnessOutput(const DeviceState& state) const;
+  void applyLightOutput(const DeviceState& state) const;
 
   uint8_t ledPin_;
 };
