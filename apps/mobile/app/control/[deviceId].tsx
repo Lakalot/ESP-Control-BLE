@@ -13,6 +13,7 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../src/hooks/useAuth';
+import { useAuthStore } from '../../src/store/authStore';
 import { useAutoRefresh } from '../../src/hooks/useAutoRefresh';
 import { useBle } from '../../src/hooks/useBle';
 import { useManifest } from '../../src/hooks/useManifest';
@@ -53,18 +54,19 @@ const STATE_CONFIG: Record<string, { label: string; color: string; bg: string }>
   error: { label: 'Erreur', color: palette.danger, bg: withAlpha(palette.danger, 0.14) },
 };
 
-function PilotRenderer({ deviceId }: { deviceId: string }) {
+function PilotRenderer({ deviceId, device, pin }: { deviceId: string; device: BleDevice; pin: string }) {
+  const savePin = useAuthStore((state) => state.savePin);
   const [runtime, setRuntime] = useState<ManifestRuntime | null>(null);
   useEffect(() => {
     let cancelled = false;
     let bleDevice: import('../../src/manifest/runtime/RealBleDevice').RealBleDevice | null = null;
-    createRealBleDevice(deviceId).then((device) => {
-      bleDevice = device;
+    createRealBleDevice(deviceId).then((connected) => {
+      bleDevice = connected;
       if (!cancelled) {
-        setRuntime(new BleRuntime(device));
+        setRuntime(new BleRuntime(connected));
+        savePin(device.id, pin, device.name ?? device.id).catch(() => {});
       } else {
-        // Component unmounted before device was ready — disconnect immediately
-        device.disconnect().catch(() => {});
+        connected.disconnect().catch(() => {});
       }
     });
     return () => {
@@ -74,7 +76,7 @@ function PilotRenderer({ deviceId }: { deviceId: string }) {
         bleDevice = null;
       }
     };
-  }, [deviceId]);
+  }, [deviceId, device, pin, savePin]);
   if (!runtime) return <ActivityIndicator />;
   return <ManifestScreenRenderer runtime={runtime} screenSlug="home" />;
 }
@@ -83,8 +85,8 @@ export default function ControlScreen() {
   const route = useRoute();
   const runtimeMode = getManifestRuntime();
   if (runtimeMode === 'manifest') {
-    const { device } = route.params as RouteParams;
-    return <PilotRenderer deviceId={device.id} />;
+    const { device, pin } = route.params as RouteParams;
+    return <PilotRenderer deviceId={device.id} device={device} pin={pin} />;
   }
 
   const navigation = useNavigation<any>();
