@@ -24,10 +24,16 @@ class AppRuntime {
   void setBrightness(int32_t brightness) { DeviceActions::setBrightness(state_, brightness); }
   void setFanProfile(uint32_t fanProfile) { DeviceActions::setFanProfile(state_, fanProfile); }
   void setFanProfile(int32_t fanProfile) { DeviceActions::setFanProfile(state_, fanProfile); }
+  void setFanProfile(const char* fanProfile) { DeviceActions::setFanProfile(state_, fanProfile); }
+  void setColorPreset(const char* colorPreset) { DeviceActions::setColorPreset(state_, colorPreset); }
   void setDebugEnabled(bool enabled) { DeviceActions::setDebugEnabled(state_, enabled); }
+  void setDeviceName(const char* deviceName) { DeviceActions::setDeviceName(state_, deviceName); }
 
   void updateTemperature(float temperatureC) { DeviceTelemetry::updateTemperature(state_, temperatureC); }
+  void updateHumidity(float humidityPercent) { DeviceTelemetry::updateHumidity(state_, humidityPercent); }
   void updateLoadPercent(uint32_t loadPercent) { DeviceTelemetry::updateLoadPercent(state_, loadPercent); }
+  void updateWifiRssi(int32_t wifiRssiDbm) { DeviceTelemetry::updateWifiRssi(state_, wifiRssiDbm); }
+  void updateUptimeMs(uint32_t uptimeMs) { DeviceTelemetry::updateUptimeMs(state_, uptimeMs); }
 
   void setup(EspControl& control, DeviceActions& actions, DeviceTelemetry& telemetry, const uint8_t* manifestData,
              uint16_t manifestLen, float initialTemperature);

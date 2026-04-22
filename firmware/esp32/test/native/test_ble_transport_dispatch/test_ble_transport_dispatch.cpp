@@ -90,10 +90,45 @@ static void test_send_delta_preserves_full_resource_id() {
   TEST_ASSERT_EQUAL_UINT32(65u, decodeDeltaResourceId(g_lastFrame, g_lastFrameLen));
 }
 
+static void test_send_manifest_is_chunked_across_ticks_and_finishes_with_eof() {
+  g_sentFrames = 0;
+  g_lastFrameKind = 0;
+  g_lastFrameLen = 0;
+
+  uint8_t manifest[400] = {};
+  for (size_t i = 0; i < sizeof(manifest); ++i) manifest[i] = static_cast<uint8_t>(i & 0xFF);
+
+  ManifestStore store(manifest, sizeof(manifest));
+  ResourceTable table;
+  SubscriptionState subs;
+  ActionRegistry reg;
+  DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});
+
+  transport.sendManifest();
+  TEST_ASSERT_EQUAL_UINT32(0u, g_sentFrames);
+
+  transport.tick();
+  TEST_ASSERT_EQUAL_UINT32(1u, g_sentFrames);
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FrameKind::ManifestChunk), g_lastFrameKind);
+
+  transport.tick();
+  TEST_ASSERT_EQUAL_UINT32(2u, g_sentFrames);
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FrameKind::ManifestChunk), g_lastFrameKind);
+
+  transport.tick();
+  TEST_ASSERT_EQUAL_UINT32(3u, g_sentFrames);
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FrameKind::ManifestChunk), g_lastFrameKind);
+
+  transport.tick();
+  TEST_ASSERT_EQUAL_UINT32(4u, g_sentFrames);
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FrameKind::ManifestEof), g_lastFrameKind);
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_dispatch_subscribe_marks_subscription);
   RUN_TEST(test_dispatch_ping_emits_pong);
   RUN_TEST(test_send_delta_preserves_full_resource_id);
+  RUN_TEST(test_send_manifest_is_chunked_across_ticks_and_finishes_with_eof);
   return UNITY_END();
 }

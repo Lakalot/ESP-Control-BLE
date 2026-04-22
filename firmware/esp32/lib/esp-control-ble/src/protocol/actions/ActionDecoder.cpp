@@ -6,6 +6,22 @@
 
 namespace ecb {
 
+static bool decodeStringValue(pb_istream_t* stream, const pb_field_t* /*field*/, void** arg) {
+  char* out = static_cast<char*>(*arg);
+  if (!out) return false;
+  const size_t n = stream->bytes_left < 64 ? stream->bytes_left : 64;
+  if (!pb_read(stream, reinterpret_cast<pb_byte_t*>(out), n)) return false;
+  out[n] = '\0';
+  if (stream->bytes_left > 0) {
+    uint8_t scratch[16];
+    while (stream->bytes_left > 0) {
+      const size_t chunk = stream->bytes_left < sizeof(scratch) ? stream->bytes_left : sizeof(scratch);
+      if (!pb_read(stream, scratch, chunk)) return false;
+    }
+  }
+  return true;
+}
+
 static bool encodeReply(uint32_t correlationId, ActionStatus status,
                         const uint8_t* payload, size_t payloadLen,
                         uint8_t* out, size_t cap, size_t& written) {
@@ -21,6 +37,11 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
                              const uint8_t* in, size_t inLen,
                              uint8_t* out, size_t outCap, size_t& outLen) {
   esp_control_InvokeAction req = esp_control_InvokeAction_init_zero;
+  char decodedString[65] = {0};
+  req.payload.kind.string_value.funcs.decode = decodeStringValue;
+  req.payload.kind.string_value.arg = decodedString;
+  req.payload.kind.enum_value.funcs.decode = decodeStringValue;
+  req.payload.kind.enum_value.arg = decodedString;
   pb_istream_t is = pb_istream_from_buffer(in, inLen);
   if (!pb_decode(&is, esp_control_InvokeAction_fields, &req)) {
     return encodeReply(0, ActionStatus::BadPayload, nullptr, 0, out, outCap, outLen);
@@ -60,6 +81,12 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
         valueKind = ActionValueKind::Float;
         floatVal  = req.payload.kind.float_value;
         break;
+      case esp_control_CommonValue_string_value_tag:
+      case esp_control_CommonValue_enum_value_tag:
+        valueKind = ActionValueKind::String;
+        strncpy(strVal, decodedString, sizeof(strVal) - 1);
+        strVal[sizeof(strVal) - 1] = '\0';
+        break;
       default: break;
     }
   }
@@ -71,7 +98,8 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
     &replied, &status, innerReply, sizeof(innerReply), &innerLen
   };
   if (valueKind == ActionValueKind::String) {
-    // string handled separately if needed
+    strncpy(ctx.stringValue, strVal, sizeof(ctx.stringValue) - 1);
+    ctx.stringValue[sizeof(ctx.stringValue) - 1] = '\0';
   }
   (*h)(ctx);
   if (!replied) status = ActionStatus::Internal;

@@ -9,7 +9,7 @@
     "web": "expo start --web",
     "test": "jest",
     "test:watch": "jest --watch",
-    "copy-v5-proto": "node scripts/copy-v5-proto.mjs"
+    "copy-proto": "node scripts/copy-proto.mjs"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.9",

@@ -20,8 +20,20 @@ class DeviceTelemetry {
     state.temperatureC = temperatureC;
   }
 
+  static void updateHumidity(DeviceState& state, float humidityPercent) {
+    state.humidityPercent = humidityPercent;
+  }
+
   static void updateLoadPercent(DeviceState& state, uint32_t loadPercent) {
     state.loadPercent = loadPercent;
+  }
+
+  static void updateWifiRssi(DeviceState& state, int32_t wifiRssiDbm) {
+    state.wifiRssiDbm = wifiRssiDbm;
+  }
+
+  static void updateUptimeMs(DeviceState& state, uint32_t uptimeMs) {
+    state.uptimeMs = uptimeMs;
   }
 
   static uint32_t sampleLoadPercent(int64_t nowUs, int64_t& windowStartUs, uint64_t& windowWorkUs,

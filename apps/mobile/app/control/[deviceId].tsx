@@ -28,11 +28,11 @@ import {
 import { palette, radius, shadows, withAlpha } from '../../src/ui/theme/ui';
 import { CmdType } from '../../src/types/manifest.types';
 import { getManifestRuntime } from '../../src/settings/manifestRuntimeFlag';
-import { BleRuntime } from '../../src/manifest-v5/runtime/BleRuntime';
-import { createRealBleDevice } from '../../src/manifest-v5/runtime/RealBleDevice';
-import { ManifestScreenRenderer } from '../../src/manifest-v5/render/ManifestScreenRenderer';
-import type { ManifestV5Runtime } from '../../src/manifest-v5/runtime/ManifestV5Runtime';
-import '../../src/manifest-v5/render/widgets';
+import { BleRuntime } from '../../src/manifest/runtime/BleRuntime';
+import { createRealBleDevice } from '../../src/manifest/runtime/RealBleDevice';
+import { ManifestScreenRenderer } from '../../src/manifest/render/ManifestScreenRenderer';
+import type { ManifestRuntime } from '../../src/manifest/runtime/ManifestRuntime';
+import '../../src/manifest/render/widgets';
 
 
 type RouteParams = {
@@ -53,11 +53,11 @@ const STATE_CONFIG: Record<string, { label: string; color: string; bg: string }>
   error: { label: 'Erreur', color: palette.danger, bg: withAlpha(palette.danger, 0.14) },
 };
 
-function V5PilotRenderer({ deviceId }: { deviceId: string }) {
-  const [runtime, setRuntime] = useState<ManifestV5Runtime | null>(null);
+function PilotRenderer({ deviceId }: { deviceId: string }) {
+  const [runtime, setRuntime] = useState<ManifestRuntime | null>(null);
   useEffect(() => {
     let cancelled = false;
-    let bleDevice: import('../../src/manifest-v5/runtime/RealBleDevice').RealBleDevice | null = null;
+    let bleDevice: import('../../src/manifest/runtime/RealBleDevice').RealBleDevice | null = null;
     createRealBleDevice(deviceId).then((device) => {
       bleDevice = device;
       if (!cancelled) {
@@ -82,9 +82,9 @@ function V5PilotRenderer({ deviceId }: { deviceId: string }) {
 export default function ControlScreen() {
   const route = useRoute();
   const runtimeMode = getManifestRuntime();
-  if (runtimeMode === 'v5') {
+  if (runtimeMode === 'manifest') {
     const { device } = route.params as RouteParams;
-    return <V5PilotRenderer deviceId={device.id} />;
+    return <PilotRenderer deviceId={device.id} />;
   }
 
   const navigation = useNavigation<any>();

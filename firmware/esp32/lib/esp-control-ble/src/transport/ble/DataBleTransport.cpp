@@ -112,21 +112,10 @@ void DataBleTransport::handleFrame(FrameKind kind, const uint8_t* body, size_t l
 }
 
 void DataBleTransport::sendManifest() {
-  const uint8_t* data = _store.bytes();
-  size_t total = _store.length();
-  size_t offset = 0;
-  while (offset < total) {
-    size_t n = (total - offset) > kManifestChunkSize ? kManifestChunkSize : (total - offset);
-    sendFrame(FrameKind::ManifestChunk, 0, data + offset, n);
-    offset += n;
-  }
-  uint8_t eof[8];
-  uint32_t crc = _store.crc32();
-  eof[0] = (total >> 24) & 0xFF; eof[1] = (total >> 16) & 0xFF;
-  eof[2] = (total >> 8) & 0xFF;  eof[3] = total & 0xFF;
-  eof[4] = (crc >> 24) & 0xFF;   eof[5] = (crc >> 16) & 0xFF;
-  eof[6] = (crc >> 8) & 0xFF;    eof[7] = crc & 0xFF;
-  sendFrame(FrameKind::ManifestEof, 0, eof, 8);
+  xSemaphoreTake(_mutex, portMAX_DELAY);
+  _manifestOffset = 0;
+  _manifestPending = true;
+  xSemaphoreGive(_mutex);
 }
 
 void DataBleTransport::sendSnapshot() {
@@ -177,11 +166,37 @@ void DataBleTransport::reset() {
   _subs.clear();
   _snapshotPending = false;
   _deltaPendingMask = 0;
+  _manifestPending = false;
+  _manifestOffset = 0;
   xSemaphoreGive(_mutex);
 }
 
 void DataBleTransport::tick() {
   xSemaphoreTake(_mutex, portMAX_DELAY);
+  if (_manifestPending) {
+    const uint8_t* data = _store.bytes();
+    const size_t total = _store.length();
+    if (_manifestOffset < total) {
+      const size_t remaining = total - _manifestOffset;
+      const size_t n = remaining > kManifestChunkSize ? kManifestChunkSize : remaining;
+      const size_t offset = _manifestOffset;
+      _manifestOffset += n;
+      xSemaphoreGive(_mutex);
+      sendFrame(FrameKind::ManifestChunk, 0, data + offset, n);
+      xSemaphoreTake(_mutex, portMAX_DELAY);
+    } else {
+      _manifestPending = false;
+      const uint32_t crc = _store.crc32();
+      uint8_t eof[8];
+      eof[0] = (total >> 24) & 0xFF; eof[1] = (total >> 16) & 0xFF;
+      eof[2] = (total >> 8) & 0xFF;  eof[3] = total & 0xFF;
+      eof[4] = (crc >> 24) & 0xFF;   eof[5] = (crc >> 16) & 0xFF;
+      eof[6] = (crc >> 8) & 0xFF;    eof[7] = crc & 0xFF;
+      xSemaphoreGive(_mutex);
+      sendFrame(FrameKind::ManifestEof, 0, eof, 8);
+      xSemaphoreTake(_mutex, portMAX_DELAY);
+    }
+  }
   if (_snapshotPending) {
     _snapshotPending = false;
     xSemaphoreGive(_mutex); // release while sending to avoid long hold

@@ -67,6 +67,8 @@ private:
   FrameSender             _sender;
   volatile bool           _snapshotPending = false;
   uint64_t                _deltaPendingMask = 0;
+  bool                    _manifestPending = false;
+  size_t                  _manifestOffset = 0;
   SemaphoreHandle_t       _mutex;
   bool sendEncodedFrame(FrameKind kind, uint8_t flags, uint8_t* frame, size_t cap, size_t bodyLen);
   void sendFrame(FrameKind kind, uint8_t flags, const uint8_t* body, size_t len);

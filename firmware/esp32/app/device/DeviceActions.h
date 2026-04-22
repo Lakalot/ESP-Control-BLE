@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <string.h>
 
 #include "DeviceState.h"
 
@@ -38,8 +39,22 @@ class DeviceActions {
     state.fanProfile = clampFanProfile(fanProfile);
   }
 
+  static void setFanProfile(DeviceState& state, const char* fanProfile) {
+    state.fanProfile = parseFanProfile(fanProfile);
+  }
+
+  static void setColorPreset(DeviceState& state, const char* colorPreset) {
+    state.colorPreset = parseColorPreset(colorPreset);
+  }
+
   static void setDebugEnabled(DeviceState& state, bool enabled) {
     state.debugEnabled = enabled;
+  }
+
+  static void setDeviceName(DeviceState& state, const char* deviceName) {
+    if (!deviceName) return;
+    strncpy(state.deviceName, deviceName, sizeof(state.deviceName) - 1);
+    state.deviceName[sizeof(state.deviceName) - 1] = '\0';
   }
 
  private:
@@ -63,6 +78,23 @@ class DeviceActions {
       return 0u;
     }
     return clampFanProfile(static_cast<uint32_t>(fanProfile));
+  }
+
+  static uint8_t parseFanProfile(const char* fanProfile) {
+    if (!fanProfile || strcmp(fanProfile, "slow") == 0) return 0u;
+    if (strcmp(fanProfile, "normal") == 0) return 1u;
+    if (strcmp(fanProfile, "fast") == 0) return 2u;
+    return 0u;
+  }
+
+  static uint8_t parseColorPreset(const char* colorPreset) {
+    if (!colorPreset || strcmp(colorPreset, "warm_white") == 0) return 0u;
+    if (strcmp(colorPreset, "cool_white") == 0) return 1u;
+    if (strcmp(colorPreset, "red") == 0) return 2u;
+    if (strcmp(colorPreset, "green") == 0) return 3u;
+    if (strcmp(colorPreset, "blue") == 0) return 4u;
+    if (strcmp(colorPreset, "party") == 0) return 5u;
+    return 0u;
   }
 
   void applyRelayOutput(const DeviceState& state) const;

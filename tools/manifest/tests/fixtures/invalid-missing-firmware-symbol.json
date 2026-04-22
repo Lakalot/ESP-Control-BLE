@@ -1,0 +1,57 @@
+{
+  "version": 5,
+  "schemaVersion": 1,
+  "minAppVersion": "1.0.0",
+  "capabilities": {
+    "required": [],
+    "optional": []
+  },
+  "resources": [
+    {
+      "id": "system.load",
+      "valueType": "uint",
+      "readMode": "subscribe",
+      "staleAfterMs": 1000
+    },
+    {
+      "id": "relay.auto",
+      "firmwareSymbol": "relay_auto",
+      "valueType": "bool",
+      "readMode": "subscribe",
+      "staleAfterMs": 1000
+    }
+  ],
+  "actions": [
+    {
+      "id": "system.restart",
+      "firmwareSymbol": "system_restart",
+      "dangerLevel": "dangerous",
+      "inputSchema": {}
+    }
+  ],
+  "screens": [
+    {
+      "id": "home",
+      "firmwareSymbol": "home_screen",
+      "title": "Home",
+      "rootNodeId": "home.root"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "home.root",
+      "firmwareSymbol": "home_root",
+      "kind": "stack",
+      "children": [
+        "home.status"
+      ]
+    },
+    {
+      "id": "home.status",
+      "firmwareSymbol": "home_status",
+      "kind": "widget",
+      "widget": "text",
+      "text": "Ready"
+    }
+  ]
+}

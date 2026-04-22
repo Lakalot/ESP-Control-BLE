@@ -3,7 +3,9 @@ node_modules/
 .expo/
 dist/
 build/
+build_cache/
 *.log
 .DS_Store
 docs/superpowers/
 .worktrees/
+tmp_*.cpp
