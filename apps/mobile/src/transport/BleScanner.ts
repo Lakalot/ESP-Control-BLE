@@ -3,6 +3,8 @@ import { bleManagerService } from './BleManager';
 
 const SCAN_COOLDOWN_MS = 500;
 
+const ECB_SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
+
 export class BleScanner {
   private isScanning = false;
   private lastStopTime = 0;
@@ -18,7 +20,7 @@ export class BleScanner {
       this.isScanning = true;
 
       const manager = bleManagerService.getPlxManager();
-      manager.startDeviceScan(null, null, (error, device) => {
+      manager.startDeviceScan([ECB_SERVICE_UUID], null, (error, device) => {
         if (error) {
           this.isScanning = false;
           onError(error);
