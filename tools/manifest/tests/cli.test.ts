@@ -84,7 +84,7 @@ describe('runCli', () => {
   capabilities: { required: [], optional: [] },
   resources: [{ id: 'relay.auto', firmwareSymbol: '9Bad', valueType: 'bool', readMode: 'subscribe', staleAfterMs: 5000 }],
   actions: [{ id: 'relay.toggle', firmwareSymbol: 'RelayToggle', dangerLevel: 'normal', inputSchema: { type: 'object', additionalProperties: false, properties: {} } }],
-  screens: [{ id: 'home', firmwareSymbol: 'HomeScreen', title: 'Home', rootNodeId: 'home.root' }],
+  views: [{ id: 'home', firmwareSymbol: 'HomeScreen', title: 'Home', rootNodeId: 'home.root' }],
   nodes: [
     { id: 'home.root', firmwareSymbol: 'HomeRoot', kind: 'stack', children: ['home.toggle'] },
     { id: 'home.toggle', firmwareSymbol: 'HomeToggle', kind: 'widget', widget: 'toggle', title: 'Main Power', bind: { resource: 'relay.auto', action: 'relay.toggle' } }

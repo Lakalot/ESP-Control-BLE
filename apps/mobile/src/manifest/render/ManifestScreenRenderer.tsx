@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useDeviceUi } from '../runtime/useDeviceUi';
 import { buildRuleContext } from '../rules/ruleContext';
 import { NodeRenderer } from './NodeRenderer';
@@ -7,6 +7,7 @@ import type { ManifestRuntime } from '../runtime/ManifestRuntime';
 import { ScreenShell } from './primitives/ScreenShell';
 import { StatusText } from './primitives/StatusText';
 import { ErrorPanel } from './primitives/ErrorPanel';
+import { BottomNavBar } from './primitives/BottomNavBar';
 
 export interface ManifestScreenRendererProps {
   runtime: ManifestRuntime;
@@ -15,8 +16,8 @@ export interface ManifestScreenRendererProps {
 
 export function ManifestScreenRenderer({ runtime, screenSlug }: ManifestScreenRendererProps) {
   const { state, manifest, snapshot } = useDeviceUi(runtime);
-  console.log('[ManifestScreenRenderer] state.value=', state.value, 'manifest=', !!manifest, 'hasSnapshot=', snapshot.size);
   const [pendingActions, setPendingActions] = useState<ReadonlySet<string>>(new Set());
+  const [activeScreenSlug, setActiveScreenSlug] = useState(screenSlug);
   const pendingRef = useRef(pendingActions);
   pendingRef.current = pendingActions;
 
@@ -34,9 +35,20 @@ export function ManifestScreenRenderer({ runtime, screenSlug }: ManifestScreenRe
     [runtime],
   );
 
+  const firstScreenSlug = manifest?.screens.values().next().value?.slug;
+  const navItems = manifest?.appShell?.navBar?.items ?? [];
+  const requestedScreenSlug = manifest?.screens.get(screenSlug)?.slug;
+  const initialScreenSlug = navItems[0]?.screenSlug ?? requestedScreenSlug ?? firstScreenSlug;
+
+  useEffect(() => {
+    if (initialScreenSlug) {
+      setActiveScreenSlug(initialScreenSlug);
+    }
+  }, [initialScreenSlug]);
+
   const ctx = useMemo(
-    () => buildRuleContext({ snapshot, form: {}, screen: { id: screenSlug }, runtime: { online: true } }),
-    [snapshot, screenSlug],
+    () => buildRuleContext({ snapshot, form: {}, screen: { id: activeScreenSlug }, runtime: { online: true } }),
+    [activeScreenSlug, snapshot],
   );
 
   if (state.matches('loading_manifest')) {
@@ -59,7 +71,7 @@ export function ManifestScreenRenderer({ runtime, screenSlug }: ManifestScreenRe
 
   if (!manifest) return null;
 
-  const screen = manifest.screens.get(screenSlug) ?? manifest.screens.values().next().value;
+  const screen = manifest.screens.get(activeScreenSlug) ?? manifest.screens.values().next().value;
   if (!screen) {
     return (
       <ScreenShell>
@@ -69,15 +81,30 @@ export function ManifestScreenRenderer({ runtime, screenSlug }: ManifestScreenRe
   }
 
   return (
-    <ScreenShell>
-      <NodeRenderer
-        manifest={manifest}
-        slug={screen.rootNodeSlug}
-        snapshot={snapshot}
-        ctx={ctx}
-        onInvoke={onInvoke}
-        pendingActions={pendingActions}
-      />
-    </ScreenShell>
+    <View style={styles.container}>
+      <ScreenShell>
+        <NodeRenderer
+          manifest={manifest}
+          slug={screen.rootNodeSlug}
+          snapshot={snapshot}
+          ctx={ctx}
+          onInvoke={onInvoke}
+          pendingActions={pendingActions}
+        />
+      </ScreenShell>
+      {navItems.length > 0 ? (
+        <BottomNavBar
+          items={navItems}
+          activeScreenSlug={screen.slug}
+          onSelect={setActiveScreenSlug}
+        />
+      ) : null}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

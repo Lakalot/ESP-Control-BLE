@@ -3156,6 +3156,717 @@ export const esp_control = $root.esp_control = (() => {
         return ScreenDef;
     })();
 
+    esp_control.NavBarItemDef = (function() {
+
+        /**
+         * Properties of a NavBarItemDef.
+         * @memberof esp_control
+         * @interface INavBarItemDef
+         * @property {number|null} [idIdx] NavBarItemDef idIdx
+         * @property {number|null} [labelIdx] NavBarItemDef labelIdx
+         * @property {number|null} [iconIdx] NavBarItemDef iconIdx
+         * @property {number|null} [screenId] NavBarItemDef screenId
+         */
+
+        /**
+         * Constructs a new NavBarItemDef.
+         * @memberof esp_control
+         * @classdesc Represents a NavBarItemDef.
+         * @implements INavBarItemDef
+         * @constructor
+         * @param {esp_control.INavBarItemDef=} [properties] Properties to set
+         */
+        function NavBarItemDef(properties) {
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * NavBarItemDef idIdx.
+         * @member {number} idIdx
+         * @memberof esp_control.NavBarItemDef
+         * @instance
+         */
+        NavBarItemDef.prototype.idIdx = 0;
+
+        /**
+         * NavBarItemDef labelIdx.
+         * @member {number} labelIdx
+         * @memberof esp_control.NavBarItemDef
+         * @instance
+         */
+        NavBarItemDef.prototype.labelIdx = 0;
+
+        /**
+         * NavBarItemDef iconIdx.
+         * @member {number} iconIdx
+         * @memberof esp_control.NavBarItemDef
+         * @instance
+         */
+        NavBarItemDef.prototype.iconIdx = 0;
+
+        /**
+         * NavBarItemDef screenId.
+         * @member {number} screenId
+         * @memberof esp_control.NavBarItemDef
+         * @instance
+         */
+        NavBarItemDef.prototype.screenId = 0;
+
+        /**
+         * Creates a new NavBarItemDef instance using the specified properties.
+         * @function create
+         * @memberof esp_control.NavBarItemDef
+         * @static
+         * @param {esp_control.INavBarItemDef=} [properties] Properties to set
+         * @returns {esp_control.NavBarItemDef} NavBarItemDef instance
+         */
+        NavBarItemDef.create = function create(properties) {
+            return new NavBarItemDef(properties);
+        };
+
+        /**
+         * Encodes the specified NavBarItemDef message. Does not implicitly {@link esp_control.NavBarItemDef.verify|verify} messages.
+         * @function encode
+         * @memberof esp_control.NavBarItemDef
+         * @static
+         * @param {esp_control.INavBarItemDef} message NavBarItemDef message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        NavBarItemDef.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.idIdx != null && Object.hasOwnProperty.call(message, "idIdx"))
+                writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.idIdx);
+            if (message.labelIdx != null && Object.hasOwnProperty.call(message, "labelIdx"))
+                writer.uint32(/* id 2, wireType 0 =*/16).uint32(message.labelIdx);
+            if (message.iconIdx != null && Object.hasOwnProperty.call(message, "iconIdx"))
+                writer.uint32(/* id 3, wireType 0 =*/24).uint32(message.iconIdx);
+            if (message.screenId != null && Object.hasOwnProperty.call(message, "screenId"))
+                writer.uint32(/* id 4, wireType 0 =*/32).uint32(message.screenId);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified NavBarItemDef message, length delimited. Does not implicitly {@link esp_control.NavBarItemDef.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof esp_control.NavBarItemDef
+         * @static
+         * @param {esp_control.INavBarItemDef} message NavBarItemDef message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        NavBarItemDef.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a NavBarItemDef message from the specified reader or buffer.
+         * @function decode
+         * @memberof esp_control.NavBarItemDef
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {esp_control.NavBarItemDef} NavBarItemDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        NavBarItemDef.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.NavBarItemDef();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        message.idIdx = reader.uint32();
+                        break;
+                    }
+                case 2: {
+                        message.labelIdx = reader.uint32();
+                        break;
+                    }
+                case 3: {
+                        message.iconIdx = reader.uint32();
+                        break;
+                    }
+                case 4: {
+                        message.screenId = reader.uint32();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a NavBarItemDef message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof esp_control.NavBarItemDef
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {esp_control.NavBarItemDef} NavBarItemDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        NavBarItemDef.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a NavBarItemDef message.
+         * @function verify
+         * @memberof esp_control.NavBarItemDef
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        NavBarItemDef.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.idIdx != null && message.hasOwnProperty("idIdx"))
+                if (!$util.isInteger(message.idIdx))
+                    return "idIdx: integer expected";
+            if (message.labelIdx != null && message.hasOwnProperty("labelIdx"))
+                if (!$util.isInteger(message.labelIdx))
+                    return "labelIdx: integer expected";
+            if (message.iconIdx != null && message.hasOwnProperty("iconIdx"))
+                if (!$util.isInteger(message.iconIdx))
+                    return "iconIdx: integer expected";
+            if (message.screenId != null && message.hasOwnProperty("screenId"))
+                if (!$util.isInteger(message.screenId))
+                    return "screenId: integer expected";
+            return null;
+        };
+
+        /**
+         * Creates a NavBarItemDef message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof esp_control.NavBarItemDef
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {esp_control.NavBarItemDef} NavBarItemDef
+         */
+        NavBarItemDef.fromObject = function fromObject(object) {
+            if (object instanceof $root.esp_control.NavBarItemDef)
+                return object;
+            let message = new $root.esp_control.NavBarItemDef();
+            if (object.idIdx != null)
+                message.idIdx = object.idIdx >>> 0;
+            if (object.labelIdx != null)
+                message.labelIdx = object.labelIdx >>> 0;
+            if (object.iconIdx != null)
+                message.iconIdx = object.iconIdx >>> 0;
+            if (object.screenId != null)
+                message.screenId = object.screenId >>> 0;
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a NavBarItemDef message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof esp_control.NavBarItemDef
+         * @static
+         * @param {esp_control.NavBarItemDef} message NavBarItemDef
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        NavBarItemDef.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.defaults) {
+                object.idIdx = 0;
+                object.labelIdx = 0;
+                object.iconIdx = 0;
+                object.screenId = 0;
+            }
+            if (message.idIdx != null && message.hasOwnProperty("idIdx"))
+                object.idIdx = message.idIdx;
+            if (message.labelIdx != null && message.hasOwnProperty("labelIdx"))
+                object.labelIdx = message.labelIdx;
+            if (message.iconIdx != null && message.hasOwnProperty("iconIdx"))
+                object.iconIdx = message.iconIdx;
+            if (message.screenId != null && message.hasOwnProperty("screenId"))
+                object.screenId = message.screenId;
+            return object;
+        };
+
+        /**
+         * Converts this NavBarItemDef to JSON.
+         * @function toJSON
+         * @memberof esp_control.NavBarItemDef
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        NavBarItemDef.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for NavBarItemDef
+         * @function getTypeUrl
+         * @memberof esp_control.NavBarItemDef
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        NavBarItemDef.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/esp_control.NavBarItemDef";
+        };
+
+        return NavBarItemDef;
+    })();
+
+    esp_control.NavBarDef = (function() {
+
+        /**
+         * Properties of a NavBarDef.
+         * @memberof esp_control
+         * @interface INavBarDef
+         * @property {Array.<esp_control.INavBarItemDef>|null} [items] NavBarDef items
+         */
+
+        /**
+         * Constructs a new NavBarDef.
+         * @memberof esp_control
+         * @classdesc Represents a NavBarDef.
+         * @implements INavBarDef
+         * @constructor
+         * @param {esp_control.INavBarDef=} [properties] Properties to set
+         */
+        function NavBarDef(properties) {
+            this.items = [];
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * NavBarDef items.
+         * @member {Array.<esp_control.INavBarItemDef>} items
+         * @memberof esp_control.NavBarDef
+         * @instance
+         */
+        NavBarDef.prototype.items = $util.emptyArray;
+
+        /**
+         * Creates a new NavBarDef instance using the specified properties.
+         * @function create
+         * @memberof esp_control.NavBarDef
+         * @static
+         * @param {esp_control.INavBarDef=} [properties] Properties to set
+         * @returns {esp_control.NavBarDef} NavBarDef instance
+         */
+        NavBarDef.create = function create(properties) {
+            return new NavBarDef(properties);
+        };
+
+        /**
+         * Encodes the specified NavBarDef message. Does not implicitly {@link esp_control.NavBarDef.verify|verify} messages.
+         * @function encode
+         * @memberof esp_control.NavBarDef
+         * @static
+         * @param {esp_control.INavBarDef} message NavBarDef message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        NavBarDef.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.items != null && message.items.length)
+                for (let i = 0; i < message.items.length; ++i)
+                    $root.esp_control.NavBarItemDef.encode(message.items[i], writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
+            return writer;
+        };
+
+        /**
+         * Encodes the specified NavBarDef message, length delimited. Does not implicitly {@link esp_control.NavBarDef.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof esp_control.NavBarDef
+         * @static
+         * @param {esp_control.INavBarDef} message NavBarDef message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        NavBarDef.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a NavBarDef message from the specified reader or buffer.
+         * @function decode
+         * @memberof esp_control.NavBarDef
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {esp_control.NavBarDef} NavBarDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        NavBarDef.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.NavBarDef();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        if (!(message.items && message.items.length))
+                            message.items = [];
+                        message.items.push($root.esp_control.NavBarItemDef.decode(reader, reader.uint32()));
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a NavBarDef message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof esp_control.NavBarDef
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {esp_control.NavBarDef} NavBarDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        NavBarDef.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a NavBarDef message.
+         * @function verify
+         * @memberof esp_control.NavBarDef
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        NavBarDef.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.items != null && message.hasOwnProperty("items")) {
+                if (!Array.isArray(message.items))
+                    return "items: array expected";
+                for (let i = 0; i < message.items.length; ++i) {
+                    let error = $root.esp_control.NavBarItemDef.verify(message.items[i]);
+                    if (error)
+                        return "items." + error;
+                }
+            }
+            return null;
+        };
+
+        /**
+         * Creates a NavBarDef message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof esp_control.NavBarDef
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {esp_control.NavBarDef} NavBarDef
+         */
+        NavBarDef.fromObject = function fromObject(object) {
+            if (object instanceof $root.esp_control.NavBarDef)
+                return object;
+            let message = new $root.esp_control.NavBarDef();
+            if (object.items) {
+                if (!Array.isArray(object.items))
+                    throw TypeError(".esp_control.NavBarDef.items: array expected");
+                message.items = [];
+                for (let i = 0; i < object.items.length; ++i) {
+                    if (typeof object.items[i] !== "object")
+                        throw TypeError(".esp_control.NavBarDef.items: object expected");
+                    message.items[i] = $root.esp_control.NavBarItemDef.fromObject(object.items[i]);
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a NavBarDef message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof esp_control.NavBarDef
+         * @static
+         * @param {esp_control.NavBarDef} message NavBarDef
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        NavBarDef.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.arrays || options.defaults)
+                object.items = [];
+            if (message.items && message.items.length) {
+                object.items = [];
+                for (let j = 0; j < message.items.length; ++j)
+                    object.items[j] = $root.esp_control.NavBarItemDef.toObject(message.items[j], options);
+            }
+            return object;
+        };
+
+        /**
+         * Converts this NavBarDef to JSON.
+         * @function toJSON
+         * @memberof esp_control.NavBarDef
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        NavBarDef.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for NavBarDef
+         * @function getTypeUrl
+         * @memberof esp_control.NavBarDef
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        NavBarDef.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/esp_control.NavBarDef";
+        };
+
+        return NavBarDef;
+    })();
+
+    esp_control.AppShellDef = (function() {
+
+        /**
+         * Properties of an AppShellDef.
+         * @memberof esp_control
+         * @interface IAppShellDef
+         * @property {esp_control.INavBarDef|null} [navBar] AppShellDef navBar
+         */
+
+        /**
+         * Constructs a new AppShellDef.
+         * @memberof esp_control
+         * @classdesc Represents an AppShellDef.
+         * @implements IAppShellDef
+         * @constructor
+         * @param {esp_control.IAppShellDef=} [properties] Properties to set
+         */
+        function AppShellDef(properties) {
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * AppShellDef navBar.
+         * @member {esp_control.INavBarDef|null|undefined} navBar
+         * @memberof esp_control.AppShellDef
+         * @instance
+         */
+        AppShellDef.prototype.navBar = null;
+
+        /**
+         * Creates a new AppShellDef instance using the specified properties.
+         * @function create
+         * @memberof esp_control.AppShellDef
+         * @static
+         * @param {esp_control.IAppShellDef=} [properties] Properties to set
+         * @returns {esp_control.AppShellDef} AppShellDef instance
+         */
+        AppShellDef.create = function create(properties) {
+            return new AppShellDef(properties);
+        };
+
+        /**
+         * Encodes the specified AppShellDef message. Does not implicitly {@link esp_control.AppShellDef.verify|verify} messages.
+         * @function encode
+         * @memberof esp_control.AppShellDef
+         * @static
+         * @param {esp_control.IAppShellDef} message AppShellDef message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        AppShellDef.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.navBar != null && Object.hasOwnProperty.call(message, "navBar"))
+                $root.esp_control.NavBarDef.encode(message.navBar, writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
+            return writer;
+        };
+
+        /**
+         * Encodes the specified AppShellDef message, length delimited. Does not implicitly {@link esp_control.AppShellDef.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof esp_control.AppShellDef
+         * @static
+         * @param {esp_control.IAppShellDef} message AppShellDef message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        AppShellDef.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes an AppShellDef message from the specified reader or buffer.
+         * @function decode
+         * @memberof esp_control.AppShellDef
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {esp_control.AppShellDef} AppShellDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        AppShellDef.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.esp_control.AppShellDef();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        message.navBar = $root.esp_control.NavBarDef.decode(reader, reader.uint32());
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes an AppShellDef message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof esp_control.AppShellDef
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {esp_control.AppShellDef} AppShellDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        AppShellDef.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies an AppShellDef message.
+         * @function verify
+         * @memberof esp_control.AppShellDef
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        AppShellDef.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.navBar != null && message.hasOwnProperty("navBar")) {
+                let error = $root.esp_control.NavBarDef.verify(message.navBar);
+                if (error)
+                    return "navBar." + error;
+            }
+            return null;
+        };
+
+        /**
+         * Creates an AppShellDef message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof esp_control.AppShellDef
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {esp_control.AppShellDef} AppShellDef
+         */
+        AppShellDef.fromObject = function fromObject(object) {
+            if (object instanceof $root.esp_control.AppShellDef)
+                return object;
+            let message = new $root.esp_control.AppShellDef();
+            if (object.navBar != null) {
+                if (typeof object.navBar !== "object")
+                    throw TypeError(".esp_control.AppShellDef.navBar: object expected");
+                message.navBar = $root.esp_control.NavBarDef.fromObject(object.navBar);
+            }
+            return message;
+        };
+
+        /**
+         * Creates a plain object from an AppShellDef message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof esp_control.AppShellDef
+         * @static
+         * @param {esp_control.AppShellDef} message AppShellDef
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        AppShellDef.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.defaults)
+                object.navBar = null;
+            if (message.navBar != null && message.hasOwnProperty("navBar"))
+                object.navBar = $root.esp_control.NavBarDef.toObject(message.navBar, options);
+            return object;
+        };
+
+        /**
+         * Converts this AppShellDef to JSON.
+         * @function toJSON
+         * @memberof esp_control.AppShellDef
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        AppShellDef.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for AppShellDef
+         * @function getTypeUrl
+         * @memberof esp_control.AppShellDef
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        AppShellDef.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/esp_control.AppShellDef";
+        };
+
+        return AppShellDef;
+    })();
+
     esp_control.BindingDef = (function() {
 
         /**
@@ -4025,6 +4736,7 @@ export const esp_control = $root.esp_control = (() => {
          * @property {Array.<esp_control.IActionDef>|null} [actions] ManifestBundle actions
          * @property {Array.<esp_control.IScreenDef>|null} [screens] ManifestBundle screens
          * @property {Array.<esp_control.INodeDef>|null} [nodes] ManifestBundle nodes
+         * @property {esp_control.IAppShellDef|null} [appShell] ManifestBundle appShell
          */
 
         /**
@@ -4120,6 +4832,14 @@ export const esp_control = $root.esp_control = (() => {
         ManifestBundle.prototype.nodes = $util.emptyArray;
 
         /**
+         * ManifestBundle appShell.
+         * @member {esp_control.IAppShellDef|null|undefined} appShell
+         * @memberof esp_control.ManifestBundle
+         * @instance
+         */
+        ManifestBundle.prototype.appShell = null;
+
+        /**
          * Creates a new ManifestBundle instance using the specified properties.
          * @function create
          * @memberof esp_control.ManifestBundle
@@ -4166,6 +4886,8 @@ export const esp_control = $root.esp_control = (() => {
             if (message.nodes != null && message.nodes.length)
                 for (let i = 0; i < message.nodes.length; ++i)
                     $root.esp_control.NodeDef.encode(message.nodes[i], writer.uint32(/* id 9, wireType 2 =*/74).fork()).ldelim();
+            if (message.appShell != null && Object.hasOwnProperty.call(message, "appShell"))
+                $root.esp_control.AppShellDef.encode(message.appShell, writer.uint32(/* id 10, wireType 2 =*/82).fork()).ldelim();
             return writer;
         };
 
@@ -4246,6 +4968,10 @@ export const esp_control = $root.esp_control = (() => {
                         if (!(message.nodes && message.nodes.length))
                             message.nodes = [];
                         message.nodes.push($root.esp_control.NodeDef.decode(reader, reader.uint32()));
+                        break;
+                    }
+                case 10: {
+                        message.appShell = $root.esp_control.AppShellDef.decode(reader, reader.uint32());
                         break;
                     }
                 default:
@@ -4342,6 +5068,11 @@ export const esp_control = $root.esp_control = (() => {
                         return "nodes." + error;
                 }
             }
+            if (message.appShell != null && message.hasOwnProperty("appShell")) {
+                let error = $root.esp_control.AppShellDef.verify(message.appShell);
+                if (error)
+                    return "appShell." + error;
+            }
             return null;
         };
 
@@ -4418,6 +5149,11 @@ export const esp_control = $root.esp_control = (() => {
                     message.nodes[i] = $root.esp_control.NodeDef.fromObject(object.nodes[i]);
                 }
             }
+            if (object.appShell != null) {
+                if (typeof object.appShell !== "object")
+                    throw TypeError(".esp_control.ManifestBundle.appShell: object expected");
+                message.appShell = $root.esp_control.AppShellDef.fromObject(object.appShell);
+            }
             return message;
         };
 
@@ -4446,6 +5182,7 @@ export const esp_control = $root.esp_control = (() => {
                 object.schemaVersion = 0;
                 object.minAppVersion = "";
                 object.capabilities = null;
+                object.appShell = null;
             }
             if (message.version != null && message.hasOwnProperty("version"))
                 object.version = message.version;
@@ -4480,6 +5217,8 @@ export const esp_control = $root.esp_control = (() => {
                 for (let j = 0; j < message.nodes.length; ++j)
                     object.nodes[j] = $root.esp_control.NodeDef.toObject(message.nodes[j], options);
             }
+            if (message.appShell != null && message.hasOwnProperty("appShell"))
+                object.appShell = $root.esp_control.AppShellDef.toObject(message.appShell, options);
             return object;
         };
 

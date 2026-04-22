@@ -1203,6 +1203,315 @@ export namespace esp_control {
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
+    /** Properties of a NavBarItemDef. */
+    interface INavBarItemDef {
+
+        /** NavBarItemDef idIdx */
+        idIdx?: (number|null);
+
+        /** NavBarItemDef labelIdx */
+        labelIdx?: (number|null);
+
+        /** NavBarItemDef iconIdx */
+        iconIdx?: (number|null);
+
+        /** NavBarItemDef screenId */
+        screenId?: (number|null);
+    }
+
+    /** Represents a NavBarItemDef. */
+    class NavBarItemDef implements INavBarItemDef {
+
+        /**
+         * Constructs a new NavBarItemDef.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: esp_control.INavBarItemDef);
+
+        /** NavBarItemDef idIdx. */
+        public idIdx: number;
+
+        /** NavBarItemDef labelIdx. */
+        public labelIdx: number;
+
+        /** NavBarItemDef iconIdx. */
+        public iconIdx: number;
+
+        /** NavBarItemDef screenId. */
+        public screenId: number;
+
+        /**
+         * Creates a new NavBarItemDef instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns NavBarItemDef instance
+         */
+        public static create(properties?: esp_control.INavBarItemDef): esp_control.NavBarItemDef;
+
+        /**
+         * Encodes the specified NavBarItemDef message. Does not implicitly {@link esp_control.NavBarItemDef.verify|verify} messages.
+         * @param message NavBarItemDef message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: esp_control.INavBarItemDef, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified NavBarItemDef message, length delimited. Does not implicitly {@link esp_control.NavBarItemDef.verify|verify} messages.
+         * @param message NavBarItemDef message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: esp_control.INavBarItemDef, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a NavBarItemDef message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns NavBarItemDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): esp_control.NavBarItemDef;
+
+        /**
+         * Decodes a NavBarItemDef message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns NavBarItemDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): esp_control.NavBarItemDef;
+
+        /**
+         * Verifies a NavBarItemDef message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a NavBarItemDef message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns NavBarItemDef
+         */
+        public static fromObject(object: { [k: string]: any }): esp_control.NavBarItemDef;
+
+        /**
+         * Creates a plain object from a NavBarItemDef message. Also converts values to other types if specified.
+         * @param message NavBarItemDef
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: esp_control.NavBarItemDef, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this NavBarItemDef to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for NavBarItemDef
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
+    /** Properties of a NavBarDef. */
+    interface INavBarDef {
+
+        /** NavBarDef items */
+        items?: (esp_control.INavBarItemDef[]|null);
+    }
+
+    /** Represents a NavBarDef. */
+    class NavBarDef implements INavBarDef {
+
+        /**
+         * Constructs a new NavBarDef.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: esp_control.INavBarDef);
+
+        /** NavBarDef items. */
+        public items: esp_control.INavBarItemDef[];
+
+        /**
+         * Creates a new NavBarDef instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns NavBarDef instance
+         */
+        public static create(properties?: esp_control.INavBarDef): esp_control.NavBarDef;
+
+        /**
+         * Encodes the specified NavBarDef message. Does not implicitly {@link esp_control.NavBarDef.verify|verify} messages.
+         * @param message NavBarDef message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: esp_control.INavBarDef, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified NavBarDef message, length delimited. Does not implicitly {@link esp_control.NavBarDef.verify|verify} messages.
+         * @param message NavBarDef message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: esp_control.INavBarDef, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a NavBarDef message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns NavBarDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): esp_control.NavBarDef;
+
+        /**
+         * Decodes a NavBarDef message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns NavBarDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): esp_control.NavBarDef;
+
+        /**
+         * Verifies a NavBarDef message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a NavBarDef message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns NavBarDef
+         */
+        public static fromObject(object: { [k: string]: any }): esp_control.NavBarDef;
+
+        /**
+         * Creates a plain object from a NavBarDef message. Also converts values to other types if specified.
+         * @param message NavBarDef
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: esp_control.NavBarDef, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this NavBarDef to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for NavBarDef
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
+    /** Properties of an AppShellDef. */
+    interface IAppShellDef {
+
+        /** AppShellDef navBar */
+        navBar?: (esp_control.INavBarDef|null);
+    }
+
+    /** Represents an AppShellDef. */
+    class AppShellDef implements IAppShellDef {
+
+        /**
+         * Constructs a new AppShellDef.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: esp_control.IAppShellDef);
+
+        /** AppShellDef navBar. */
+        public navBar?: (esp_control.INavBarDef|null);
+
+        /**
+         * Creates a new AppShellDef instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns AppShellDef instance
+         */
+        public static create(properties?: esp_control.IAppShellDef): esp_control.AppShellDef;
+
+        /**
+         * Encodes the specified AppShellDef message. Does not implicitly {@link esp_control.AppShellDef.verify|verify} messages.
+         * @param message AppShellDef message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: esp_control.IAppShellDef, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified AppShellDef message, length delimited. Does not implicitly {@link esp_control.AppShellDef.verify|verify} messages.
+         * @param message AppShellDef message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: esp_control.IAppShellDef, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes an AppShellDef message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns AppShellDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): esp_control.AppShellDef;
+
+        /**
+         * Decodes an AppShellDef message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns AppShellDef
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): esp_control.AppShellDef;
+
+        /**
+         * Verifies an AppShellDef message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates an AppShellDef message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns AppShellDef
+         */
+        public static fromObject(object: { [k: string]: any }): esp_control.AppShellDef;
+
+        /**
+         * Creates a plain object from an AppShellDef message. Also converts values to other types if specified.
+         * @param message AppShellDef
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: esp_control.AppShellDef, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this AppShellDef to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for AppShellDef
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
     /** Properties of a BindingDef. */
     interface IBindingDef {
 
@@ -1504,6 +1813,9 @@ export namespace esp_control {
 
         /** ManifestBundle nodes */
         nodes?: (esp_control.INodeDef[]|null);
+
+        /** ManifestBundle appShell */
+        appShell?: (esp_control.IAppShellDef|null);
     }
 
     /** Represents a ManifestBundle. */
@@ -1541,6 +1853,9 @@ export namespace esp_control {
 
         /** ManifestBundle nodes. */
         public nodes: esp_control.INodeDef[];
+
+        /** ManifestBundle appShell. */
+        public appShell?: (esp_control.IAppShellDef|null);
 
         /**
          * Creates a new ManifestBundle instance using the specified properties.

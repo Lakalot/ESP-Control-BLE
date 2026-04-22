@@ -6,6 +6,30 @@
     "required": ["layout.sections", "rules.visibility"],
     "optional": []
   },
+  "appShell": {
+    "navBar": {
+      "items": [
+        {
+          "id": "home",
+          "label": "Home",
+          "icon": "home",
+          "viewId": "home"
+        },
+        {
+          "id": "stats",
+          "label": "Stats",
+          "icon": "bar-chart-2",
+          "viewId": "stats"
+        },
+        {
+          "id": "settings",
+          "label": "Settings",
+          "icon": "settings",
+          "viewId": "settings"
+        }
+      ]
+    }
+  },
   "resources": [
     {
       "id": "relay.auto",
@@ -212,12 +236,24 @@
       }
     }
   ],
-  "screens": [
+  "views": [
     {
       "id": "home",
       "firmwareSymbol": "home",
       "title": "Home",
       "rootNodeId": "home.root"
+    },
+    {
+      "id": "stats",
+      "firmwareSymbol": "stats_screen",
+      "title": "Stats",
+      "rootNodeId": "stats.root"
+    },
+    {
+      "id": "settings",
+      "firmwareSymbol": "settings_screen",
+      "title": "Settings",
+      "rootNodeId": "settings.root"
     }
   ],
   "nodes": [
@@ -225,7 +261,19 @@
       "id": "home.root",
       "firmwareSymbol": "home_root",
       "kind": "stack",
-      "children": ["home.banner", "lighting.section", "telemetry.section", "system.section", "advanced.section"]
+      "children": ["home.banner", "lighting.section"]
+    },
+    {
+      "id": "stats.root",
+      "firmwareSymbol": "stats_root",
+      "kind": "stack",
+      "children": ["telemetry.section", "system.section"]
+    },
+    {
+      "id": "settings.root",
+      "firmwareSymbol": "settings_root",
+      "kind": "stack",
+      "children": ["settings.section", "advanced.section"]
     },
     {
       "id": "home.banner",
@@ -361,14 +409,18 @@
       }
     },
     {
+      "id": "settings.section",
+      "firmwareSymbol": "settings_section",
+      "kind": "section",
+      "title": "Device",
+      "children": ["settings.rename", "settings.restart"]
+    },
+    {
       "id": "advanced.section",
       "firmwareSymbol": "advanced_section",
       "kind": "section",
       "title": "Advanced",
-      "visibleIf": {
-        "==": [{ "var": "runtime.role" }, "admin"]
-      },
-      "children": ["advanced.debug", "advanced.note", "advanced.reset", "advanced.rename", "advanced.restart"]
+      "children": ["advanced.debug", "advanced.note", "advanced.reset"]
     },
     {
       "id": "advanced.debug",
@@ -399,8 +451,8 @@
       }
     },
     {
-      "id": "advanced.rename",
-      "firmwareSymbol": "advanced_rename",
+      "id": "settings.rename",
+      "firmwareSymbol": "settings_rename",
       "kind": "widget",
       "widget": "text_input",
       "title": "Rename Device",
@@ -410,8 +462,8 @@
       }
     },
     {
-      "id": "advanced.restart",
-      "firmwareSymbol": "advanced_restart",
+      "id": "settings.restart",
+      "firmwareSymbol": "settings_restart",
       "kind": "widget",
       "widget": "button",
       "title": "Restart",

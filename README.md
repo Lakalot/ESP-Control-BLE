@@ -13,7 +13,7 @@ BLE-connected IoT dashboard for ESP32. Define your device UI with a JSON manifes
 └──────────────┘                       └──────────────────┘
 ```
 
-1. You write a `manifest.json` that describes your device's **resources** (data), **actions** (controls), and **UI layout** (screens & widgets)
+1. You write a `manifest.json` that describes your device's **resources** (data), **actions** (controls), and **UI layout** (`views`, nodes, and widgets)
 2. At build time, the manifest is compiled to protobuf and embedded into the firmware
 3. The mobile app connects via BLE, downloads the manifest, and **renders the UI automatically**
 4. Your C++ code publishes resource values and handles actions using generated **type-safe symbol constants**
@@ -115,7 +115,7 @@ ESP-Control-BLE/
 
 This is the heart of the system. It defines what your device **is** -- its data model, controls, and UI. The mobile app reads it and renders everything automatically.
 
-### Minimal Example
+### Minimal Example (No Navigation Bar)
 
 ```json
 {
@@ -145,7 +145,7 @@ This is the heart of the system. It defines what your device **is** -- its data 
       "inputSchema": { "type": "object", "additionalProperties": false, "properties": {} }
     }
   ],
-  "screens": [
+  "views": [
     {
       "id": "home",
       "firmwareSymbol": "home",
@@ -187,10 +187,74 @@ This is the heart of the system. It defines what your device **is** -- its data 
 | `schemaVersion` | integer | Yes | Schema revision (always `1`) |
 | `minAppVersion` | string | Yes | Minimum mobile app version (semver) |
 | `capabilities` | object | Yes | Feature requirements for the app |
+| `appShell` | object | No | Optional shell configuration such as `navBar` |
 | `resources` | array | Yes | Data resources (max 128) |
 | `actions` | array | Yes | Callable actions (max 128) |
-| `screens` | array | Yes | UI screens (max 32) |
+| `views` | array | Yes | UI views (max 32) |
 | `nodes` | array | Yes | UI tree nodes (max 512) |
+
+### Views And Optional Bottom Navigation
+
+Manifest authoring now uses `views`. Each view points to a root node, and the mobile app can optionally render a fixed bottom bar when `appShell.navBar` is present.
+
+Minimal example without nav:
+
+```json
+{
+  "views": [
+    {
+      "id": "home",
+      "firmwareSymbol": "home",
+      "title": "Home",
+      "rootNodeId": "home.root"
+    }
+  ]
+}
+```
+
+Example with nav:
+
+```json
+{
+  "appShell": {
+    "navBar": {
+      "items": [
+        { "id": "home", "label": "Home", "icon": "home", "viewId": "home" },
+        { "id": "stats", "label": "Stats", "icon": "bar-chart-2", "viewId": "stats" },
+        { "id": "settings", "label": "Settings", "icon": "settings", "viewId": "settings" }
+      ]
+    }
+  },
+  "views": [
+    {
+      "id": "home",
+      "firmwareSymbol": "home",
+      "title": "Home",
+      "rootNodeId": "home.root"
+    },
+    {
+      "id": "stats",
+      "firmwareSymbol": "stats_screen",
+      "title": "Stats",
+      "rootNodeId": "stats.root"
+    },
+    {
+      "id": "settings",
+      "firmwareSymbol": "settings_screen",
+      "title": "Settings",
+      "rootNodeId": "settings.root"
+    }
+  ]
+}
+```
+
+`appShell.navBar` is optional. When present, use 1 to 5 items, each `viewId` must reference one of the authored `views`, and the first nav item becomes the initial visible screen.
+
+Common Feather icon names: `home`, `bar-chart-2`, `settings`, `sliders`, `activity`, `thermometer`, `wifi`, `clock`, `toggle-left`, `power`.
+
+Unknown icon names currently fall back to `circle` in the mobile app.
+
+Icon reference: Expo ships Feather icons through `@expo/vector-icons`. Browse names at https://icons.expo.fyi/ and the Feather set docs at https://docs.expo.dev/guides/icons/.
 
 ### ID Rules
 
@@ -409,11 +473,11 @@ The `inputSchema` follows JSON Schema conventions. The app extracts a `value` fi
 
 ---
 
-## Screens & Nodes
+## Views & Nodes
 
-The UI is a tree of nodes. Each screen has a root node, and nodes can contain children to create layouts.
+The UI is a tree of nodes. Each view has a root node, and nodes can contain children to create layouts.
 
-### Screens
+### Views
 
 ```json
 {
@@ -1123,7 +1187,7 @@ npx tsx src/cli/main.ts symbols \
 | Max manifest resources | Schema | 128 |
 | Max manifest actions | Schema | 128 |
 | Max manifest nodes | Schema | 512 |
-| Max manifest screens | Schema | 32 |
+| Max manifest views | Schema | 32 |
 
 ---
 

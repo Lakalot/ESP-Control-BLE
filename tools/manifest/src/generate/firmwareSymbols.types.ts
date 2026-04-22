@@ -8,9 +8,11 @@ export interface FirmwareSymbolItem {
 export interface FirmwareSymbolManifest {
   resources: readonly FirmwareSymbolItem[];
   actions: readonly FirmwareSymbolItem[];
-  screens: readonly FirmwareSymbolItem[];
   nodes: readonly FirmwareSymbolItem[];
 }
+
+export type FirmwareSymbolManifestInput = FirmwareSymbolManifest &
+  ({ screens: readonly FirmwareSymbolItem[] } | { views: readonly FirmwareSymbolItem[] });
 
 export interface GeneratedFirmwareSymbols {
   headerText: string;

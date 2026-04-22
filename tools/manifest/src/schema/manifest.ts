@@ -1,4 +1,5 @@
 import { Type, type Static } from '@sinclair/typebox';
+import { AppShellSpec } from './appShell.js';
 import { SlugId } from './primitives.js';
 import { ResourceSpec } from './resources.js';
 import { ActionSpec } from './actions.js';
@@ -19,9 +20,10 @@ export const ManifestSpec = Type.Object(
     schemaVersion: Type.Integer({ minimum: 1, maximum: 1 }),
     minAppVersion: Type.String({ pattern: '^\\d+\\.\\d+\\.\\d+$' }),
     capabilities: CapabilitiesSpec,
+    appShell: Type.Optional(AppShellSpec),
     resources: Type.Array(ResourceSpec, { maxItems: 128 }),
     actions: Type.Array(ActionSpec, { maxItems: 128 }),
-    screens: Type.Array(ScreenSpec, { maxItems: 32 }),
+    views: Type.Array(ScreenSpec, { maxItems: 32 }),
     nodes: Type.Array(NodeSpec, { maxItems: 512 }),
   },
   {

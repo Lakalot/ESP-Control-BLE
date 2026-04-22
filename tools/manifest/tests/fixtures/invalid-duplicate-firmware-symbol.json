@@ -30,7 +30,7 @@
       "inputSchema": {}
     }
   ],
-  "screens": [
+  "views": [
     {
       "id": "home",
       "firmwareSymbol": "home_screen",

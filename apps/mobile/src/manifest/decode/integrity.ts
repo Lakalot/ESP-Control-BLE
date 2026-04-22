@@ -44,6 +44,18 @@ export function assertManifestIntegrity(m: RuntimeManifest): void {
   if (m.screens.size === 0) {
     throw new ManifestDecodeError('no screens declared');
   }
+  if (m.appShell?.navBar) {
+    if (m.appShell.navBar.items.length < 1 || m.appShell.navBar.items.length > 5) {
+      throw new ManifestDecodeError('navBar must declare between 1 and 5 items');
+    }
+    for (const item of m.appShell.navBar.items) {
+      if (!m.screens.has(item.screenSlug)) {
+        throw new ManifestDecodeError(
+          `nav item '${item.id}' references missing screen '${item.screenSlug}'`,
+        );
+      }
+    }
+  }
   for (const screen of m.screens.values()) {
     if (!m.nodes.has(screen.rootNodeSlug)) {
       throw new ManifestDecodeError(

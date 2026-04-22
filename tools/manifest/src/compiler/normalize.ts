@@ -7,12 +7,21 @@ import { resolveRefs } from './resolveRefs.js';
 import { StringTable } from './stringTable.js';
 
 type Manifest = Static<typeof ManifestSpec>;
+type CompilerManifest = Omit<Manifest, 'views'> & { screens: Manifest['views'] };
+
+export interface NormalizedNavBarItem {
+  idIdx: number;
+  labelIdx: number;
+  iconIdx: number;
+  screenId: number;
+}
 
 export interface NormalizedManifest {
   version: 5;
   schemaVersion: number;
   minAppVersion: string;
   capabilities: { featureIdxs: number[] };
+  appShell: { navBarItems: NormalizedNavBarItem[] } | null;
   strings: string[];
   resources: NormalizedResource[];
   actions: NormalizedAction[];
@@ -112,6 +121,7 @@ const WIDGET_KIND_MAP: Record<string, number> = {
 };
 
 export function normalize(input: Manifest): NormalizedManifest {
+  const compilerInput: CompilerManifest = { ...input, screens: input.views };
   const validation = validateManifest(input);
   if (!validation.ok) {
     throw new Error(
@@ -121,15 +131,15 @@ export function normalize(input: Manifest): NormalizedManifest {
     );
   }
 
-  const ruleDiagnostics = lintRules(input);
+  const ruleDiagnostics = lintRules(compilerInput);
   if (ruleDiagnostics.length > 0) {
     throw new Error(
       `manifest rules failed lint: ${ruleDiagnostics.map((d) => d.message).join('; ')}`,      
     );
   }
 
-  const ids = assignIds(input);
-  resolveRefs(input, ids);
+  const ids = assignIds(compilerInput);
+  resolveRefs(compilerInput, ids);
 
   const strings = new StringTable();
   const toRule = (rule: unknown): { jsonlogic: string } | null =>
@@ -163,16 +173,36 @@ export function normalize(input: Manifest): NormalizedManifest {
       : 0,
   }));
 
-  const screens = input.screens.map((screen) => ({
-    id: ids.screens.get(screen.id)!,
-    slugIdx: strings.intern(screen.id),
-    titleIdx: strings.intern(screen.title),
-    routeKeyIdx: strings.internOptional(screen.routeKey),
-    rootNodeId: ids.nodes.get(screen.rootNodeId)!,
-    entryRules: (screen.entryRules ?? []).map((rule) => ({
+  const screens = input.views.map((view) => ({
+    id: ids.screens.get(view.id)!,
+    slugIdx: strings.intern(view.id),
+    titleIdx: strings.intern(view.title),
+    routeKeyIdx: strings.internOptional(view.routeKey),
+    rootNodeId: ids.nodes.get(view.rootNodeId)!,
+    entryRules: (view.entryRules ?? []).map((rule) => ({
       jsonlogic: JSON.stringify(rule),
     })),
   }));
+
+  const appShell = input.appShell?.navBar
+    ? {
+        navBarItems: input.appShell.navBar.items.map((item) => {
+          const screenId = ids.screens.get(item.viewId);
+          if (screenId === undefined) {
+            throw new Error(
+              `navBar item '${item.id}' references unknown viewId '${item.viewId}'`,
+            );
+          }
+
+          return {
+            idIdx: strings.intern(item.id),
+            labelIdx: strings.intern(item.label),
+            iconIdx: strings.intern(item.icon),
+            screenId,
+          };
+        }),
+      }
+    : null;
 
   const nodes = input.nodes.map((node) => ({
     id: ids.nodes.get(node.id)!,
@@ -207,6 +237,7 @@ export function normalize(input: Manifest): NormalizedManifest {
     schemaVersion: input.schemaVersion,
     minAppVersion: input.minAppVersion,
     capabilities: { featureIdxs },
+    appShell,
     strings: strings.toArray().slice(),
     resources,
     actions,

@@ -4,6 +4,7 @@ import { decodeManifest, encodeManifest } from '../src/compiler/encodeProto.js';
 import { MINIMAL_MANIFEST } from './fixtures/minimal.manifest.js';
 import { DEMO_MANIFEST } from './fixtures/demo.manifest.js';
 import { UNKNOWN_VAR_MANIFEST } from './fixtures/invalid-rule-var.js';
+import { NAV_MANIFEST } from './fixtures/nav.manifest.js';
 
 describe('encodeManifest', () => {
   it('encodes the minimal manifest to non-empty bytes', () => {
@@ -19,8 +20,25 @@ describe('encodeManifest', () => {
     expect(decoded.version).toBe(5);
     expect(decoded.resources).toHaveLength(1);
     expect(decoded.nodes).toHaveLength(2);
+    expect(decoded.appShell ?? null).toBeNull();
     const strings = (decoded.strings ?? []).map((entry) => entry.value);
     expect(strings).toContain('relay.auto');
+  });
+
+  it('encodes navBar items onto the wire using screen ids', () => {
+    const normalized = normalize(NAV_MANIFEST);
+    const decoded = decodeManifest(encodeManifest(normalized));
+    const item = decoded.appShell?.navBar?.items?.[0];
+    const strings = (decoded.strings ?? []).map((entry) => entry.value ?? '');
+
+    expect(decoded.appShell?.navBar?.items).toHaveLength(1);
+    expect(item?.idIdx).toBe(normalized.appShell?.navBarItems[0]?.idIdx);
+    expect(item?.labelIdx).toBe(normalized.appShell?.navBarItems[0]?.labelIdx);
+    expect(item?.iconIdx).toBe(normalized.appShell?.navBarItems[0]?.iconIdx);
+    expect(strings[item?.idIdx ?? 0]).toBe('home');
+    expect(strings[item?.labelIdx ?? 0]).toBe('Home');
+    expect(strings[item?.iconIdx ?? 0]).toBe('home');
+    expect(item?.screenId).toBe(normalized.appShell?.navBarItems[0]?.screenId);
   });
 
   it('normalizes capability metadata from the demo fixture', () => {
@@ -49,7 +67,7 @@ describe('encodeManifest', () => {
       capabilities: { required: [], optional: [] },
       resources: [],
       actions: [],
-      screens: [],
+      views: [],
       nodes: [
         { id: 'w.text_input', firmwareSymbol: 'w_text_input', kind: 'widget', widget: 'text_input' },
         { id: 'w.badge', firmwareSymbol: 'w_badge', kind: 'widget', widget: 'badge' },

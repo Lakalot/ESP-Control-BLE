@@ -222,11 +222,32 @@ export function decodeManifest(bytes: Uint8Array): RuntimeManifest {
     (msg.capabilities?.featureIdxs ?? []).map((i) => sReq(i, 'capability')),
   );
 
+  const appShell = msg.appShell?.navBar
+    ? {
+        navBar: {
+          items: (msg.appShell.navBar.items ?? []).map((item) => {
+            const id = sReq(item.idIdx, 'nav.id');
+            const resolvedScreenSlug = screenSlug.get(item.screenId!);
+            if (!resolvedScreenSlug) {
+              throw new ManifestDecodeError(`nav item '${id}' has unknown screenId`);
+            }
+            return {
+              id,
+              label: sReq(item.labelIdx, 'nav.label'),
+              icon: sReq(item.iconIdx, 'nav.icon'),
+              screenSlug: resolvedScreenSlug,
+            };
+          }),
+        },
+      }
+    : undefined;
+
   const out: RuntimeManifest = {
     version: 5,
     schemaVersion: 1,
     minAppVersion: (msg as any).minAppVersion ?? '0.0.0',
     capabilities,
+    appShell,
     resources,
     actions,
     screens,

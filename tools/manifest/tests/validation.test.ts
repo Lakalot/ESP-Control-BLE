@@ -29,7 +29,7 @@ describe('validateManifest', () => {
     }
   });
 
-  it('accepts firmwareSymbol on resources actions screens and nodes', () => {
+  it('accepts firmwareSymbol on resources actions views and nodes', () => {
     const result = validateManifest({
       ...MINIMAL_MANIFEST,
       resources: [
@@ -44,9 +44,9 @@ describe('validateManifest', () => {
           firmwareSymbol: 'relay_toggle',
         },
       ],
-      screens: [
+      views: [
         {
-          ...MINIMAL_MANIFEST.screens[0],
+          ...MINIMAL_MANIFEST.views[0],
           firmwareSymbol: 'home_screen',
         },
       ],

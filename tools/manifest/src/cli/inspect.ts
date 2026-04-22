@@ -8,9 +8,10 @@ export async function inspectCmd(sourcePath: string, includeIds = false): Promis
   const manifest = (await loadManifestSource(sourcePath)) as {
     resources: { id: string }[];
     actions: { id: string }[];
-    screens: unknown[];
     nodes: unknown[];
-  };
+  } & ({ screens: unknown[] } | { views: unknown[] });
+
+  const screens = 'screens' in manifest ? manifest.screens : manifest.views;
 
   const normalized = normalize(manifest as never);
   const ids = assignIds(manifest as never);
@@ -18,7 +19,7 @@ export async function inspectCmd(sourcePath: string, includeIds = false): Promis
 
   return {
     exitCode: 0,
-    stdout: buildOutput(manifest, normalized, ids, bytes.byteLength, includeIds),
+    stdout: buildOutput({ ...manifest, screens }, normalized, ids, bytes.byteLength, includeIds),
     stderr: '',
   };
 }

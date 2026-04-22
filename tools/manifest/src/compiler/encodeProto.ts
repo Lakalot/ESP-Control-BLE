@@ -9,6 +9,13 @@ export function encodeManifest(manifest: NormalizedManifest): Uint8Array {
     schemaVersion: manifest.schemaVersion,
     minAppVersion: manifest.minAppVersion,
     capabilities: { featureIdxs: manifest.capabilities.featureIdxs },
+    appShell: manifest.appShell
+      ? {
+          navBar: {
+            items: manifest.appShell.navBarItems,
+          },
+        }
+      : null,
     strings: manifest.strings.map((value) => ({ value })),
     resources: manifest.resources,
     actions: manifest.actions,

@@ -120,6 +120,21 @@ message ScreenDef {
   repeated Rule entry_rules = 6;
 }
 
+message NavBarItemDef {
+  uint32 id_idx = 1;
+  uint32 label_idx = 2;
+  uint32 icon_idx = 3;
+  uint32 screen_id = 4;
+}
+
+message NavBarDef {
+  repeated NavBarItemDef items = 1;
+}
+
+message AppShellDef {
+  NavBarDef nav_bar = 1;
+}
+
 message BindingDef {
   uint32 resource_id = 1;
   uint32 action_id = 2;
@@ -151,6 +166,7 @@ message ManifestBundle {
   repeated ActionDef actions = 7;
   repeated ScreenDef screens = 8;
   repeated NodeDef nodes = 9;
+  AppShellDef app_shell = 10;
 }
 
 enum Status {

@@ -17,9 +17,9 @@ describe('lintRules', () => {
   it('reports unsupported operators', () => {
     const diags = lintRules({
       ...MINIMAL_MANIFEST,
-      screens: [
+      views: [
         {
-          ...MINIMAL_MANIFEST.screens[0],
+          ...MINIMAL_MANIFEST.views[0],
           id: 'home',
           firmwareSymbol: 'home_screen',
           title: 'Home',
@@ -30,5 +30,23 @@ describe('lintRules', () => {
     });
     expect(diags).toHaveLength(1);
     expect(diags[0]!.message).toContain("operator '+'");
+  });
+
+  it('uses the authored views path in entry rule diagnostics', () => {
+    const diags = lintRules({
+      ...MINIMAL_MANIFEST,
+      views: [
+        {
+          ...MINIMAL_MANIFEST.views[0],
+          entryRules: [{ var: 'resource.nonexistent' }],
+        },
+      ],
+    });
+
+    expect(diags).toHaveLength(1);
+    expect(diags[0]).toMatchObject({
+      path: '/views/0/entryRules/0',
+      keyword: 'ruleVarResource',
+    });
   });
 });

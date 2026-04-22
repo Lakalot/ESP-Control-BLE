@@ -130,7 +130,7 @@ export const DEMO_MANIFEST: Static<typeof ManifestSpec> = {
       },
     },
   ],
-  screens: [
+  views: [
     {
       id: 'home',
       firmwareSymbol: 'home_screen',

@@ -52,6 +52,19 @@ export interface RuntimeScreen {
   entryRules: readonly RuntimeRule[];
 }
 
+export interface RuntimeNavBarItem {
+  id: string;
+  label: string;
+  icon: string;
+  screenSlug: string;
+}
+
+export interface RuntimeAppShell {
+  navBar?: {
+    items: readonly RuntimeNavBarItem[];
+  };
+}
+
 export type RuntimeNode =
   | RuntimeContainerNode
   | RuntimeWidgetNode;
@@ -99,6 +112,7 @@ export interface RuntimeManifest {
   schemaVersion: 1;
   minAppVersion: string;
   capabilities: ReadonlySet<string>;
+  appShell: RuntimeAppShell | undefined;
   resources: ReadonlyMap<string, RuntimeResource>;
   actions: ReadonlyMap<string, RuntimeAction>;
   screens: ReadonlyMap<string, RuntimeScreen>;

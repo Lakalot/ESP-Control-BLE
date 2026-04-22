@@ -1,7 +1,10 @@
-import type { Static } from '@sinclair/typebox';
-import type { ManifestSpec } from '../schema/manifest.js';
+type ScreenIds = readonly { id: string }[];
 
-type Manifest = Static<typeof ManifestSpec>;
+export type IdManifest = {
+  resources: readonly { id: string }[];
+  actions: readonly { id: string }[];
+  nodes: readonly { id: string }[];
+} & ({ screens: ScreenIds } | { views: ScreenIds });
 
 export interface IdMaps {
   resources: Map<string, number>;
@@ -10,7 +13,7 @@ export interface IdMaps {
   nodes: Map<string, number>;
 }
 
-export function assignIds(manifest: Manifest): IdMaps {
+export function assignIds(manifest: IdManifest): IdMaps {
   const build = (items: readonly { id: string }[]): Map<string, number> => {
     const out = new Map<string, number>();
     [...items]
@@ -21,10 +24,12 @@ export function assignIds(manifest: Manifest): IdMaps {
     return out;
   };
 
+  const screens = 'screens' in manifest ? manifest.screens : manifest.views;
+
   return {
     resources: build(manifest.resources),
     actions: build(manifest.actions),
-    screens: build(manifest.screens),
+    screens: build(screens),
     nodes: build(manifest.nodes),
   };
 }

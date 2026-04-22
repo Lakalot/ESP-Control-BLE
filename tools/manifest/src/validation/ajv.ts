@@ -33,7 +33,7 @@ function collectDuplicateIdErrors(manifest: Record<string, unknown>): Diagnostic
   const sections: Array<[string, unknown]> = [
     ['resources', manifest.resources],
     ['actions', manifest.actions],
-    ['screens', manifest.screens],
+    ['views', manifest.views],
     ['nodes', manifest.nodes],
   ];
   const out: Diagnostic[] = [];
@@ -63,7 +63,7 @@ function collectDuplicateFirmwareSymbolErrors(manifest: Record<string, unknown>)
   const sections: Array<[string, unknown]> = [
     ['resources', manifest.resources],
     ['actions', manifest.actions],
-    ['screens', manifest.screens],
+    ['views', manifest.views],
     ['nodes', manifest.nodes],
   ];
   const out: Diagnostic[] = [];
@@ -93,7 +93,7 @@ function collectFirmwareSymbolCollisionErrors(manifest: Record<string, unknown>)
   const sections: Array<[string, unknown]> = [
     ['resources', manifest.resources],
     ['actions', manifest.actions],
-    ['screens', manifest.screens],
+    ['views', manifest.views],
     ['nodes', manifest.nodes],
   ];
   const out: Diagnostic[] = [];

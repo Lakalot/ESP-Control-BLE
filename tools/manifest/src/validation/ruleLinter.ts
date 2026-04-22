@@ -1,17 +1,22 @@
-import type { Static } from '@sinclair/typebox';
 import { ALLOWED_RULE_OPERATORS } from '../schema/rules.js';
-import type { ManifestSpec } from '../schema/manifest.js';
 import type { Diagnostic } from './diagnostics.js';
 
-type Manifest = Static<typeof ManifestSpec>;
 type RuleTree = unknown;
+type RuleScreens = readonly ({ entryRules?: readonly RuleTree[] } & Record<string, unknown>)[];
+
+export type RuleLintManifest = {
+  resources: readonly { id: string }[];
+  nodes: readonly { visibleIf?: RuleTree; enabledIf?: RuleTree }[];
+} & ({ screens: RuleScreens } | { views: RuleScreens });
 
 const OP_SET = new Set<string>(ALLOWED_RULE_OPERATORS);
 const ALLOWED_NAMESPACES = ['resource', 'screen', 'runtime'] as const;
 
-export function lintRules(manifest: Manifest): Diagnostic[] {
+export function lintRules(manifest: RuleLintManifest): Diagnostic[] {
   const out: Diagnostic[] = [];
   const resourceIds = new Set(manifest.resources.map((r) => r.id));
+  const screenCollectionName = 'screens' in manifest ? 'screens' : 'views';
+  const screens = 'screens' in manifest ? manifest.screens : manifest.views;
 
   const visitRule = (path: string, rule: RuleTree): void => {
     if (rule === null || typeof rule !== 'object') return;
@@ -44,13 +49,13 @@ export function lintRules(manifest: Manifest): Diagnostic[] {
   };
 
   manifest.nodes.forEach((node, index) => {
-    visitRule(`/nodes/${index}/visibleIf`, (node as { visibleIf?: RuleTree }).visibleIf);     
-    visitRule(`/nodes/${index}/enabledIf`, (node as { enabledIf?: RuleTree }).enabledIf);     
+    visitRule(`/nodes/${index}/visibleIf`, node.visibleIf);
+    visitRule(`/nodes/${index}/enabledIf`, node.enabledIf);
   });
 
-  manifest.screens.forEach((screen, index) => {
-    screen.entryRules?.forEach((rule, ruleIndex) => {
-      visitRule(`/screens/${index}/entryRules/${ruleIndex}`, rule);
+  screens.forEach((screen: RuleScreens[number], index: number) => {
+    screen.entryRules?.forEach((rule: RuleTree, ruleIndex: number) => {
+      visitRule(`/${screenCollectionName}/${index}/entryRules/${ruleIndex}`, rule);
     });
   });
 
@@ -73,7 +78,7 @@ function checkVarRef(
   }
 
   const [namespace, ...rest] = payload.split('.');
-  if (!ALLOWED_NAMESPACES.includes(namespace as (typeof ALLOWED_NAMESPACES)[number])) {       
+  if (!ALLOWED_NAMESPACES.includes(namespace as (typeof ALLOWED_NAMESPACES)[number])) {
     out.push({
       path,
       keyword: 'ruleVarNamespace',

@@ -43,7 +43,7 @@ const MANIFEST_WITH_SYMBOLS = {
       inputSchema: {},
     },
   ],
-  screens: [
+  views: [
     {
       id: 'home',
       firmwareSymbol: 'home_screen',
@@ -188,7 +188,7 @@ describe('generateFirmwareSymbols', () => {
       ...MANIFEST_WITH_SYMBOLS,
       resources: [],
       actions: [],
-      screens: [],
+      views: [],
       nodes: [],
     } as never);
 

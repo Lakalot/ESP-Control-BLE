@@ -29,7 +29,7 @@ export const MINIMAL_MANIFEST: Static<typeof ManifestSpec> = {
       },
     },
   ],
-  screens: [
+  views: [
     {
       id: 'home',
       firmwareSymbol: 'home_screen',

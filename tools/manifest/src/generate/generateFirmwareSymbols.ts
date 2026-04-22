@@ -3,6 +3,7 @@ import type {
   FirmwareSymbolCategory,
   FirmwareSymbolItem,
   FirmwareSymbolManifest,
+  FirmwareSymbolManifestInput,
   GeneratedFirmwareSymbols,
 } from './firmwareSymbols.types.js';
 import { GENERATED_TOP_LEVEL_NAMES_SET } from './firmwareSymbolRules.js';
@@ -115,7 +116,7 @@ const RESERVED_KEYWORDS = new Set([
 
 interface CategoryConfig {
   singular: FirmwareSymbolCategory;
-  plural: keyof FirmwareSymbolManifest;
+  plural: 'resources' | 'actions' | 'screens' | 'nodes';
   namespace: string;
   tableName: string;
   lookupName: string;
@@ -159,12 +160,17 @@ const CATEGORY_CONFIGS: readonly CategoryConfig[] = [
 ] as const;
 
 export function generateFirmwareSymbols(
-  manifest: FirmwareSymbolManifest,
+  manifest: FirmwareSymbolManifestInput,
 ): GeneratedFirmwareSymbols {
   const ids = assignIds(manifest as never);
+  const screens = 'screens' in manifest ? manifest.screens : manifest.views;
   const categories = CATEGORY_CONFIGS.map((config) => ({
     ...config,
-    entries: validateCategory(config, manifest[config.plural], ids[config.plural]),
+    entries: validateCategory(
+      config,
+      config.plural === 'screens' ? screens : manifest[config.plural],
+      ids[config.plural],
+    ),
   }));
 
   return {

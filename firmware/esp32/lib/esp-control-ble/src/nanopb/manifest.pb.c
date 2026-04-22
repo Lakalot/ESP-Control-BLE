@@ -43,6 +43,15 @@ PB_BIND(esp_control_ActionDef, esp_control_ActionDef, AUTO)
 PB_BIND(esp_control_ScreenDef, esp_control_ScreenDef, 2)
 
 
+PB_BIND(esp_control_NavBarItemDef, esp_control_NavBarItemDef, AUTO)
+
+
+PB_BIND(esp_control_NavBarDef, esp_control_NavBarDef, AUTO)
+
+
+PB_BIND(esp_control_AppShellDef, esp_control_AppShellDef, AUTO)
+
+
 PB_BIND(esp_control_BindingDef, esp_control_BindingDef, AUTO)
 
 
