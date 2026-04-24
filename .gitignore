@@ -4,6 +4,7 @@ node_modules/
 dist/
 build/
 build_cache/
+.tmp/
 *.log
 .DS_Store
 docs/superpowers/

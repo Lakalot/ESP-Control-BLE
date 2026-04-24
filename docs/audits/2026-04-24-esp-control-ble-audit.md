@@ -24,7 +24,9 @@ _Filled in last (Task 11)._
 
 ### 2.2 Static measurement commands
 
-Reproducible from repo root on Windows/PowerShell:
+Reproducible from repo root on Windows/PowerShell. If `pwsh` (PowerShell 7) is not
+on PATH, substitute `powershell` (Windows PowerShell 5.1) — both work identically
+for these scripts.
 
 ```powershell
 # Full snapshot
