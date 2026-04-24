@@ -6,16 +6,18 @@ import { fileURLToPath } from 'node:url';
 import { runCli } from '../src/cli/main.js';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
-const DEMO = join(HERE, 'fixtures', 'demo.manifest.ts');
+const DEMO = join(HERE, 'fixtures', 'demo.manifest.yaml');
+const MINIMAL_YAML = join(HERE, 'fixtures', 'minimal.manifest.yaml');
+const MULTI_VIEW_YAML = join(HERE, 'fixtures', 'multi-view.manifest.yaml');
 
 describe('runCli', () => {
-  it('validate returns exitCode 0 for the demo fixture', async () => {
+  it('validate returns exitCode 0 for the YAML demo fixture', async () => {
     const result = await runCli(['validate', '--source', DEMO]);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('OK');
   });
 
-  it('compile writes a protobuf file', async () => {
+  it('compile writes a protobuf file from the YAML demo fixture', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'manifest-'));
     const out = join(dir, 'manifest.pb');
     const result = await runCli(['compile', '--source', DEMO, '--out', out]);
@@ -23,7 +25,57 @@ describe('runCli', () => {
     expect(readFileSync(out).byteLength).toBeGreaterThan(0);
   });
 
-  it('inspect prints counts and byte size', async () => {
+  it('validate returns exitCode 0 for a YAML authoring fixture', async () => {
+    const result = await runCli(['validate', '--source', MINIMAL_YAML]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('OK');
+  });
+
+  it('validate returns canonical reference diagnostics for invalid YAML authoring ids', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'manifest-'));
+    const broken = join(dir, 'broken.manifest.yaml');
+
+    writeFileSync(
+      broken,
+      `version: 5
+schemaVersion: 1
+minAppVersion: 1.0.0
+capabilities:
+  required: []
+  optional: []
+resources:
+  - id: relay.auto
+    firmwareSymbol: relay_auto
+    label: Main Power
+    valueType: bool
+    readMode: subscribe
+    staleAfterMs: 5000
+actions: []
+views:
+  - id: home
+    title: Home
+    content:
+      - kind: toggle
+        id: home.toggle
+        title: Main Power
+        resource: relay.missing
+`,
+    );
+
+    const result = await runCli(['validate', '--source', broken]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("views[0].content[0].resource: unknown resource 'relay.missing'");
+  });
+
+  it('compile writes a protobuf file from YAML authoring', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'manifest-'));
+    const out = join(dir, 'manifest.pb');
+    const result = await runCli(['compile', '--source', MINIMAL_YAML, '--out', out]);
+    expect(result.exitCode).toBe(0);
+    expect(readFileSync(out).byteLength).toBeGreaterThan(0);
+  });
+
+  it('inspect prints counts and byte size for the YAML demo fixture', async () => {
     const result = await runCli(['inspect', '--source', DEMO]);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toMatch(/resources:\s+\d+/);
@@ -31,7 +83,7 @@ describe('runCli', () => {
     expect(result.stdout).toMatch(/bytes:\s+\d+/);
   });
 
-  it('inspect prints runtime ids when asked', async () => {
+  it('inspect prints runtime ids for the YAML demo fixture when asked', async () => {
     const result = await runCli(['inspect', '--source', DEMO, '--ids']);
     expect(result.exitCode).toBe(0);
     const lines = result.stdout.trimEnd().split(/\r?\n/);
@@ -60,10 +112,19 @@ describe('runCli', () => {
     ]);
   });
 
+  it('inspect prints canonical counts for YAML authoring', async () => {
+    const result = await runCli(['inspect', '--source', MULTI_VIEW_YAML]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('resources: 2');
+    expect(result.stdout).toContain('actions:   1');
+    expect(result.stdout).toContain('screens:   2');
+    expect(result.stdout).toContain('nodes:     5');
+  });
+
   it('validate returns exitCode 1 for an invalid fixture', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'manifest-'));
-    const broken = join(dir, 'broken.ts');
-    writeFileSync(broken, `export const manifest = { version: 4 };\n`);
+    const broken = join(dir, 'broken.manifest.yaml');
+    writeFileSync(broken, `version: 4\n`);
     const result = await runCli(['validate', '--source', broken]);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toMatch(/version|capabilities|resources/);
@@ -71,25 +132,46 @@ describe('runCli', () => {
 
   it('symbols returns exitCode 1 for an invalid firmwareSymbol', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'manifest-'));
-    const source = join(dir, 'invalid-symbols.ts');
+    const source = join(dir, 'invalid-symbols.manifest.yaml');
     const headerOut = join(dir, 'manifest_symbols.h');
     const sourceOut = join(dir, 'manifest_symbols.cpp');
 
     writeFileSync(
       source,
-      `export const manifest = {
-  version: 5,
-  schemaVersion: 1,
-  minAppVersion: '1.0.0',
-  capabilities: { required: [], optional: [] },
-  resources: [{ id: 'relay.auto', firmwareSymbol: '9Bad', valueType: 'bool', readMode: 'subscribe', staleAfterMs: 5000 }],
-  actions: [{ id: 'relay.toggle', firmwareSymbol: 'RelayToggle', dangerLevel: 'normal', inputSchema: { type: 'object', additionalProperties: false, properties: {} } }],
-  views: [{ id: 'home', firmwareSymbol: 'HomeScreen', title: 'Home', rootNodeId: 'home.root' }],
-  nodes: [
-    { id: 'home.root', firmwareSymbol: 'HomeRoot', kind: 'stack', children: ['home.toggle'] },
-    { id: 'home.toggle', firmwareSymbol: 'HomeToggle', kind: 'widget', widget: 'toggle', title: 'Main Power', bind: { resource: 'relay.auto', action: 'relay.toggle' } }
-  ]
-};\n`,
+      `version: 5
+schemaVersion: 1
+minAppVersion: 1.0.0
+capabilities:
+  required: []
+  optional: []
+resources:
+  - id: relay.auto
+    firmwareSymbol: 9Bad
+    label: Relay
+    valueType: bool
+    readMode: subscribe
+    staleAfterMs: 5000
+actions:
+  - id: relay.toggle
+    firmwareSymbol: RelayToggle
+    label: Toggle
+    dangerLevel: normal
+    inputSchema:
+      type: object
+      additionalProperties: false
+      properties: {}
+views:
+  - id: home
+    firmwareSymbol: HomeScreen
+    title: Home
+    content:
+      - kind: toggle
+        id: home.toggle
+        firmwareSymbol: HomeToggle
+        title: Main Power
+        resource: relay.auto
+        action: relay.toggle
+`,
     );
 
     const result = await runCli([
@@ -103,6 +185,26 @@ describe('runCli', () => {
     ]);
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('/resources/0/firmwareSymbol');
+    expect(result.stderr).toContain('resources[0].firmwareSymbol');
+  });
+
+  it('symbols writes firmware files from YAML authoring', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'manifest-'));
+    const headerOut = join(dir, 'manifest_symbols.h');
+    const sourceOut = join(dir, 'manifest_symbols.cpp');
+
+    const result = await runCli([
+      'symbols',
+      '--source',
+      MINIMAL_YAML,
+      '--header-out',
+      headerOut,
+      '--source-out',
+      sourceOut,
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(readFileSync(headerOut, 'utf8')).toContain('relay_auto');
+    expect(readFileSync(sourceOut, 'utf8')).toContain('relay_auto');
   });
 });

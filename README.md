@@ -1,6 +1,6 @@
 # ESP-Control-BLE
 
-BLE-connected IoT dashboard for ESP32. Define your device UI with a JSON manifest, write your business logic in C++, and control everything from your phone -- no mobile app code required.
+BLE-connected IoT dashboard for ESP32. Define your device UI with a YAML manifest, write your business logic in C++, and control everything from your phone -- no mobile app code required.
 
 ## How It Works
 
@@ -13,8 +13,8 @@ BLE-connected IoT dashboard for ESP32. Define your device UI with a JSON manifes
 └──────────────┘                       └──────────────────┘
 ```
 
-1. You write a `manifest.json` that describes your device's **resources** (data), **actions** (controls), and **UI layout** (`views`, nodes, and widgets)
-2. At build time, the manifest is compiled to protobuf and embedded into the firmware
+1. You write a `manifest.yaml` that describes your device's **resources** (data), **actions** (controls), and **UI layout** (`views` with nested authoring content)
+2. At build time, the YAML authoring is expanded into the canonical manifest shape, then compiled to protobuf and embedded into the firmware
 3. The mobile app connects via BLE, downloads the manifest, and **renders the UI automatically**
 4. Your C++ code publishes resource values and handles actions using generated **type-safe symbol constants**
 
@@ -90,7 +90,7 @@ ESP-Control-BLE/
 │   │   │   └── DeviceTelemetry# Periodic sensor/resource publishing
 │   │   └── runtime/           # Orchestrator + publish scheduler
 │   ├── src/
-│   │   ├── manifest.json      # YOUR UI DEFINITION -- edit this
+│   │   ├── manifest.yaml      # Firmware demo authored YAML manifest
 │   │   ├── manifest_data.h    # Auto-generated protobuf binary
 │   │   └── manifest_symbols.* # Auto-generated C++ symbol constants
 │   ├── lib/esp-control-ble/   # Core BLE protocol library
@@ -101,6 +101,8 @@ ESP-Control-BLE/
 │   └── src/manifest/          # Auto-renders from your manifest
 │
 ├── tools/manifest/            # Manifest compiler CLI
+│   ├── tests/fixtures/
+│   │   └── demo.manifest.yaml # Example YAML authoring fixture
 │   └── src/cli/main.ts        # validate, compile, inspect, symbols
 │
 ├── proto/                     # Protobuf definitions
@@ -111,73 +113,54 @@ ESP-Control-BLE/
 
 ---
 
-## The Manifest (`manifest.json`)
+## The Manifest (`manifest.yaml`)
 
 This is the heart of the system. It defines what your device **is** -- its data model, controls, and UI. The mobile app reads it and renders everything automatically.
 
+The authoring path documented here is YAML (`manifest.yaml`). The firmware demo uses `firmware/esp32/src/manifest.yaml` as its primary manifest source.
+
 ### Minimal Example (No Navigation Bar)
 
-```json
-{
-  "version": 5,
-  "schemaVersion": 1,
-  "minAppVersion": "1.0.0",
-  "capabilities": {
-    "required": ["layout.sections"],
-    "optional": []
-  },
-  "resources": [
-    {
-      "id": "led.power",
-      "firmwareSymbol": "led_power",
-      "label": "Power",
-      "valueType": "bool",
-      "readMode": "subscribe",
-      "staleAfterMs": 5000
-    }
-  ],
-  "actions": [
-    {
-      "id": "led.toggle",
-      "firmwareSymbol": "led_toggle",
-      "label": "Toggle",
-      "dangerLevel": "normal",
-      "inputSchema": { "type": "object", "additionalProperties": false, "properties": {} }
-    }
-  ],
-  "views": [
-    {
-      "id": "home",
-      "firmwareSymbol": "home",
-      "title": "Home",
-      "rootNodeId": "home.root"
-    }
-  ],
-  "nodes": [
-    {
-      "id": "home.root",
-      "firmwareSymbol": "home_root",
-      "kind": "stack",
-      "children": ["power.section"]
-    },
-    {
-      "id": "power.section",
-      "firmwareSymbol": "power_section",
-      "kind": "section",
-      "title": "Controls",
-      "children": ["power.toggle"]
-    },
-    {
-      "id": "power.toggle",
-      "firmwareSymbol": "power_toggle",
-      "kind": "widget",
-      "widget": "toggle",
-      "title": "Power",
-      "bind": { "resource": "led.power", "action": "led.toggle" }
-    }
-  ]
-}
+```yaml
+version: 5
+schemaVersion: 1
+minAppVersion: 1.0.0
+capabilities:
+  required:
+    - layout.sections
+  optional: []
+resources:
+  - id: led.power
+    firmwareSymbol: led_power
+    label: Power
+    valueType: bool
+    readMode: subscribe
+    staleAfterMs: 5000
+actions:
+  - id: led.toggle
+    firmwareSymbol: led_toggle
+    label: Toggle
+    dangerLevel: normal
+    inputSchema:
+      type: object
+      additionalProperties: false
+      properties: {}
+views:
+  - id: home
+    title: Home
+    content:
+      - kind: section
+        id: power.section
+        title: Controls
+        content:
+          - kind: toggle
+            id: power.toggle
+            title: Power
+            resource: led.power
+            action: led.toggle
 ```
+
+The authoring form is intentionally shorter than the canonical manifest schema. Each `views[].content` entry is expanded into canonical `views` and `nodes`, and omitted firmware symbols are derived from authored ids.
 
 ### Top-Level Fields
 
@@ -187,68 +170,31 @@ This is the heart of the system. It defines what your device **is** -- its data 
 | `schemaVersion` | integer | Yes | Schema revision (always `1`) |
 | `minAppVersion` | string | Yes | Minimum mobile app version (semver) |
 | `capabilities` | object | Yes | Feature requirements for the app |
-| `appShell` | object | No | Optional shell configuration such as `navBar` |
+| `appShell` | object | Canonical only today | Not accepted in authored CLI YAML input today; used by the canonical manifest shape |
 | `resources` | array | Yes | Data resources (max 128) |
 | `actions` | array | Yes | Callable actions (max 128) |
-| `views` | array | Yes | UI views (max 32) |
-| `nodes` | array | Yes | UI tree nodes (max 512) |
+| `views` | array | Yes | Authored UI views (max 32) |
+| `nodes` | array | Generated | Canonical UI tree emitted from authored `views[].content` |
 
 ### Views And Optional Bottom Navigation
 
-Manifest authoring now uses `views`. Each view points to a root node, and the mobile app can optionally render a fixed bottom bar when `appShell.navBar` is present.
+Manifest authoring now uses `views`. Each view contains nested `content`, and the compiler expands that content into canonical nodes.
 
 Minimal example without nav:
 
-```json
-{
-  "views": [
-    {
-      "id": "home",
-      "firmwareSymbol": "home",
-      "title": "Home",
-      "rootNodeId": "home.root"
-    }
-  ]
-}
+```yaml
+views:
+  - id: home
+    title: Home
+    content:
+      - kind: toggle
+        id: home.power
+        title: Power
+        resource: led.power
+        action: led.toggle
 ```
 
-Example with nav:
-
-```json
-{
-  "appShell": {
-    "navBar": {
-      "items": [
-        { "id": "home", "label": "Home", "icon": "home", "viewId": "home" },
-        { "id": "stats", "label": "Stats", "icon": "bar-chart-2", "viewId": "stats" },
-        { "id": "settings", "label": "Settings", "icon": "settings", "viewId": "settings" }
-      ]
-    }
-  },
-  "views": [
-    {
-      "id": "home",
-      "firmwareSymbol": "home",
-      "title": "Home",
-      "rootNodeId": "home.root"
-    },
-    {
-      "id": "stats",
-      "firmwareSymbol": "stats_screen",
-      "title": "Stats",
-      "rootNodeId": "stats.root"
-    },
-    {
-      "id": "settings",
-      "firmwareSymbol": "settings_screen",
-      "title": "Settings",
-      "rootNodeId": "settings.root"
-    }
-  ]
-}
-```
-
-`appShell.navBar` is optional. When present, use 1 to 5 items, each `viewId` must reference one of the authored `views`, and the first nav item becomes the initial visible screen.
+Bottom navigation exists in the canonical manifest model, but the current authored YAML schema does not accept `appShell.navBar` yet. Treat nav configuration as unsupported in CLI `.yaml` input for now, even though the runtime canonical manifest can carry it.
 
 Common Feather icon names: `home`, `bar-chart-2`, `settings`, `sliders`, `activity`, `thermometer`, `wifi`, `clock`, `toggle-left`, `power`.
 
@@ -312,44 +258,36 @@ Resources represent the data your device exposes. The mobile app subscribes to t
 
 ### Examples
 
-```json
-{
-  "id": "env.temperature",
-  "firmwareSymbol": "env_temperature",
-  "label": "Temperature",
-  "valueType": "float",
-  "unit": "C",
-  "readMode": "subscribe",
-  "staleAfterMs": 5000
-},
-{
-  "id": "fan.profile",
-  "firmwareSymbol": "fan_profile",
-  "label": "Fan Profile",
-  "valueType": "enum",
-  "readMode": "subscribe",
-  "staleAfterMs": 5000,
-  "enumValues": ["slow", "normal", "fast"]
-},
-{
-  "id": "wifi.rssi",
-  "firmwareSymbol": "wifi_rssi",
-  "label": "WiFi Signal",
-  "valueType": "int",
-  "unit": "dBm",
-  "readMode": "poll",
-  "pollMs": 10000,
-  "staleAfterMs": 15000
-},
-{
-  "id": "system.uptime",
-  "firmwareSymbol": "system_uptime",
-  "label": "Uptime",
-  "valueType": "duration_ms",
-  "readMode": "poll",
-  "pollMs": 5000,
-  "staleAfterMs": 10000
-}
+```yaml
+- id: env.temperature
+  firmwareSymbol: env_temperature
+  label: Temperature
+  valueType: float
+  unit: C
+  readMode: subscribe
+  staleAfterMs: 5000
+- id: fan.profile
+  firmwareSymbol: fan_profile
+  label: Fan Profile
+  valueType: enum
+  readMode: subscribe
+  staleAfterMs: 5000
+  enumValues: [slow, normal, fast]
+- id: wifi.rssi
+  firmwareSymbol: wifi_rssi
+  label: WiFi Signal
+  valueType: int
+  unit: dBm
+  readMode: poll
+  pollMs: 10000
+  staleAfterMs: 15000
+- id: system.uptime
+  firmwareSymbol: system_uptime
+  label: Uptime
+  valueType: duration_ms
+  readMode: poll
+  pollMs: 5000
+  staleAfterMs: 10000
 ```
 
 ---
@@ -383,335 +321,116 @@ Actions are operations the user can trigger from the mobile UI.
 The `inputSchema` follows JSON Schema conventions. The app extracts a `value` field and sends it as the action payload.
 
 **No parameters** (toggle, reset, restart):
-```json
-{
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {}
-}
+```yaml
+type: object
+additionalProperties: false
+properties: {}
 ```
 
 **Integer with bounds** (brightness 0-100):
-```json
-{
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["value"],
-  "properties": {
-    "value": { "type": "integer", "minimum": 0, "maximum": 100 }
-  }
-}
+```yaml
+type: object
+additionalProperties: false
+required: [value]
+properties:
+  value:
+    type: integer
+    minimum: 0
+    maximum: 100
 ```
 
 **Boolean** (debug toggle):
-```json
-{
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["value"],
-  "properties": {
-    "value": { "type": "boolean" }
-  }
-}
+```yaml
+type: object
+additionalProperties: false
+required: [value]
+properties:
+  value:
+    type: boolean
 ```
 
 **String enum** (fan profile):
-```json
-{
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["value"],
-  "properties": {
-    "value": { "type": "string", "enum": ["slow", "normal", "fast"] }
-  }
-}
+```yaml
+type: object
+additionalProperties: false
+required: [value]
+properties:
+  value:
+    type: string
+    enum: [slow, normal, fast]
 ```
 
 **Bounded string** (device rename):
-```json
-{
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["value"],
-  "properties": {
-    "value": { "type": "string", "minLength": 1, "maxLength": 32 }
-  }
-}
+```yaml
+type: object
+additionalProperties: false
+required: [value]
+properties:
+  value:
+    type: string
+    minLength: 1
+    maxLength: 32
 ```
 
 ### Full Action Examples
 
-```json
-{
-  "id": "relay.toggle",
-  "firmwareSymbol": "relay_toggle",
-  "label": "Toggle",
-  "dangerLevel": "normal",
-  "inputSchema": { "type": "object", "additionalProperties": false, "properties": {} }
-},
-{
-  "id": "light.set_brightness",
-  "firmwareSymbol": "light_set_brightness",
-  "label": "Set Brightness",
-  "dangerLevel": "normal",
-  "inputSchema": {
-    "type": "object",
-    "additionalProperties": false,
-    "required": ["value"],
-    "properties": { "value": { "type": "integer", "minimum": 0, "maximum": 100 } }
-  }
-},
-{
-  "id": "system.factory_reset",
-  "firmwareSymbol": "system_factory_reset",
-  "label": "Factory Reset",
-  "dangerLevel": "dangerous",
-  "confirm": "This will erase all settings. Continue?",
-  "inputSchema": { "type": "object", "additionalProperties": false, "properties": {} }
-}
+```yaml
+- id: relay.toggle
+  firmwareSymbol: relay_toggle
+  label: Toggle
+  dangerLevel: normal
+  inputSchema:
+    type: object
+    additionalProperties: false
+    properties: {}
+- id: light.set_brightness
+  firmwareSymbol: light_set_brightness
+  label: Set Brightness
+  dangerLevel: normal
+  inputSchema:
+    type: object
+    additionalProperties: false
+    required: [value]
+    properties:
+      value:
+        type: integer
+        minimum: 0
+        maximum: 100
+- id: system.factory_reset
+  firmwareSymbol: system_factory_reset
+  label: Factory Reset
+  dangerLevel: dangerous
+  confirm: "This will erase all settings. Continue?"
+  inputSchema:
+    type: object
+    additionalProperties: false
+    properties: {}
 ```
 
 ---
 
 ## Views & Nodes
 
-The UI is a tree of nodes. Each view has a root node, and nodes can contain children to create layouts.
+Current authored YAML support is intentionally small:
+- `views[].content` accepts `section`
+- `views[].content` accepts `toggle`
 
-### Views
+That is the supported CLI `.yaml` authoring flow today.
 
-```json
-{
-  "id": "home",
-  "firmwareSymbol": "home",
-  "title": "Home",
-  "rootNodeId": "home.root"
-}
-```
+The compiler expands those authored entries into the larger canonical manifest model used by the runtime. That internal canonical shape includes generated `views`/`nodes` plus additional node kinds, widget kinds, and rule fields that are not accepted by the current authored YAML schema.
 
-### Container Nodes
+Examples of canonical-only or future-facing concepts include:
+- layout/container kinds such as `stack`, `row`, and `grid`
+- widget kinds such as `slider`, `select`, `button`, `text`, `badge`, `timer`, `progress`, and `text_input`
+- rule fields such as `visibleIf` and `enabledIf`
 
-Container nodes arrange their children.
-
-| Kind | Description | Layout |
-|---|---|---|
-| `stack` | Vertical stack | Children top to bottom |
-| `row` | Horizontal row | Children left to right |
-| `section` | Titled section | Card with title, children stacked |
-| `grid` | Grid layout | Children in N columns |
-
-```json
-{
-  "id": "home.root",
-  "firmwareSymbol": "home_root",
-  "kind": "stack",
-  "children": ["header.banner", "controls.section", "sensors.section"]
-}
-```
-
-**Section with visibility rule:**
-```json
-{
-  "id": "advanced.section",
-  "firmwareSymbol": "advanced_section",
-  "kind": "section",
-  "title": "Advanced",
-  "visibleIf": { "==": [{ "var": "runtime.role" }, "admin"] },
-  "children": ["advanced.debug", "advanced.reset"]
-}
-```
-
-**Row layout:**
-```json
-{
-  "id": "system.row",
-  "firmwareSymbol": "system_row",
-  "kind": "row",
-  "children": ["system.rssi", "system.uptime"]
-}
-```
-
-**Grid layout:**
-```json
-{
-  "id": "sensor.grid",
-  "firmwareSymbol": "sensor_grid",
-  "kind": "grid",
-  "columns": 2,
-  "children": ["sensor.temp", "sensor.humidity", "sensor.pressure", "sensor.gas"]
-}
-```
-
-### Widget Nodes
-
-Widgets are the leaf nodes that display data or provide interaction.
-
-| Widget | `widget` value | Displays | Binding |
-|---|---|---|---|
-| **Text** | `"text"` | Static text | `text` field |
-| **Stat** | `"stat"` | Numeric readout | `resource` + `formatHint` |
-| **Toggle** | `"toggle"` | On/off switch | `resource` + `action` |
-| **Button** | `"button"` | Action trigger | `action` |
-| **Slider** | `"slider"` | Range control (0-100) | `resource` + `action` + `formatHint` |
-| **Select** | `"select"` | Enum chip picker | `resource` + `action` |
-| **Text Input** | `"text_input"` | Text entry field | `resource` + `action` |
-| **Badge** | `"badge"` | Small status badge | `resource` |
-| **Timer** | `"timer"` | Duration (MM:SS) | `resource` |
-| **Progress** | `"progress"` | Progress bar | `resource` |
-
-### Widget Binding
-
-Widgets bind to resources and/or actions:
-
-```json
-{
-  "bind": {
-    "resource": "relay.auto",     // shows this resource's value
-    "action": "relay.toggle"      // calls this action on interaction
-  }
-}
-```
-
-- Read-only widgets (stat, badge, timer): `resource` only
-- Action-only widgets (button): `action` only
-- Interactive widgets (toggle, slider, select, text_input): both `resource` + `action`
-
-### formatHint Values
-
-| Value | Effect | Use with |
-|---|---|---|
-| `"float_2"` | 2 decimal places | stat, slider |
-| `"float_1"` | 1 decimal place | stat, slider |
-| `"percent"` | Integer + `%` suffix | stat, slider |
-
-### Widget Examples
-
-**Toggle switch (bound to resource + action):**
-```json
-{
-  "id": "power.toggle",
-  "firmwareSymbol": "power_toggle",
-  "kind": "widget",
-  "widget": "toggle",
-  "title": "Main Power",
-  "bind": { "resource": "relay.auto", "action": "relay.toggle" }
-}
-```
-
-**Stat display (read-only, formatted):**
-```json
-{
-  "id": "telemetry.temp",
-  "firmwareSymbol": "telemetry_temp",
-  "kind": "widget",
-  "widget": "stat",
-  "title": "Temperature",
-  "bind": { "resource": "env.temperature" },
-  "formatHint": "float_2"
-}
-```
-
-**Slider control (interactive range):**
-```json
-{
-  "id": "lighting.slider",
-  "firmwareSymbol": "lighting_slider",
-  "kind": "widget",
-  "widget": "slider",
-  "title": "Brightness",
-  "bind": { "resource": "light.brightness", "action": "light.set_brightness" },
-  "formatHint": "percent"
-}
-```
-
-**Enum selector:**
-```json
-{
-  "id": "telemetry.profile",
-  "firmwareSymbol": "telemetry_profile",
-  "kind": "widget",
-  "widget": "select",
-  "title": "Fan Profile",
-  "bind": { "resource": "fan.profile", "action": "fan.set_profile" }
-}
-```
-
-**Dangerous button with confirmation:**
-```json
-{
-  "id": "advanced.reset",
-  "firmwareSymbol": "advanced_reset",
-  "kind": "widget",
-  "widget": "button",
-  "title": "Factory Reset",
-  "bind": { "action": "system.factory_reset" }
-}
-```
-
-**Static text banner:**
-```json
-{
-  "id": "home.banner",
-  "firmwareSymbol": "home_banner",
-  "kind": "widget",
-  "widget": "text",
-  "title": "ESP Control",
-  "text": "BLE-connected device dashboard."
-}
-```
-
-**Badge (small status):**
-```json
-{
-  "id": "system.rssi",
-  "firmwareSymbol": "system_rssi",
-  "kind": "widget",
-  "widget": "badge",
-  "title": "WiFi",
-  "bind": { "resource": "wifi.rssi" }
-}
-```
-
-**Timer (duration display):**
-```json
-{
-  "id": "system.uptime",
-  "firmwareSymbol": "system_uptime",
-  "kind": "widget",
-  "widget": "timer",
-  "title": "Uptime",
-  "bind": { "resource": "system.uptime" }
-}
-```
-
-**Text input:**
-```json
-{
-  "id": "advanced.rename",
-  "firmwareSymbol": "advanced_rename",
-  "kind": "widget",
-  "widget": "text_input",
-  "title": "Rename Device",
-  "bind": { "resource": "device.name", "action": "device.rename" }
-}
-```
-
-### Visibility Rules (visibleIf / enabledIf)
-
-Use JsonLogic expressions to conditionally show or enable nodes:
-
-```json
-{
-  "visibleIf": { "==": [{ "var": "runtime.role" }, "admin"] }
-}
-```
-
-Available operators: `==`, `!=`, `>`, `>=`, `<`, `<=`, `and`, `or`, `!`, `if`, `in`
+If you are writing CLI `.yaml` input today, stay within authored `views[].content` using `section` and `toggle` only.
 
 ---
 
 ## Firmware Business Logic
 
-After editing `manifest.json`, you write C++ code that:
+After editing your manifest authoring file, you write C++ code that:
 1. **Registers action handlers** -- what happens when the user taps a button
 2. **Publishes resource values** -- push sensor data to the phone
 
@@ -956,55 +675,39 @@ if (temperaturePublisher.shouldPublish(nowMs)) {
 
 ## Adding a New Resource & Action
 
-Here's the complete workflow to add, say, a "motor speed" control:
+Here's the complete workflow to add, say, a "motor speed" resource and action:
 
-### 1. Add to `manifest.json`
+### 1. Add to `manifest.yaml`
 
-```json
-{
-  "resources": [
-    ...existing...,
-    {
-      "id": "motor.speed",
-      "firmwareSymbol": "motor_speed",
-      "label": "Motor Speed",
-      "valueType": "uint",
-      "unit": "RPM",
-      "readMode": "subscribe",
-      "staleAfterMs": 3000
-    }
-  ],
-  "actions": [
-    ...existing...,
-    {
-      "id": "motor.set_speed",
-      "firmwareSymbol": "motor_set_speed",
-      "label": "Set Speed",
-      "dangerLevel": "normal",
-      "inputSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["value"],
-        "properties": { "value": { "type": "integer", "minimum": 0, "maximum": 5000 } }
-      }
-    }
-  ]
-}
+```yaml
+resources:
+  - id: motor.speed
+    firmwareSymbol: motor_speed
+    label: Motor Speed
+    valueType: uint
+    unit: RPM
+    readMode: subscribe
+    staleAfterMs: 3000
+actions:
+  - id: motor.set_speed
+    firmwareSymbol: motor_set_speed
+    label: Set Speed
+    dangerLevel: normal
+    inputSchema:
+      type: object
+      additionalProperties: false
+      required:
+        - value
+      properties:
+        value:
+          type: integer
+          minimum: 0
+          maximum: 5000
 ```
 
-Add a widget in your nodes:
+CLI `.yaml` inputs must use the authoring schema shown above. The current authored YAML subset does not yet provide a shorthand slider entry, so keep `manifest.yaml` focused on the supported authoring shape and treat richer canonical `nodes` examples as internal expanded output rather than valid CLI YAML input.
 
-```json
-{
-  "id": "motor.slider",
-  "firmwareSymbol": "motor_slider",
-  "kind": "widget",
-  "widget": "slider",
-  "title": "Motor Speed",
-  "bind": { "resource": "motor.speed", "action": "motor.set_speed" },
-  "formatHint": "percent"
-}
-```
+Also note that adding a `resource` and `action` alone does not make a control appear automatically. In the current authored YAML model, UI only appears when you add supported entries under `views[].content`.
 
 ### 2. Build the firmware
 
@@ -1013,7 +716,7 @@ pio run -t upload
 ```
 
 The build automatically:
-- Compiles `manifest.json` to protobuf
+- Compiles `firmware/esp32/src/manifest.yaml` to protobuf
 - Generates `manifest_symbols.h` with `manifest_resources::motor_speed` and `manifest_actions::motor_set_speed`
 
 ### 3. Add C++ business logic
@@ -1046,22 +749,23 @@ control.resources().setUint(manifest_resources::motor_speed, state.motorSpeedRpm
 pio run -t upload
 ```
 
-The mobile app will automatically render the new slider widget when it reconnects.
+Once you also add a supported control entry under `views[].content`, the mobile app will render it automatically when it reconnects.
 
 ---
 
 ## Complete Manifest Reference
 
-### Full `manifest.json` from the demo project
+### Full `manifest.yaml` authoring fixture
 
-The project ships with a complete demo manifest that includes all widget types. See `firmware/esp32/src/manifest.json` for the full example.
+The project ships with a representative YAML authoring fixture at `tools/manifest/tests/fixtures/demo.manifest.yaml`.
 
 The demo includes:
-- 11 resources (bool, uint, float, int, string, enum, duration_ms)
-- 8 actions (toggle, set brightness, set profile, set debug, factory reset, rename, set color, restart)
-- 21 nodes organized into sections (Lighting, Telemetry, System, Advanced)
-- Visibility rules (Advanced section visible only to admin role)
-- Multiple widget types (toggle, slider, stat, select, badge, timer, button, text)
+- 6 resources reused across relay, lighting, telemetry, and debug flows
+- 5 actions covering toggles, setters, and a dangerous reset path
+- 13 emitted nodes from nested YAML authoring content
+- A single `home` view with section-based authoring expansion
+- A YAML-first CLI fixture for validate, compile, and inspect coverage
+- Separate YAML `symbols` coverage using `tools/manifest/tests/fixtures/minimal.manifest.yaml`
 
 ---
 
@@ -1152,18 +856,18 @@ Jest tests covering: manifest decoding, frame codec, BleRuntime, widget renderin
 ```bash
 cd tools/manifest
 
-# Validate a manifest
-npx tsx src/cli/main.ts validate --source ../firmware/esp32/src/manifest.json
+# Validate a checked-in YAML authoring fixture
+npx tsx src/cli/main.ts validate --source ./tests/fixtures/demo.manifest.yaml
 
 # Compile to protobuf
-npx tsx src/cli/main.ts compile --source ../firmware/esp32/src/manifest.json --out /tmp/manifest.pb
+npx tsx src/cli/main.ts compile --source ./tests/fixtures/demo.manifest.yaml --out /tmp/manifest.pb
 
 # Inspect runtime IDs
-npx tsx src/cli/main.ts inspect --source ../firmware/esp32/src/manifest.json --ids
+npx tsx src/cli/main.ts inspect --source ./tests/fixtures/demo.manifest.yaml --ids
 
-# Generate symbol files manually
+# Generate symbol files manually from a checked-in YAML fixture
 npx tsx src/cli/main.ts symbols \
-  --source ../firmware/esp32/src/manifest.json \
+  --source ./tests/fixtures/minimal.manifest.yaml \
   --header-out ../firmware/esp32/src/manifest_symbols.h \
   --source-out ../firmware/esp32/src/manifest_symbols.cpp
 ```
@@ -1206,7 +910,7 @@ firmware/esp32/
 │       └── PublishScheduler.h        # Rate-limit helper
 │
 ├── src/
-│   ├── manifest.json                 # YOUR UI DEFINITION
+│   ├── manifest.yaml                 # Firmware demo authored YAML manifest
 │   ├── manifest_data.h               # (auto-generated)
 │   └── manifest_symbols.h/.cpp       # (auto-generated)
 │

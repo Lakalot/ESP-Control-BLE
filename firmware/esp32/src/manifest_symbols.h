@@ -54,13 +54,12 @@ const ManifestSymbolEntry* find_manifest_screen_symbol(uint32_t id);
 
 namespace manifest_nodes {
 extern const uint32_t home_root;
-extern const uint32_t stats_root;
-extern const uint32_t settings_root;
 extern const uint32_t home_banner;
 extern const uint32_t lighting_section;
 extern const uint32_t lighting_toggle;
 extern const uint32_t lighting_slider;
 extern const uint32_t lighting_color;
+extern const uint32_t stats_root;
 extern const uint32_t telemetry_section;
 extern const uint32_t telemetry_temp;
 extern const uint32_t telemetry_humidity;
@@ -70,13 +69,14 @@ extern const uint32_t system_section;
 extern const uint32_t system_row;
 extern const uint32_t system_rssi;
 extern const uint32_t system_uptime;
+extern const uint32_t settings_root;
 extern const uint32_t settings_section;
+extern const uint32_t settings_rename;
+extern const uint32_t settings_restart;
 extern const uint32_t advanced_section;
 extern const uint32_t advanced_debug;
 extern const uint32_t advanced_note;
 extern const uint32_t advanced_reset;
-extern const uint32_t settings_rename;
-extern const uint32_t settings_restart;
 }
 
 extern const ManifestSymbolEntry kManifestNodeSymbols[];

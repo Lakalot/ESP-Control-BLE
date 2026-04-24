@@ -1,0 +1,31 @@
+version: 5
+schemaVersion: 1
+minAppVersion: 1.0.0
+capabilities:
+  required: []
+  optional: []
+resources:
+  - id: relay.auto
+    firmwareSymbol: relay_auto
+    label: Main Power
+    valueType: bool
+    readMode: subscribe
+    staleAfterMs: 5000
+actions:
+  - id: relay.toggle
+    firmwareSymbol: relay_toggle
+    label: Toggle
+    dangerLevel: normal
+    inputSchema:
+      type: object
+      additionalProperties: false
+      properties: {}
+views:
+  - id: home
+    title: Home
+    content:
+      - kind: toggle
+        id: home.toggle
+        title: Main Power
+        resource: relay.auto
+        action: relay.toggle

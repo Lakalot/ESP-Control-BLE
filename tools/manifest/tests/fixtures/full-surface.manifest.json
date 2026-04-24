@@ -241,18 +241,36 @@
       "id": "home",
       "firmwareSymbol": "home",
       "title": "Home",
+      "routeKey": "home",
+      "entryRules": [
+        {
+          "var": "resource.relay.auto"
+        }
+      ],
       "rootNodeId": "home.root"
     },
     {
       "id": "stats",
       "firmwareSymbol": "stats_screen",
       "title": "Stats",
+      "routeKey": "stats",
+      "entryRules": [
+        {
+          "==": [
+            {
+              "var": "resource.fan.profile"
+            },
+            "normal"
+          ]
+        }
+      ],
       "rootNodeId": "stats.root"
     },
     {
       "id": "settings",
       "firmwareSymbol": "settings_screen",
       "title": "Settings",
+      "routeKey": "settings",
       "rootNodeId": "settings.root"
     }
   ],

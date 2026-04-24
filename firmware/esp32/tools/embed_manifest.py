@@ -1,4 +1,4 @@
-"""PlatformIO pre-build step: compile src/manifest.json → src/manifest_data.h.
+"""PlatformIO pre-build step: compile src/manifest.yaml → src/manifest_data.h.
 
 Requires Node.js + the tools/manifest workspace (pnpm install) at repo root.
 """
@@ -10,7 +10,7 @@ import os
 
 PROJECT = Path(env["PROJECT_DIR"])
 REPO = PROJECT.parent.parent
-MANIFEST_JSON = PROJECT / "src" / "manifest.json"
+MANIFEST_YAML = PROJECT / "src" / "manifest.yaml"
 BUILD_CACHE = PROJECT / "build_cache"
 BUILD_CACHE.mkdir(exist_ok=True)
 PB_FILE = BUILD_CACHE / "manifest_compiled.pb"
@@ -21,14 +21,14 @@ CLI = REPO / "tools" / "manifest" / "src" / "cli" / "main.ts"
 
 
 def main():
-    if not MANIFEST_JSON.exists():
-        print(f"[embed_manifest] missing {MANIFEST_JSON}", file=sys.stderr)
+    if not MANIFEST_YAML.exists():
+        print(f"[embed_manifest] missing {MANIFEST_YAML}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"[embed_manifest] compiling {MANIFEST_JSON.name} -> protobuf")
+    print(f"[embed_manifest] compiling {MANIFEST_YAML.name} -> protobuf")
     result = subprocess.run(
         [os.name == "nt" and "npx.cmd" or "npx", "tsx", str(CLI),
-         "compile", "--source", str(MANIFEST_JSON), "--out", str(PB_FILE)],
+         "compile", "--source", str(MANIFEST_YAML), "--out", str(PB_FILE)],
         cwd=str(REPO / "tools" / "manifest"),
         capture_output=True, text=True,
     )
@@ -39,7 +39,7 @@ def main():
 
     data = PB_FILE.read_bytes()
     lines = [
-        "// Generated from manifest.json - do not edit by hand.",
+        "// Generated from manifest.yaml - do not edit by hand.",
         "#pragma once",
         "#include <stdint.h>",
         "",
@@ -58,7 +58,7 @@ def main():
 
     result = subprocess.run(
         [os.name == "nt" and "npx.cmd" or "npx", "tsx", str(CLI),
-         "symbols", "--source", str(MANIFEST_JSON),
+         "symbols", "--source", str(MANIFEST_YAML),
          "--header-out", str(SYMBOL_HEADER), "--source-out", str(SYMBOL_SOURCE)],
         cwd=str(REPO / "tools" / "manifest"),
         capture_output=True, text=True,

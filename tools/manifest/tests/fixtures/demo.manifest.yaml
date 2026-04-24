@@ -1,0 +1,168 @@
+version: 5
+schemaVersion: 1
+minAppVersion: 1.0.0
+capabilities:
+  required:
+    - layout.sections
+    - rules.visibility
+  optional: []
+resources:
+  - id: relay.auto
+    firmwareSymbol: relay_auto
+    label: Main Power
+    valueType: bool
+    readMode: subscribe
+    staleAfterMs: 5000
+  - id: light.brightness
+    firmwareSymbol: light_brightness
+    label: Brightness
+    valueType: uint
+    unit: '%'
+    readMode: subscribe
+    staleAfterMs: 5000
+  - id: env.temperature
+    firmwareSymbol: env_temperature
+    label: Temperature
+    valueType: float
+    unit: C
+    readMode: subscribe
+    staleAfterMs: 5000
+  - id: fan.profile
+    firmwareSymbol: fan_profile
+    label: Fan Profile
+    valueType: enum
+    readMode: subscribe
+    staleAfterMs: 5000
+    enumValues:
+      - slow
+      - normal
+      - fast
+  - id: system.load
+    firmwareSymbol: system_load
+    label: Load
+    valueType: uint
+    unit: '%'
+    readMode: subscribe
+    staleAfterMs: 3000
+  - id: device.debug
+    firmwareSymbol: device_debug
+    label: Debug Mode
+    valueType: bool
+    readMode: snapshot
+    staleAfterMs: 10000
+actions:
+  - id: relay.toggle
+    firmwareSymbol: relay_toggle
+    label: Toggle
+    dangerLevel: normal
+    inputSchema:
+      type: object
+      additionalProperties: false
+      properties: {}
+  - id: light.set_brightness
+    firmwareSymbol: light_set_brightness
+    label: Set Brightness
+    dangerLevel: normal
+    inputSchema:
+      type: object
+      additionalProperties: false
+      required:
+        - value
+      properties:
+        value:
+          type: integer
+          minimum: 0
+          maximum: 100
+  - id: fan.set_profile
+    firmwareSymbol: fan_set_profile
+    label: Set Fan Profile
+    dangerLevel: normal
+    inputSchema:
+      type: object
+      additionalProperties: false
+      required:
+        - value
+      properties:
+        value:
+          type: string
+          enum:
+            - slow
+            - normal
+            - fast
+  - id: device.set_debug
+    firmwareSymbol: device_set_debug
+    label: Set Debug Mode
+    dangerLevel: elevated
+    inputSchema:
+      type: object
+      additionalProperties: false
+      required:
+        - value
+      properties:
+        value:
+          type: boolean
+  - id: system.factory_reset
+    firmwareSymbol: system_factory_reset
+    label: Factory Reset
+    dangerLevel: dangerous
+    confirm: This will erase all settings. Continue?
+    inputSchema:
+      type: object
+      additionalProperties: false
+      properties: {}
+views:
+  - id: home
+    title: Home
+    content:
+      - kind: section
+        id: lighting.section
+        title: Lighting
+        content:
+          - kind: toggle
+            id: lighting.main_power
+            title: Main Power
+            resource: relay.auto
+            action: relay.toggle
+          - kind: toggle
+            id: lighting.brightness
+            title: Brightness
+            resource: light.brightness
+            action: light.set_brightness
+      - kind: section
+        id: telemetry.section
+        title: Telemetry
+        content:
+          - kind: toggle
+            id: telemetry.temperature
+            title: Temperature
+            resource: env.temperature
+          - kind: toggle
+            id: telemetry.load
+            title: Load
+            resource: system.load
+          - kind: toggle
+            id: telemetry.profile
+            title: Fan Profile
+            resource: fan.profile
+            action: fan.set_profile
+      - kind: section
+        id: advanced.section
+        title: Advanced
+        content:
+          - kind: toggle
+            id: advanced.debug
+            title: Debug Mode
+            resource: device.debug
+            action: device.set_debug
+          - kind: toggle
+            id: advanced.reset
+            title: Factory Reset
+            action: system.factory_reset
+      - kind: section
+        id: system.section
+        title: System
+        content:
+          - kind: toggle
+            id: system.auto_status
+            title: Auto Status
+            resource: relay.auto

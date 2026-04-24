@@ -1,0 +1,6 @@
+views:
+  - id: home
+    title: Home
+  broken: [
+other:
+  - another: [

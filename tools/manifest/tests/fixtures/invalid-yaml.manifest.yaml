@@ -1,0 +1,5 @@
+version: 5
+views:
+  - id: home
+    title: Home
+  broken: [
