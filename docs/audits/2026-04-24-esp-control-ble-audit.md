@@ -11,11 +11,32 @@ _Filled in last (Task 11)._
 
 ## 2. Methodology and Measurements
 
-_Filled in Task 2 (tools) and Task 9 (runtime methodology)._
-
 ### 2.1 Tools
 
+| Tool | Purpose | Command |
+|---|---|---|
+| `pio run -e esp32dev -v` | Linker/map output, section sizes | `tools/audit/pio_size_snapshot.ps1 -Label <name>` |
+| `pio run -e esp32dev -t size` | Segment table (`.text`, `.rodata`, `.bss`, `.data`) | idem |
+| `xtensa-esp32-elf-nm --size-sort` | Top symbols by memory footprint | idem |
+| `pio test -e native -f test_audit_sizeof` | Hard `sizeof` numbers via `static_assert` | `pio test -e native -f test_audit_sizeof` |
+| `tools/audit/count_smells.ps1` | Pattern tally (buffers, std::function, magic numbers, logging, bool returns) | `pwsh -File tools/audit/count_smells.ps1` |
+| `esp_get_free_heap_size` / `uxTaskGetStackHighWaterMark` | Runtime heap and stack via probe firmware | See §2.3 |
+
 ### 2.2 Static measurement commands
+
+Reproducible from repo root on Windows/PowerShell:
+
+```powershell
+# Full snapshot
+pwsh -File tools/audit/pio_size_snapshot.ps1 -Label before-refactor
+
+# Smells tally
+pwsh -File tools/audit/count_smells.ps1 > .tmp/audit/smells.txt
+
+# Sizeof assertions
+cd firmware/esp32
+pio test -e native -f test_audit_sizeof -v
+```
 
 ### 2.3 Runtime measurement commands
 
