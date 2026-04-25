@@ -7,7 +7,74 @@
 
 ## 1. Executive Summary
 
-_Filled in last (Task 11)._
+### Current state (measured 2026-04-24, ESP32-D0WD-V3, release build)
+
+- **Library static RAM footprint:** 6 508 B in a single linker symbol
+  (`(anonymous namespace)::control` — the `EspControl` instance in
+  `app/main.cpp`). This dominates the lib's contribution to `.bss`.
+- **Full firmware RAM (.bss + DRAM portion of .data):** 42 124 B / 320 KB
+  available DRAM = 12.9 %.
+- **Heap consumed at boot (NimBLE + lib init):** ~18.8 KB. NimBLE dominates.
+- **Heap consumed by a live BLE session:** ~204 B additional. Action
+  dispatch costs ~24 B transient.
+- **Loop stack high-water mark:** 22 448 B free of 32 768 configured —
+  only ~10.3 KB used. The Arduino stack reservation is ~3× actual peak.
+- **Largest contiguous free heap block:** 110 580 B. No fragmentation.
+- **Test baseline:** 14 lib-relevant native suites, 44/45 cases green;
+  1 pre-existing failure (`test_string_payload_reaches_handler`) on
+  `master` unrelated to this audit (F-X7 in §7.1).
+
+### Top findings ranked by ROI (first 5)
+
+1. **F-X1 — Demolish V4 legacy dispatch** (`CommandRegistry` + legacy
+   `FrameCodec` + V4 branches in `BleTransport.cpp`). Frees ~400 B static,
+   removes ~250 LOC. The two-registry coexistence is the single biggest
+   architectural smell in the lib (§5.2, §6.1).
+2. **F-H2 — Cut `ResourceTable::_blobSlots` to a configurable smaller size.**
+   The blob slot array alone is 4 224 B of the table's 5 000 B. Down to
+   8 default slots saves ~3.7 KB on a typical firmware (§3.1, §5.1).
+3. **F-X3 / F-X2 — Namespace and dead-field cleanup.** Move `EspControl`
+   into `ecb::`; remove never-assigned `_dataManifestData`/`_dataManifestLen`
+   fields and "kept for backward compat" `ActionContext` pointers. Tiny
+   RAM impact, large readability gain (§3.1, §4.3).
+4. **F-A1 — Split `DataBleTransport` from the protocol it dispatches.**
+   The class today imports 8 protocol headers and mutates `ResourceTable`,
+   `SubscriptionState`, `ActionRegistry` directly. Move that work behind
+   a callback or into a dedicated `protocol/dispatcher/` (§4.2).
+5. **F-H3 — Replace `std::function` with fn-pointer + context** in
+   `ActionRegistry`. Saves 384 B static, eliminates heap-on-register risk
+   for capturing lambdas. RAM win is smaller than the inventory predicted
+   (`std::function` SBO is 16 B not 32 on this libstdc++) but the
+   readability and zero-heap-allocation win remains (§3.1, §3.2, §5.1).
+
+### Headline debt
+
+The library carries **two complete dispatch stacks in parallel**: a V4 path
+(`CommandRegistry`, `FrameCodec`, `CmdContext`, V4 branches in
+`BleTransport.cpp`) and a V5 path (`ActionRegistry`, `DataFrameCodec`,
+`ActionContext`, `DataBleTransport`). Only the V5 path is exercised by
+the documented mobile flow and the manifest pipeline. **Removing V4 is the
+single biggest cleanup in the audit and unlocks several other findings.**
+
+The second-biggest debt is **architectural**: `DataBleTransport` is named
+"transport" but acts as the application-protocol dispatcher. It includes 8
+protocol headers and directly mutates `ResourceTable`, `SubscriptionState`,
+and `ActionRegistry` (§4.2). A clean separation lets the transport become a
+thin byte channel (~150 LOC) and concentrates protocol logic in one place.
+
+### Refactor target
+
+A successful refactor brings `EspControl` from **6 508 B → ~4 100 B**
+(−2.4 KB static) while removing ~250 LOC of dead V4 code. NimBLE-dominated
+heap (~19 KB) is essentially unchanged.
+
+### Next step
+
+The refactor specification at
+`docs/superpowers/specs/2026-04-24-esp-control-ble-refactor-design.md`
+(produced after this report is approved) groups findings into the six lots
+in §7.3 and defines exact execution order, non-regression tests per lot,
+and target numbers per lot.
 
 ## 2. Methodology and Measurements
 
@@ -824,7 +891,75 @@ drift across all the refactor lots.
 
 ## 7. ROI Matrix
 
-_Filled in Task 11._
+Every finding from §3-§6 is rowed below with measured-or-estimated impact,
+effort, risk, and dependency. Sorted by `(RAM bytes saved + 200 × readability
+stars) / effort_weight`, with `effort_weight = S:1, M:3, L:7`. Findings with
+zero RAM impact but high readability gain show their score; pure
+prerequisites are listed separately at the bottom.
+
+**Effort:** S = under 1 day, M = 1-3 days, L = more than 3 days.
+**Risk:** low = internal-only, med = changes API, high = changes wire format.
+**Readability stars:** + = noticeable, ++ = significant cleanup.
+
+### 7.1 Findings ranked by ROI
+
+| Rank | ID | Finding | RAM saved (B) | Read. | Effort | Risk | Depends on | Evidence | Score |
+|---:|---|---|---:|:---:|:---:|:---:|---|---|---:|
+| 1 | F-X1 | Remove V4 legacy dispatch entirely (`CommandRegistry`, legacy `FrameCodec`/`ParsedFrame`, V4 branches in `BleTransport.cpp`) | **~400** | ++ | M | low (only V5 paths exercised at runtime) | F-C5 | §3.1, §5.2, §6.1, §6.2 | 267 |
+| 2 | F-H2-blob | Cut `ResourceTable::_blobSlots` to compile-time-configurable size (e.g. 8 default) | **~3 700** | + | M | med (changes ResourceTable API) | F-C5 | §3.1, §5.1 | 1 300 |
+| 3 | F-X2 | Move `EspControl` into `ecb::` namespace | 0 | ++ | S | med (breaks `app/main.cpp`) | none | §4.3, §5 | 400 |
+| 4 | F-X3 | Remove dead fields (`_dataManifestData`/`_dataManifestLen` in `EspControlBle.h`, "kept for backward compat" pointers in `ActionContext`) | ~24 | + | S | low | none | §3.1, §5.5, A-3 inventory | 224 |
+| 5 | F-A1 | Move `transport/ble/DataBleTransport` protocol-handling code into a `protocol/dispatcher/` (or `SessionState`) class; transport becomes pure byte channel | 0 | ++ | L | med (large surface) | F-X1 | §4.2 | 57 |
+| 6 | F-H3 | Replace `ActionRegistry::std::function` with fn-pointer + `void* context`; reduce `Entry` size 24→12 | ~384 | + | M | med (changes `registerAction` signature, breaks `app/`) | F-C5 | §3.1, §5.1 | 195 |
+| 7 | F-X8 | Eliminate the 7 `#ifdef UNIT_TEST` duplicated functions in `BleTransport.cpp` (extract a small adapter abstraction) | 0 | ++ | M | low | none | §5.1, Lot 1 inventory | 133 |
+| 8 | F-H1 | Remove redundant 65-byte string buffers in `ActionDecoder::dispatch` (3 simultaneous → 1) | 130 stack | + | S | low (internal) | none | §3.3, §5.1 | 330 |
+| 9 | F-A4 | Decommission `CommandRegistry` API surface (overlaps with `ActionRegistry`) — included in F-X1 | (in F-X1) | ++ | (in F-X1) | (in F-X1) | F-X1 | §5.2 | included |
+| 10 | F-A2 | Split `EspControl` facade into per-layer building blocks (transport / protocol / app config) | 0 | ++ | L | med | F-A1 | §4.3, §5 | 57 |
+| 11 | F-H4-rename | Rename legacy `FrameCodec`/`ParsedFrame` so it cannot be confused with `DataFrameCodec`. Subsumed by F-X1 if V4 is removed. | 0 | + | S | low | F-X1 | §5.2 | (in F-X1) |
+| 12 | F-C1 | Centralize scattered constants in `Protocol.h`: `ECB_UUID_STRING_LEN`, `ECB_SHA256_DIGEST_SIZE`, `ECB_SHA256_BLOCK_SIZE`, `ECB_INVOKE_REPLY_*_MAX`, `ECB_MAX_RESOURCES` | 0 | + | S | low | none | §5.3 | 200 |
+| 13 | F-C3 | Replace `bool`-status APIs with status enums (11 functions in §5.4) | 0 | + | M | med (breaks API) | F-C5 | §5.4 | 67 |
+| 14 | F-C4 | Fix the one `Serial.printf` bypass in `AuthHandler.cpp:208` to use `ECB_LOGF` | 0 | (trivial) | S | low | none | §5.5 | 50 |
+| 15 | F-X4 | Remove function-local `static uint8_t buf[67]` in `CmdContext::replyOk` (subsumed by F-X1) | 67 (× N TUs) | + | (in F-X1) | low | F-X1 | §5.1 | (in F-X1) |
+| 16 | F-X5 | Couple `DataBleTransport::_deltaPendingMask` width to `SubscriptionState::kMaxIds` via static_assert | 0 | + | S | low | none | §4.3 O5 | 200 |
+| 17 | F-X6 | Either keep two distinct service UUIDs for cmd/data, or delete the duplicate (currently both = `ECB_DATA_SERVICE_UUID`) | 0 | + | S | low (only matters if app expected separate UUIDs) | F-C5 | §5.3, Lot 1 inventory | 200 |
+| 18 | F-H5 | Share a single 516 B frame buffer between `DataBleTransport::sendFrame`/`sendSnapshot`/`sendDeltaInternal` instead of stack-allocating per call | 0 (already stack) | + | S | low | none | §3.3, §5.1 | 200 |
+| 19 | F-H7 | Tighten nanopb `manifest.options` capacities: `nodes[256→ measured-max]`, `screens[16→]`, `entry_rules[4→]`, `children_ids[32→]` to actual usage | 0 (rodata, not RAM-resident) | + | S | low | none | §5.1, Lot 5 inventory | 50 |
+| 20 | F-X9 | (Out of lib scope) Reduce `CONFIG_ARDUINO_LOOP_STACK_SIZE` from 32 KB to 16 KB (HWM is ~10 KB) | 16 384 (stack reservation) | — | S | low | none | §3.3 | 16 384 |
+
+### 7.2 Prerequisites (must come first)
+
+| ID | Finding | Why prerequisite |
+|---|---|---|
+| F-X7 | Fix or quarantine the pre-existing `test_string_payload_reaches_handler` failure on `master` | The audit safety net must be 100 % green before any wire-touching refactor begins |
+| F-C5 | Add wire-format golden-file tests for at least `Snapshot`, `Delta`, `InvokeAction`, `InvokeResult` frame kinds | Several refactor lots touch frame encoding; without golden tests, byte-level drift is silent |
+
+### 7.3 Suggested refactor lots (indicative)
+
+| Lot | Findings | Rationale | Sequence |
+|---|---|---|---|
+| L0 — Safety net | F-X7, F-C5 | Repair baseline + add wire-format tests | **First** |
+| L1 — Quick wins / tidies | F-C4, F-X3, F-X5, F-X6, F-H5, F-X8 | Low-effort, low-risk improvements that don't touch the public API. Can be done in parallel batches. | After L0 |
+| L2 — Constants centralization | F-C1, F-H7 | Collapse duplicate definitions into `Protocol.h` and tighten nanopb sizes. Mostly find-and-replace. | After L1 |
+| L3 — V4 demolition | F-X1 (subsumes F-A4, F-H4-rename, F-X4) | The single biggest cleanup: remove `CommandRegistry`, legacy `FrameCodec`, V4 `BleTransport` branches. Frees ~400 B and removes ~250 lines. | After L2 |
+| L4 — RAM headline | F-H2-blob, F-H3, F-H1 | The "real" RAM savings: blob slots, std::function elimination, redundant string buffers. ~4 KB total. | After L3 |
+| L5 — Architecture tightening | F-A1, F-A2, F-X2 | Split DataBleTransport, split EspControl facade, namespace cleanup. The biggest restructuring. | After L4 |
+| L6 — API consistency | F-C3 | Status enums for the 11 bool-returning APIs. Done last because it touches every public header. | After L5 |
+
+**Out of plan:** F-X9 (Arduino stack reservation tuning) is a one-line config
+change that does not require any refactor lot. It can be applied at any time
+or even before the audit-driven work starts.
+
+### 7.4 Refactor budget summary
+
+If all in-scope findings (F-X1, F-H1, F-H2-blob, F-H3, F-X3, F-X4) land:
+
+| Symbol / metric | Current | Post-refactor (target) | Delta |
+|---|---:|---:|---:|
+| `EspControl` instance | 6 508 B | ~4 100 B | **−2 400 B** |
+| Source LOC removed (V4 demolition) | — | ~250 lines | — |
+| Public API changes | — | `registerAction` signature, drop `registerCallback`/`CmdContext`, status enums on ~11 funcs | — |
+| Wire format changes | — | None planned (V4 wire goes away because it's no longer reachable) | — |
+| Heap min during session | 199 596 B | ≥ 200 600 B | +1 000 B free |
 
 ## 8. Annexes
 
