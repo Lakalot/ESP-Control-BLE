@@ -58,15 +58,191 @@ _Filled in Task 7 (static pass 1) and Task 10 (runtime pass 2)._
 
 ## 4. Architecture and Layering
 
-_Filled in Task 4._
-
 ### 4.1 Real dependency graph
+
+The library has 31 source files organized in 5 logical layers. Internal-only `#include`
+edges (excluding standard library and framework headers) form the following graph:
+
+```dot
+digraph esp_control_ble_deps {
+  rankdir=TB;
+  node [shape=box, style=filled];
+
+  // Layers (color-coded)
+  subgraph cluster_top {
+    label="top (facade)"; color="#fde68a";
+    "EspControlBle.h" [fillcolor="#fde68a"];
+    "EspControlBle.cpp" [fillcolor="#fde68a"];
+  }
+  subgraph cluster_transport {
+    label="transport"; color="#bfdbfe";
+    "BleTransport.h" [fillcolor="#bfdbfe"];
+    "BleTransport.cpp" [fillcolor="#bfdbfe"];
+    "DataBleTransport.h" [fillcolor="#bfdbfe"];
+    "DataBleTransport.cpp" [fillcolor="#bfdbfe"];
+    "FrameCodec.h" [fillcolor="#bfdbfe"];
+    "FrameCodec.cpp" [fillcolor="#bfdbfe"];
+    "DataFrameCodec.h" [fillcolor="#bfdbfe"];
+    "DataFrameCodec.cpp" [fillcolor="#bfdbfe"];
+  }
+  subgraph cluster_protocol {
+    label="protocol"; color="#bbf7d0";
+    "Protocol.h" [fillcolor="#bbf7d0"];
+    "AuthHandler.h" [fillcolor="#bbf7d0"];
+    "AuthHandler.cpp" [fillcolor="#bbf7d0"];
+    "CommandRegistry.h" [fillcolor="#bbf7d0"];
+    "CommandRegistry.cpp" [fillcolor="#bbf7d0"];
+    "ResourceTable.h" [fillcolor="#bbf7d0"];
+    "ResourceTable.cpp" [fillcolor="#bbf7d0"];
+    "ActionRegistry.h" [fillcolor="#bbf7d0"];
+    "ActionRegistry.cpp" [fillcolor="#bbf7d0"];
+    "ActionDecoder.h" [fillcolor="#bbf7d0"];
+    "ActionDecoder.cpp" [fillcolor="#bbf7d0"];
+    "SubscriptionState.h" [fillcolor="#bbf7d0"];
+    "SubscriptionState.cpp" [fillcolor="#bbf7d0"];
+    "ManifestStore.h" [fillcolor="#bbf7d0"];
+    "ManifestStore.cpp" [fillcolor="#bbf7d0"];
+    "SnapshotEncoder.h" [fillcolor="#bbf7d0"];
+    "SnapshotEncoder.cpp" [fillcolor="#bbf7d0"];
+  }
+  subgraph cluster_support {
+    label="support"; color="#e9d5ff";
+    "EcbLogging.h" [fillcolor="#e9d5ff"];
+  }
+  subgraph cluster_gen {
+    label="nanopb (generated)"; color="#fecaca";
+    "manifest.pb.h" [fillcolor="#fecaca"];
+    "manifest.pb.c" [fillcolor="#fecaca"];
+  }
+
+  // Top → everything (expected)
+  "EspControlBle.h" -> "ActionRegistry.h";
+  "EspControlBle.h" -> "ResourceTable.h";
+  "EspControlBle.h" -> "SubscriptionState.h";
+  "EspControlBle.h" -> "BleTransport.h";
+  "EspControlBle.h" -> "DataBleTransport.h";
+  "EspControlBle.cpp" -> "EspControlBle.h";
+  "EspControlBle.cpp" -> "ManifestStore.h";
+  "EspControlBle.cpp" -> "EcbLogging.h";
+
+  // Transport → protocol (UNEXPECTED — see §4.2)
+  "BleTransport.h" -> "Protocol.h";
+  "BleTransport.h" -> "AuthHandler.h" [color=red, penwidth=2];
+  "BleTransport.h" -> "CommandRegistry.h" [color=red, penwidth=2];
+  "BleTransport.h" -> "FrameCodec.h";
+  "BleTransport.h" -> "DataBleTransport.h";
+  "BleTransport.cpp" -> "BleTransport.h";
+  "BleTransport.cpp" -> "EcbLogging.h";
+
+  "DataBleTransport.h" -> "Protocol.h";
+  "DataBleTransport.h" -> "DataFrameCodec.h";
+  "DataBleTransport.cpp" -> "DataBleTransport.h";
+  "DataBleTransport.cpp" -> "Protocol.h";
+  "DataBleTransport.cpp" -> "DataFrameCodec.h";
+  "DataBleTransport.cpp" -> "ManifestStore.h" [color=red, penwidth=2];
+  "DataBleTransport.cpp" -> "manifest.pb.h" [color=red, penwidth=2];
+  "DataBleTransport.cpp" -> "ResourceTable.h" [color=red, penwidth=2];
+  "DataBleTransport.cpp" -> "SubscriptionState.h" [color=red, penwidth=2];
+  "DataBleTransport.cpp" -> "ActionRegistry.h" [color=red, penwidth=2];
+  "DataBleTransport.cpp" -> "ActionDecoder.h" [color=red, penwidth=2];
+  "DataBleTransport.cpp" -> "SnapshotEncoder.h" [color=red, penwidth=2];
+  "DataBleTransport.cpp" -> "EcbLogging.h";
+
+  // Frame codecs (clean — only depend on Protocol.h)
+  "FrameCodec.h" -> "Protocol.h";
+  "FrameCodec.cpp" -> "FrameCodec.h";
+  "DataFrameCodec.h" -> "Protocol.h";
+  "DataFrameCodec.cpp" -> "DataFrameCodec.h";
+
+  // Protocol intra-layer (clean)
+  "AuthHandler.h" -> "Protocol.h";
+  "AuthHandler.cpp" -> "AuthHandler.h";
+  "CommandRegistry.h" -> "Protocol.h";
+  "CommandRegistry.cpp" -> "CommandRegistry.h";
+  "ResourceTable.cpp" -> "ResourceTable.h";
+  "ActionRegistry.cpp" -> "ActionRegistry.h";
+  "ActionDecoder.h" -> "ActionRegistry.h";
+  "ActionDecoder.cpp" -> "ActionDecoder.h";
+  "ActionDecoder.cpp" -> "manifest.pb.h";
+  "SubscriptionState.cpp" -> "SubscriptionState.h";
+  "ManifestStore.cpp" -> "ManifestStore.h";
+  "SnapshotEncoder.h" -> "ResourceTable.h";
+  "SnapshotEncoder.cpp" -> "SnapshotEncoder.h";
+  "SnapshotEncoder.cpp" -> "manifest.pb.h";
+
+  // Generated
+  "manifest.pb.c" -> "manifest.pb.h";
+}
+```
+
+**Source of truth:** `.tmp/audit/depgraph.txt` (regenerable). Red edges indicate
+layering violations detailed in §4.2.
+
+**Expected layering (target architecture):**
+
+```
+top  →  protocol  →  support
+   →  transport  →  support
+   protocol  →  gen
+```
+
+A clean architecture would forbid any `transport/* → protocol/*` edge: the transport
+layer should be a pure byte channel that hands raw frames to a protocol layer it
+does not know. Today, **9 such edges exist** (all from `DataBleTransport`).
 
 ### 4.2 Layering violations
 
+| # | From | To | Type of leak | Why it is a leak | Hypothesis |
+|---|---|---|---|---|---|
+| L1 | `transport/ble/BleTransport.h:5` | `protocol/auth/AuthHandler.h` | transport → protocol | Transport holds a `AuthHandler*` member; transport should not own auth state, only forward bytes. | A1 |
+| L2 | `transport/ble/BleTransport.h:6` | `protocol/commands/CommandRegistry.h` | transport → protocol | Transport holds a `CommandRegistry*`; same issue as L1. | A1 |
+| L3 | `transport/ble/DataBleTransport.cpp:6` | `protocol/manifest/ManifestStore.h` | transport → protocol | Transport reads manifest bytes directly to chunk them; should be a callback from above. | A1 |
+| L4 | `transport/ble/DataBleTransport.cpp:7` | `nanopb/manifest.pb.h` | transport → gen | Transport decodes/encodes app-level protobuf messages; this is the strongest leak. | A1 |
+| L5 | `transport/ble/DataBleTransport.cpp:8` | `protocol/resources/ResourceTable.h` | transport → protocol | Transport reads ResourceTable to send snapshots. | A1 |
+| L6 | `transport/ble/DataBleTransport.cpp:9` | `protocol/subscriptions/SubscriptionState.h` | transport → protocol | Transport mutates subscription state on inbound Subscribe frames. | A1 |
+| L7 | `transport/ble/DataBleTransport.cpp:10` | `protocol/actions/ActionRegistry.h` | transport → protocol | Transport calls registry to dispatch InvokeAction. | A1 |
+| L8 | `transport/ble/DataBleTransport.cpp:11` | `protocol/actions/ActionDecoder.h` | transport → protocol | Transport decodes action payloads inline. | A1 |
+| L9 | `transport/ble/DataBleTransport.cpp:12` | `protocol/snapshot/SnapshotEncoder.h` | transport → protocol | Transport encodes snapshots and deltas. | A1 |
+
+**Verdict:** `DataBleTransport` is **not a transport** — it is the application-protocol
+dispatcher implemented in the transport layer. The actual byte-channel logic
+(NimBLE characteristic write callback, fragmentation) is intermixed with snapshot
+encoding, action dispatch, subscription mutation, and manifest chunking. Moving
+the protocol logic into a dedicated `protocol/dispatcher/` (or merging into a
+`SessionState` owned by the facade) would let `DataBleTransport` become the pure
+byte channel its name implies.
+
+A1 hypothesis is **confirmed and stronger than expected** — the leak is not just
+"some knowledge of frame types" but "transport directly mutates application state
+including ResourceTable, SubscriptionState, and ActionRegistry."
+
 ### 4.3 Ownership ambiguity
 
+| # | Object | Who creates | Who holds | Who mutates | Lifetime contract |
+|---|---|---|---|---|---|
+| O1 | `DataBleTransport` instance | `EspControl::begin` (`EspControlBle.cpp:52` via `new`) | `EspControl::_dataTransport` (raw pointer) | `EspControl::publishDelta`, `EspControl::tick`, NimBLE callbacks via `BleTransport` | **Leaked by design** — no `delete`, no destructor on `EspControl`. Lifetime = program. Acceptable for embedded but should be documented or replaced with `std::unique_ptr`. |
+| O2 | `ManifestStore` (data variant) | `EspControlBle.cpp:51` `static ecb::ManifestStore dataStore(...)` | Function-local static in `begin()` | Read-only via `_dataTransport` | Singleton-by-accident; cannot be re-initialized on a second `begin()`. **The function-local static makes `begin()` non-idempotent.** |
+| O3 | NimBLE callback objects | `BleTransport.cpp:282/310/317` `new ...` | Static globals `s_cmdCallbacks`/`s_dataCallbacks`/`s_serverCallbacks` | NimBLE host task (callback) and main thread (registration) | **Leaked by design** — `new` without `delete`. Guarded by null-check on re-`begin()` (no double-allocation), but no explicit ownership statement. |
+| O4 | `_pin` / `_deviceName` | Caller of `EspControl(...)` | `EspControl::_pin` / `_deviceName` (raw `const char*`) | None (read-only) | **Implicit borrow** — caller must keep these alive for the entire program. Not documented. Common pattern in embedded but worth flagging. |
+| O5 | Subscription mask vs `SubscriptionState._ids[64]` | Both in `DataBleTransport` and `SubscriptionState` | `DataBleTransport::_deltaPendingMask` (uint64) and `SubscriptionState::_ids[64]` (array) | `DataBleTransport::handleFrame`, `DataBleTransport::tick` | **Two parallel data structures for the same concept.** The 64-bit mask works only because it happens to match `kMaxIds=64`. If `SubscriptionState::kMaxIds` is ever raised, the mask silently truncates. **No compile-time link** between the two constants. |
+| O6 | `BleTransport::_instance` static singleton | `BleTransport::begin` | Static class member | Internal C-style callbacks | Singleton-by-design — only one BLE stack per chip. Acceptable but never documented as such. |
+| O7 | `ResourceValue::stringValue[65]` vs `ResourceTable::_blobSlots[64].data[65]` | Both in `ResourceTable` | `_entries[]` references blob slots by index | `set*` mutates entries and slots | Inline storage, no heap. `releaseBlobSlot()` exists (`ResourceTable.cpp:41-47`) but is **never called** — entries and their slots accumulate forever once added. |
+| O8 | mbedtls SHA-256 context | `AuthHandler::computeExpectedHash` | Stack-local | Same function | Clean — no persistent state across auth cycles. **Hypothesis H6 (persistent mbedtls cost) is refuted.** |
+
+Most ownership cases are tolerable for embedded use, but **O1 + O2 together** make
+`EspControl::begin()` impossible to call twice with different manifests, which
+contradicts what its signature suggests.
+
 ### 4.4 Cycles
+
+**No include-graph cycles detected** in the 51 internal edges of
+`.tmp/audit/depgraph.txt`. The graph is a DAG.
+
+Verification method: walked all internal edges depth-first from each header; no
+back edge to an ancestor. The closest near-miss is
+`BleTransport.h → DataBleTransport.h` (line 4 of the include list), but
+`DataBleTransport.h` does **not** include `BleTransport.h` back — only
+`DataBleTransport.cpp` is reached via the facade through a different path.
 
 ## 5. Code Smells and Duplication
 
