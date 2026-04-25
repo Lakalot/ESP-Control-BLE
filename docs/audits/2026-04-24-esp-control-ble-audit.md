@@ -246,17 +246,195 @@ back edge to an ancestor. The closest near-miss is
 
 ## 5. Code Smells and Duplication
 
-_Filled in Task 5._
+Source for §5: `tools/audit/count_smells.ps1` output captured to
+`.tmp/audit/smells.txt`, cross-referenced with the inventory at
+`.tmp/audit/inventory-raw.md`. All `file:line` references are real and verified.
 
 ### 5.1 Fixed-size string and byte buffers
 
+The library is heavy on fixed-size buffers — most of them ≥ 64 bytes — and many
+duplicate the same conceptual size constant locally instead of sourcing it from
+`Protocol.h`.
+
+| File:line | Declaration | Size (bytes) | Multiplicity | Total RAM | Hyp. |
+|---|---|---:|---|---:|---|
+| `protocol/resources/ResourceTable.h:46` | `BlobSlot _blobSlots[64]` (each = `bool inUse` + `uint8_t data[65]`) | 66 | 64 capacity | **4224** | H2 |
+| `protocol/resources/ResourceTable.h:21` (struct) | `ResourceEntry _entries[64]` (12 B each) | 12 | 64 capacity | 768 | H2 |
+| `protocol/resources/ResourceTable.h:16` | `char stringValue[65]` (in `ResourceValue`) | 65 | per call/return value | varies | H1 |
+| `protocol/resources/ResourceTable.h:17` | `uint8_t bytesValue[64]` (in `ResourceValue`) | 64 | per call/return value | varies | H1 |
+| `protocol/actions/ActionRegistry.h:26` | `char stringValue[65]` (in `ActionContext`) | 65 | 1 per dispatched action | 65 | H1 |
+| `protocol/actions/ActionDecoder.cpp:40` | `char decodedString[65] = {0}` | 65 | stack, per dispatch | — | H1 |
+| `protocol/actions/ActionDecoder.cpp:64` | `char strVal[65] = {0}` (duplicate of decodedString!) | 65 | stack, per dispatch | — | H1 |
+| `protocol/actions/ActionDecoder.cpp:53` | `uint8_t innerReply[128] = {0}` | 128 | stack, per dispatch | — | — |
+| `protocol/subscriptions/SubscriptionState.h:19` | `uint32_t _ids[64]` | 4 | 64 capacity | 256 | H2 |
+| `protocol/actions/ActionRegistry.h:53` | `Entry _entries[32]` (Entry ≈ 40 B incl. `std::function`) | 40 | 32 capacity | **~1280** | H3 |
+| `protocol/commands/CommandRegistry.h:91` | `Entry _entries[32]` (Entry = 12 B) | 12 | 32 capacity | 384 | A4 |
+| `protocol/commands/CommandRegistry.h:50` | `static uint8_t buf[3 + ECB_MAX_PAYLOAD]` (=67) inside inline header method | 67 | one BSS copy per TU that inlines `replyOk` | varies | C1 |
+| `transport/ble/BleTransport.h:39` | `char _serviceUuid[37]` | 37 | 1 per BleTransport | 37 | C1 |
+| `transport/ble/BleTransport.cpp:301` | `uint8_t inlineManifest[512]` (stack) | 512 | 1 per `begin()` invocation | — | — |
+| `transport/ble/DataBleTransport.cpp:51, 122` | `uint8_t buf[kFrameBufferSize]` (= 516, stack) | 516 | per outbound frame | — | — |
+| `transport/ble/DataBleTransport.cpp:98` | `uint8_t reply[kInvokeResultBufferSize]` (= 260, stack, zero-init) | 260 | per InvokeAction | — | — |
+| `transport/ble/DataBleTransport.cpp:150` | `uint8_t buf[kDeltaFrameBufferSize]` (= 132, stack) | 132 | per delta | — | — |
+| `nanopb/manifest.pb.h` (multiple) | `char value[64]`, `char jsonlogic[256]`, `uint32_t children_ids[32]` etc. | varies | per nanopb message instance | varies | H7 |
+| `protocol/auth/AuthHandler.cpp:154, 206` | `uint8_t combined[64]` (stack) | 64 | per verifyResponse | — | C1 |
+| `protocol/auth/AuthHandler.cpp:164, 215` | `uint8_t fullHash[32]` (stack) | 32 | per verifyResponse | — | C1 |
+
+**Headline finding (H2):** A single empty `ResourceTable` instance reserves
+**~5000 bytes** of static RAM (`_blobSlots[64]` alone = 4224 B). For typical
+firmware that exposes a handful of string/bytes resources, this is the largest
+single waste in the library.
+
+**Headline finding (H1):** The 65-byte `stringValue` buffer pattern appears
+**five times** in three different structures (`ResourceValue`, `ActionContext`,
+two stack copies in `ActionDecoder`). Worse, `ActionDecoder::dispatch` keeps
+**three of them alive simultaneously on the stack** (`decodedString[65]` +
+`strVal[65]` + a copy into `ctx.stringValue[65]`) — 195 bytes of redundant
+string buffers per action dispatch. Lines 87 and 101 are the back-to-back
+`strncpy` calls that perform the redundant double-copy.
+
+**Headline finding (H3):** `ActionRegistry` uses `std::function<void(ActionContext&)>`
+(typedef at `ActionRegistry.h:44`), allocated 32 times in `_entries[32]`. With
+a typical libstdc++ `sizeof(std::function) ≈ 32 B` plus heap captures when the
+registered lambda holds non-trivial state (e.g. `[this, &control, &runtime]` —
+which is the documented pattern in the README), each registered action costs
+~40 B static **plus** ~16-64 B heap. Replacing with a function-pointer + `void*
+context` would eliminate both costs while still allowing the same call patterns.
+
 ### 5.2 Parallel codecs / registries
+
+#### FrameCodec vs DataFrameCodec (hypothesis H4)
+
+Both files live in `transport/frame/` and both are named after "FrameCodec",
+suggesting duplication. Side-by-side comparison:
+
+| Concern | `FrameCodec` (legacy) | `DataFrameCodec` (current) | Overlap? |
+|---|---|---|---|
+| Wire layout | `[cmdId:1][length:1][payload:length][hmac:4][checksum:1]` | `[kind:1][flags:1][length_hi:1][length_lo:1]` | **No — disjoint formats** |
+| Length-field width | 1 byte | 2 bytes big-endian | No |
+| Authentication | HMAC + XOR checksum | None at frame level | No |
+| Frame struct | `ParsedFrame` (in **global namespace**) | `ecb::FrameHeader` (declared in `Protocol.h:116`, used here) | No |
+| Encode? | Not provided (parse-only) | `static size_t encodeHeader(...)` | No |
+| Decode | `ecbParseFrame(const uint8_t*, uint16_t)` returns `ParsedFrame` (status via `valid` field) | `static bool decodeHeader(...)` | No |
+| Bound check on length | Yes, `ECB_MAX_PAYLOAD` | **No** — `kMaxFrameBody` exists in `Protocol.h:100` but is not referenced here | No |
+| Style | Free function, global namespace | Class with only static members, `ecb::` namespace | No |
+| Shared helpers | None | None | — |
+| Cross-references | None | None | — |
+
+**Verdict (H4 reformulated):** This is **not duplication** — these are
+**two different protocols** living side by side. `FrameCodec` parses the legacy
+"command frame" wire format; `DataFrameCodec` parses the V5 data-channel header.
+They serve different characteristics in `BleTransport` and never see each other.
+
+The actual smell here is the **shared "FrameCodec" name and directory** for two
+unrelated formats: a future maintainer reading `transport/frame/` cannot tell
+which is which without opening both files. Renaming the legacy one to something
+like `LegacyCmdFrame` (or moving it under `protocol/commands/`, since it serves
+the legacy `CommandRegistry`) would clarify.
+
+#### CommandRegistry vs ActionRegistry (hypothesis A4)
+
+| Concern | `CommandRegistry` | `ActionRegistry` | Overlap? |
+|---|---|---|---|
+| Location | `protocol/commands/` | `protocol/actions/` | — |
+| Identifier type | `uint8_t cmdId` | `uint32_t actionId` | **Yes — same role, different width** |
+| Capacity | `ECB_MAX_COMMANDS = 32` | `kMaxHandlers = 32` | Yes — same number from two sources |
+| Callback storage | Raw fn pointer (`EcbCommandFn`) — 4 B | `std::function<void(ActionContext&)>` — ~32 B + heap | **Yes — divergent strategies** |
+| Static cost | 384 B | ~1280 B | Same role, 3× the cost |
+| Context type | `CmdContext` (16 B, with multiple inline reply helpers) | `ActionContext` (~116 B, with reply pointers) | **Yes — two parallel context types** |
+| Reply mechanism | Inline `replyOk`/`replyError`/`replyProgress` writing to `_notify` callback | `replyOk`/`replyError` writing into out-param buffer through pointer indirection | **Yes — two reply ABIs** |
+| Wire dispatcher | Legacy `BleTransport::handleWrite` via `ecbParseFrame` | `DataBleTransport::handleFrame` for `FrameKind::InvokeAction` | Yes — two transports |
+| Used in mobile? | (legacy V4) | (current V5) | — |
+
+**Verdict (A4):** Two complete dispatch stacks coexist. `CommandRegistry` is
+the V4 legacy path (8-bit cmdId, byte-tagged frames, HMAC); `ActionRegistry` is
+the V5 path (32-bit actionId, protobuf-encoded payloads). Both still ship in
+the binary. From the inventory there is **no evidence** that V4 commands are
+still wired up at runtime — `CommandRegistry::dispatch` is called only from
+`BleTransport::handleWrite`, which is itself called only when a frame parses
+through `ecbParseFrame` (legacy format). Neither path is exercised by the V5
+manifest flow.
+
+If V4 is truly dead, `CommandRegistry` (384 B + 16 B context + ~150 lines), the
+legacy `FrameCodec`/`ParsedFrame` (~50 lines), and the V4 branches in
+`BleTransport.cpp` (~200 lines) can be removed wholesale. This is **the single
+biggest refactor opportunity** the audit will surface — pending confirmation in
+Task 6 that no test exercises V4 framing.
 
 ### 5.3 Scattered magic numbers
 
+The smells script flagged 50+ integer-literal occurrences ≥ 32. Filtered for
+those that recur across files and are not sourced from `Protocol.h`:
+
+| Meaning | Value | Occurrences (file:line) | In `Protocol.h`? | Should be? |
+|---|---:|---|---|---|
+| Manifest chunk size | 180 | `Protocol.h:78` (`ECB_MANIFEST_CHUNK_SIZE`), `Protocol.h:99` (`ecb::kManifestChunkSize`) | Yes (two names) | Consolidate to one name |
+| Max frame body | 512 | `Protocol.h:100` (`ecb::kMaxFrameBody`); used in `BleTransport.cpp:32, 276, 290, 301`, `DataBleTransport.h:48` | Yes (one ref) | Stop hardcoding `512` in `BleTransport.cpp` |
+| UUID string length | 36/37 | `BleTransport.cpp:230, 238, 239`, `BleTransport.h:39`, `DataBleTransport.cpp` (none) | **No** | Add `ECB_UUID_STRING_LEN` |
+| Max resource string | 64 | `ResourceTable.h:38` (`kMaxStringLen`), `ActionDecoder.cpp:12, 40, 64`, `ActionRegistry.h:26`, `nanopb/manifest.pb.h:72` | **No** (only as `ResourceTable::kMaxStringLen`) | Cross-link to `ECB_MAX_RESOURCE_STRING` |
+| Max bytes blob | 64 | `ResourceTable.h:39` (`kMaxBytesLen`), `ResourceTable.h:17` | **No** (only header constant) | Cross-link |
+| Max resources | 64 | `ResourceTable.h:37` (`kMaxEntries`), `SubscriptionState.h:9` (`kMaxIds`), `nanopb/manifest.pb.h:197`, `DataBleTransport.h:69` (`uint64_t` mask = 64 bits), `SnapshotEncoder.cpp:66` | **No** (each module redefines it) | Single source `ECB_MAX_RESOURCES` |
+| Max actions | 32 | `ActionRegistry.h:48` (`kMaxHandlers`), `Protocol.h:89` (`ECB_MAX_COMMANDS`) | Partial — different name in legacy | Use one name |
+| Max nanopb nodes | 256 | `nanopb/manifest.pb.h:203` | No (in `manifest.options`) | Document mismatch with documented limit 512 |
+| Stack reply buffer | 128 | `ActionDecoder.cpp:53`, `DataBleTransport.h:49` (`+ 128`) | **No** | Add `ECB_INVOKE_REPLY_INNER_MAX` |
+| Stack snapshot buffer | 256 | `DataBleTransport.h:48` (`+ 256`) | **No** | Add `ECB_INVOKE_REPLY_FRAMED_MAX` |
+| Auth nonce | 4 | `Protocol.h:94` (`ECB_NONCE_SIZE`), `AuthHandler.h:5` | Yes | OK |
+| Auth truncated hash | 4 | `Protocol.h:95` (`ECB_HASH_SIZE`) | Yes | OK |
+| SHA-256 full digest | 32 | `AuthHandler.cpp:108, 164, 177, 215, 232` | **No** | Add `ECB_SHA256_DIGEST_SIZE` |
+| SHA-256 block size | 64 | `AuthHandler.cpp:16, 32, 41, 56, 113` | **No** | Add `ECB_SHA256_BLOCK_SIZE` |
+| Sentinel "no parent/ref" | 0xFF | `Protocol.h:60-61` (two macros, same value) | Yes (twice) | Collapse to one symbol or document the distinction |
+
+**Verdict (C1):** `Protocol.h` does its job for protocol opcodes and small
+identifiers, but **per-buffer capacities and SHA-256 internal sizes are
+scattered across at least 7 files** with no single source of truth. The most
+damaging is the "max resources" cluster — five places independently encode
+"64", and the 64-bit subscription mask in `DataBleTransport.h:69` only works
+because of this coincidence. Tightening this is necessary before raising any
+capacity.
+
 ### 5.4 Error-handling inconsistency
 
+The lib mixes four return-style conventions in its public API:
+
+| Style | Used by | Example |
+|---|---|---|
+| `bool` (true=ok) | Most setters/dispatchers | `ResourceTable::get`, `ActionRegistry::registerAction`, `SubscriptionState::add/remove/isWatching`, `AuthHandler::verifyResponse`, `CommandRegistry::dispatch`, `DataBleTransport::sendEncodedFrame`, `SnapshotEncoder::encode/encodeDelta` |
+| `void` (silent failure) | Setters that drop on full | `ResourceTable::setBool/setInt/setUint/setFloat/setString/setBytes` (silent return when table full or no blob slot — see `ResourceTable.cpp:32, 144, 158`) |
+| Status enum | One place | `ActionStatus` enum at `ActionRegistry.h:8` (used in `ActionContext::replyError`) |
+| Out-param + bool | One place | `SnapshotEncoder::encode(out, cap, written&)` — bool return + size_t out-param |
+
+**Specific findings:**
+
+| File:line | Function | Style | Issue |
+|---|---|---|---|
+| `ResourceTable.h:42` | `bool get(uint32_t, ResourceValue&)` | `bool` | Reasonable (found/not-found) |
+| `ResourceTable.cpp:144, 158` | `setString`, `setBytes` | `void` | **Silent drop** when blob slot pool full — caller cannot detect |
+| `ActionRegistry.h:50` | `bool registerAction(uint32_t, ActionHandler)` | `bool` | Collapses "duplicate id" and "table full" |
+| `ActionRegistry.cpp:9` | `replyOk` write into out-buffer | (no return) | **Silent truncation** when `replyCap < len` |
+| `ActionRegistry.cpp:17` | `replyError(ActionStatus, const char* msg)` | (no return) | `msg` parameter accepted but **silently discarded** (`/*msg*/`) |
+| `AuthHandler.h:8` | `bool verifyResponse(const uint8_t*, uint8_t)` | `bool` | Collapses "frame too short", "wrong opcode prefix", "hash mismatch" |
+| `SubscriptionState.h:11-12` | `bool add`, `bool remove` | `bool` | Collapses "already present"/"full" and "not present"/"empty" |
+| `CommandRegistry.cpp:3-19` | `registerCommand` | (no return) | **Silent drop** when full |
+| `CommandRegistry.h:82` | `bool dispatch(uint8_t, ...)` | `bool` | Collapses "unknown id", "registered with null handler" |
+| `DataBleTransport.h:73` | `bool sendEncodedFrame(...)` | `bool` | Collapses "body too large", "no sender registered" |
+| `SnapshotEncoder.h:10, 12` | `bool encode(...)`, `bool encodeDelta(...)` | `bool + out` | Cannot distinguish "buffer too small" from internal encoder failure |
+
+**Verdict (C3):** **At least 11 public APIs collapse multiple failure modes
+into a single `bool false`.** Two APIs silently drop on capacity overflow
+without surfacing anything. One API has a parameter (`msg`) that is documented
+but discarded. A consistent `Result` or status-enum would make refactor regressions
+easier to catch — but this is mostly a **lit fuse**, not a RAM issue.
+
 ### 5.5 Logging bypasses
+
+| File:line | Call | Issue |
+|---|---|---|
+| `protocol/auth/AuthHandler.cpp:208` | `Serial.printf("[ECB] Auth error: PIN too long (%u bytes)\n", ...)` | **Direct `Serial.printf` bypasses `ECB_LOGF`.** Cannot be disabled by undefining `ECB_ENABLE_DEBUG_LOGS`. |
+| `support/EcbLogging.h:13, 19` | `#define ECB_LOGF(...) Serial.printf(__VA_ARGS__)` | Macro implementation — not a bypass, but the source of `Serial.printf` at runtime |
+
+**Verdict (C4):** Exactly **one** raw `Serial.printf` call slipped past the
+`ECB_LOGF`/`ECB_DATA_DEBUGF` macros. Trivial to fix. All other Serial output
+goes through the macros (which themselves expand to `Serial.printf` in debug
+builds and to no-ops otherwise — confirmed by reading `EcbLogging.h`).
 
 ## 6. Tests and Tooling
 
