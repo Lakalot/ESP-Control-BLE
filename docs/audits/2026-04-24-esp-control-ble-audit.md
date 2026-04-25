@@ -438,13 +438,112 @@ builds and to no-ops otherwise — confirmed by reading `EcbLogging.h`).
 
 ## 6. Tests and Tooling
 
-_Filled in Task 6._
-
 ### 6.1 Current native test coverage
+
+The library has **14 native test suites** under `firmware/esp32/test/native/`,
+exercised by `pio test -e native`. Two additional non-native suite stubs exist
+under `firmware/esp32/test/test_command_registry/` and `test_frame_parser/`
+(legacy V4 tests — never instantiated by the native runner; the platformio
+`test_filter = native/*` config in `[env:native]` excludes them).
+
+| Suite | Library files exercised | Cases | Coverage notes | Gaps |
+|---|---|---:|---|---|
+| `test_action_decoder` | `protocol/actions/ActionDecoder`, `ActionRegistry` | 3 | Register + dispatch flows, unknown action error | **1 case currently FAILING on `master` — see §6.3** |
+| `test_app_runtime` | (app code only — outside lib scope) | 6 | n/a for this audit | n/a |
+| `test_auth_handler` | `protocol/auth/AuthHandler` | 1 | SHA256(pin+nonce) accept | No reject test (wrong PIN, wrong nonce, wrong length, wrong opcode prefix) |
+| `test_ble_transport_dispatch` | `transport/ble/DataBleTransport`, `DataFrameCodec`, `Protocol`, `ActionRegistry`, `SubscriptionState`, `ResourceTable`, `ManifestStore`, `nanopb` | 4 | Subscribe+delta, Ping/Pong, full-id delta, manifest chunking | No InvokeAction/InvokeResult test; no Unsubscribe test; no error frame |
+| `test_ble_transport_runtime` | `transport/ble/BleTransport`, plus same as above | 2 | Auth+command dispatch shared path; truncated frame rejection | Heavy on V4 path; no V5 end-to-end |
+| `test_footprint` | `app/runtime/AppRuntime`, `transport/ble/...` (sizeof guards) | 2 | Runtime state budget, transport sender/instance bounded | **No guards on lib structs (ResourceTable, ActionRegistry, ActionContext, SubscriptionState, etc.)** |
+| `test_frame_codec` | `transport/frame/DataFrameCodec`, `Protocol` | 4 | Header surface, encode network order, decode round-trip, short-buffer reject | Decoder does NOT test for length overflow against `kMaxFrameBody`; **legacy `FrameCodec` (`ecbParseFrame`) has zero coverage** |
+| `test_manifest_embed` | `src/manifest_data.h` | 1 | Manifest bytes are linked | No content sanity beyond non-zero |
+| `test_manifest_store` | `protocol/manifest/ManifestStore` | 2 | Bytes/length match embed; CRC32 deterministic | No corrupt-byte test, no zero-length test |
+| `test_nanopb_generated_decl` | `nanopb/manifest.pb.h` | 1 | Compile-time symbol presence | n/a |
+| `test_nanopb_link` | `nanopb` runtime | 1 | Linker resolves nanopb symbols | n/a |
+| `test_resource_table` | `protocol/resources/ResourceTable` | 8 | Bool/int set+get, string truncation, blob slot release/reuse, kind change, missing key, generation bump | **No capacity-boundary test (what happens at slot 64? slot 65?)** |
+| `test_snapshot_encoder` | `protocol/snapshot/SnapshotEncoder`, `ResourceTable`, `nanopb` | 5 | Two resources round-trip, string values, bytes values, delta with blob bytes, overflow returns false | Some byte-level memcmp on encoded strings (lines 79, 129) — partial wire-format pinning |
+| `test_subscription_state` | `protocol/subscriptions/SubscriptionState` | 4 | Add+check, remove, clear, dedup add | No "fill to capacity 64 then add 65th" test |
+
+**Total: 14 lib-relevant suites + 1 app-only suite = 15 suites.**
+**Cases on master baseline: 44 PASS / 1 FAIL = 44/45.**
+
+The native suite is the only safety net for refactoring: it builds in seconds,
+runs in seconds, exercises real code paths, and is the only place where a
+behavior regression can be caught without flashing a board.
 
 ### 6.2 Blind spots
 
+| Module | Has direct tests? | Severity | Note |
+|---|---|---|---|
+| `protocol/core/Protocol.h` | Indirect via `test_frame_codec` | low | Constants-only header |
+| `protocol/auth/AuthHandler` | Yes (1 case) | **high** | Single happy-path test; no rejection cases. Refactoring the SHA256 path or PIN handling has no safety net for failure modes. |
+| `protocol/commands/CommandRegistry` | **NO** | **high** | 384 B of code path with **zero** native coverage. Legacy V4 path; refactor cannot detect breakage. |
+| `protocol/resources/ResourceTable` | Yes (8 cases) | low | Strong coverage, but no capacity-boundary tests |
+| `protocol/actions/ActionRegistry` | Indirect via `test_action_decoder` | medium | No direct register/find/full-table test; `std::function` heap paths untested |
+| `protocol/actions/ActionDecoder` | Yes (3 cases) — **1 FAILING** | **high** | See §6.3 |
+| `protocol/subscriptions/SubscriptionState` | Yes (4 cases) | low | Boundary cases missing |
+| `protocol/manifest/ManifestStore` | Yes (2 cases) | low | OK |
+| `protocol/snapshot/SnapshotEncoder` | Yes (5 cases) | low | Strong coverage including some byte-level checks |
+| `transport/frame/FrameCodec` (legacy) | **NO** | medium | If V4 stays, this is a hole; if V4 is to be removed (likely — see §5.2), the hole becomes irrelevant |
+| `transport/frame/DataFrameCodec` | Yes (4 cases) | low | OK |
+| `transport/ble/BleTransport` | Yes (`test_ble_transport_runtime`, 2 cases) | medium | Mostly V4 paths; the UNIT_TEST `#ifdef` mirrors that compile here are themselves the duplication source |
+| `transport/ble/DataBleTransport` | Yes (`test_ble_transport_dispatch`, 4 cases) | medium | InvokeAction not tested end-to-end |
+| `support/EcbLogging` | No | low | Header-only macros; low test value |
+| `nanopb/manifest.pb.{h,c}` | Yes (link + decl) | low | Generated; not the audit's concern |
+| `EspControlBle` (facade) | **NO** | medium | The facade has zero direct test; refactoring it is a black box without writing tests first |
+
+**Highest-priority blind spots for the refactor phase:**
+
+1. **`AuthHandler` has only 1 happy-path test.** Any change touching the SHA256
+   path or the response-format byte (`ECB_AUTH_OK` prefix) cannot be caught.
+2. **`CommandRegistry` has zero coverage.** If V4 is to be removed, this
+   doesn't matter; if it stays, this is a hole.
+3. **`EspControlBle` facade has zero direct test.** Its `begin()` is the
+   single most layer-mixing function in the library (see §4.2) and any
+   refactor touches it.
+4. **No capacity-boundary tests** on `ResourceTable`, `SubscriptionState`,
+   `ActionRegistry`. The 64-resource implicit limit (see O5 in §4.3) is
+   especially fragile.
+
 ### 6.3 Wire-format regression tests
+
+**Pre-existing failure on master baseline (finding F-X7 — pre-existing test debt):**
+
+```
+test\native\test_action_decoder\test_action_decoder.cpp:107:
+  test_string_payload_reaches_handler: Expected 5 Was 0	[FAILED]
+```
+
+This failure exists on `master` (commit `bcfa34d`) and was confirmed reproducible
+on a clean checkout before any audit-related change. It is **outside the scope
+of this audit**, but it impacts the refactor phase — the safety net is not
+fully green. The first action of the refactor plan must be either fixing or
+quarantining this case before any library-touching change.
+
+**Wire-format pinning status:**
+
+| Format | Pinned by a test? | Where |
+|---|---|---|
+| V5 frame header (`[kind][flags][len_hi][len_lo]`) | **Partial** | `test_frame_codec`: `test_encode_header_puts_kind_flags_length_in_network_order` (case-by-case, not a golden file) |
+| V5 Snapshot protobuf bytes | **Partial** | `test_snapshot_encoder`: `memcmp` on encoded string/bytes values (`test_snapshot_encoder.cpp:79, 129`) — pins the protobuf field encoding for those types |
+| V5 Delta protobuf bytes | No | — |
+| V5 InvokeAction protobuf bytes | No | — |
+| V5 InvokeResult protobuf bytes | No | — |
+| V5 Subscribe/Unsubscribe protobuf bytes | No | — |
+| V5 Manifest chunk + EOF framing | **Partial** | `test_ble_transport_dispatch::test_send_manifest_is_chunked_across_ticks_and_finishes_with_eof` — verifies chunking logic, not byte-level layout |
+| Auth challenge format | No | — |
+| Auth response format | No | — |
+| V4 legacy frame format (`ParsedFrame`) | **No** | Despite `test_command_registry/` and `test_frame_parser/` directories existing, they are not in the `native/*` filter |
+
+**Verdict (C5):** Wire-format coverage is **partial but uneven**. The V5
+data-channel header has unit-level encode/decode tests; protobuf bodies are
+pinned only for SnapshotEncoder strings/bytes. There is **no end-to-end
+"capture a full V5 frame and compare to a golden file"** test.
+
+**For the refactor phase**, this means: any refactor that touches frame
+encoding must add wire-format golden tests for the kinds it modifies. This is
+itself a high-priority finding (**F-C5**) — adding even a minimal
+"snapshot every FrameKind to a golden binary" test would catch silent format
+drift across all the refactor lots.
 
 ## 7. ROI Matrix
 
