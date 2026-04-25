@@ -105,3 +105,25 @@ _Filled in Task 11._
 ### 8.3 Reproducible command lines
 
 ### 8.4 Calculation assumptions
+
+| Module | Files inventoried | Total LOC | Structs found | Heap allocations found | Suspicious patterns |
+|---|---:|---:|---:|---:|---:|
+| transport/ble | 4 | 825 | 5 | ~5 | ~25 |
+| transport/frame | 4 | 81 | 2 | 0 | ~12 |
+| protocol/core+auth+commands | 5 | 512 | 6 | 0 | ~16 |
+| protocol/resources+actions+subs | 8 | 528 | 10 | ~1 | ~24 |
+| manifest+snapshot+support+top+nanopb | 10 | 1115 | 7 + nanopb msgs | ~1 | ~17 |
+| **TOTAL** | **31** | **3061** | **30+ (excl. nanopb)** | **~7** | **~94** |
+
+Raw inventory notes used during audit: `.tmp/audit/inventory-raw.md` (not committed — `.tmp/` is gitignored, regenerable from library sources by re-running Task 3 of the audit plan).
+
+Inventory performed via 5 parallel read-only subagent passes on 2026-04-24, one per module group:
+- Lot 1 (transport/ble): BleTransport.{h,cpp}, DataBleTransport.{h,cpp}
+- Lot 2 (transport/frame): FrameCodec.{h,cpp}, DataFrameCodec.{h,cpp}
+- Lot 3 (protocol/core+auth+commands): Protocol.h, AuthHandler.{h,cpp}, CommandRegistry.{h,cpp}
+- Lot 4 (protocol/resources+actions+subs): ResourceTable.{h,cpp}, ActionRegistry.{h,cpp}, ActionDecoder.{h,cpp}, SubscriptionState.{h,cpp}
+- Lot 5 (manifest+snapshot+support+top+nanopb): ManifestStore.{h,cpp}, ManifestBytes.cpp, SnapshotEncoder.{h,cpp}, EcbLogging.h, EspControlBle.{h,cpp}, nanopb/manifest.pb.{h,c}
+
+Hand-calculated `sizeof` values assume 4-byte alignment on a 32-bit ESP32 target. They will be verified by `static_assert`s in Task 7 (test_audit_sizeof native suite).
+
+Heap-allocation counts exclude transitive NimBLE internal allocations (~15 KB+) which are quantified in §3.2 from runtime probe data (Task 10).
