@@ -42,7 +42,53 @@ pio test -e native -f test_audit_sizeof -v
 
 ### 2.3 Runtime measurement commands
 
+Runtime numbers come from a probe firmware on branch `audit/probe-runtime`.
+The branch is **discarded** after measurement — it is **NOT merged** into
+`master` or into the audit branch.
+
+**Probe checkpoints:**
+
+| Checkpoint | API | Log prefix |
+|---|---|---|
+| Post-`setup()` | `esp_get_free_heap_size()` + `esp_get_minimum_free_heap_size()` | `[PROBE] post-setup` |
+| Post-BLE connection | idem | `[PROBE] post-ble-connected` |
+| Post-manifest send | idem | `[PROBE] post-manifest-sent` |
+| Stack HWM (loop, every 5 s) | `uxTaskGetStackHighWaterMark(nullptr)` | `[PROBE] stack loop hwm` |
+| Heap caps summary | `heap_caps_print_heap_info(MALLOC_CAP_8BIT)` | `[PROBE] heap_caps_8bit` |
+
+User-facing procedure: `tools/audit/PROBE_INSTRUCTIONS.md`. The probe build
+is prepared by Task 9 of the audit plan and consumed by Task 10.
+
 ### 2.4 Known measurement error and limitations
+
+- **Probe overhead.** The instrumentation itself consumes RAM (`Serial.printf`
+  format strings in `.rodata`, a few stack frames per probe, no `.bss`
+  growth in the lib itself since the probe is in `app/main.cpp`). Pass 2
+  records both a "probe-build" number and an estimated "clean-build" number.
+  The estimate is computed by running `pio run -t size` on
+  `audit/probe-runtime` and on `audit/esp-control-ble-lib` separately, then
+  subtracting the segment deltas.
+- **Single-device, single-session measurement.** Numbers come from one
+  board running through one connection sequence. NimBLE's internal allocator
+  fragments under repeated connect/disconnect cycles; expect ±200 B variance
+  on heap numbers across re-runs.
+- **Native-host `sizeof` vs target.** The native test (`test_audit_sizeof`)
+  runs on the 32-bit-configured native host. POD types and pointer-bearing
+  structs match the ESP32 target exactly — this was verified on first run by
+  observing `sizeof(SubscriptionState) == 260` (matches ESP32 `64*4 + 4`,
+  not the `64*4 + 8` a 64-bit host would produce). Discrepancies remain
+  possible for unions or bitfields if introduced later.
+- **`nm` symbol attribution.** Demangled names are matched to modules by
+  namespace prefix. The library's headline symbol `(anonymous namespace)::control`
+  has no namespace prefix because `app/main.cpp` declares its `EspControl`
+  instance in an anonymous namespace; this is identified by manual inspection
+  of `app/main.cpp` rather than by symbol name pattern.
+- **PlatformIO "RAM" vs `.bss + .data`.** PlatformIO's reported "RAM" figure
+  (42 124 B) is the **DRAM-resident portion** after the ESP-IDF linker
+  resolves segment placement (some `.data` lives in flash on ESP32, read at
+  boot via `memcpy`). The raw `.bss + .data = 139 949 B` from `pio run -t size`
+  is therefore **not** the actual DRAM cost. The 42 124 B figure is the one
+  to use for refactor target setting.
 
 ## 3. RAM Footprint
 
