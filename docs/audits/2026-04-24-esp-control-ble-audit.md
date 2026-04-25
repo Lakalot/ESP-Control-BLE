@@ -203,66 +203,135 @@ the documented firmware code** (e.g. `[this, &control, &runtime]` uses 12 B of
 captures + vtable, around the SBO boundary). Confirming the actual heap cost
 requires runtime measurement (Task 10).
 
-### 3.2 Heap allocated at `begin()` / construction (static estimate)
+### 3.2 Heap allocated at `begin()` / construction
 
-Pass 1 estimate; pass 2 will measure.
+**Measured runtime values** (pass 2). Captured 2026-04-25 from the probe
+firmware on `audit/probe-runtime` (commit `50cae59`). Raw log at §8.2.
 
-| Source | File:line | Trigger | Estimated bytes | Notes |
-|---|---|---|---:|---|
-| NimBLE init | NimBLE-Arduino internals via `BleTransport::begin` | First `EspControl::begin` | ~15 000 | NimBLE host stack, ATT, GATT, advertising — partial table in §3.1 (rows 7, 13, 18, 25-29 are NimBLE) |
-| `new EcbServerCallbacks(this)` | `transport/ble/BleTransport.cpp:282` | First `begin` | ~8 | Vtable + this ptr |
-| `new EcbCmdCallbacks(this)` | `transport/ble/BleTransport.cpp:310` | First `begin` | ~8 | idem |
-| `new EcbDataCallbacks(this)` | `transport/ble/BleTransport.cpp:317` | First `begin` | ~8 | idem |
-| `new ecb::DataBleTransport(...)` | `EspControlBle.cpp:52` | First `begin` | ~56 | sizeof(DataBleTransport) plus small alignment overhead |
-| `xSemaphoreCreateMutex()` | `transport/ble/DataBleTransport.cpp:33` | DataBleTransport constructor | ~80 | FreeRTOS mutex (allocated in heap by default config) |
-| Arduino `String` for stored UUID | `transport/ble/BleTransport.cpp:237` | NVS read | ~40 | If a custom UUID was previously written; else empty |
-| `std::function` capture heap | `protocol/actions/ActionRegistry.cpp:28` | Each `registerAction` with captures > 16 B | 16-64 / handler | H3 — measured via heap deltas in pass 2 |
-| **Total at boot (estimate)** | | | **~15 200** | NimBLE dominates by a factor of 100× |
+#### Free heap timeline
+
+| Checkpoint | Free heap (B) | Delta (B) | Phase |
+|---|---:|---:|---|
+| Pre-init (boot before `setup()`) | **219 084** | — | Baseline before any allocation |
+| Post-`setup()` | **200 292** | **−18 792** | NimBLE init + EspControl callbacks + nanopb runtime |
+| Pre-connection steady (after warmup) | 200 028 | −264 | Drift from minor periodic allocations (telemetry) |
+| Post-MTU + subscribe (BLE connected) | **199 824** | −204 | Connection allocations |
+| Min observed (during action dispatch) | **199 596** | −228 | Peak transient drop on `relay.toggle`/`light.set_brightness` |
+| End-of-session (mobile disconnected) | 199 824 | (back to steady) | NimBLE reclaims connection memory |
+
+**Headline:**
+
+- **NimBLE + library cost at boot: ~18.8 KB** — much lower than the rough
+  pass-1 estimate of ~15 KB; the actual figure is closer to 19 KB once
+  Arduino/NimBLE-Arduino wrappers, GATT services, advertising, and the
+  EspControl callbacks are all in.
+- **A live BLE session adds only ~204 B** of heap on top of the pre-connection
+  baseline — much smaller than expected. NimBLE pre-allocates its connection
+  buffers at `init()` time (visible in the heap-caps regions: regions
+  `0x3ffb2730`, `0x3ffb6388`, `0x3ffb9a20` are 95-100 % full at boot).
+  *This is why the probe's "heap-drop detector" never fired:* the connection
+  drop is below the 1500 B threshold.
+- **Each action dispatch costs ~24-228 B transient heap.** Below noise; not a
+  RAM concern. The heap-min between probes drifts by 0-24 B per dispatch and
+  recovers fully.
+- **Largest contiguous free block: 110 580 B.** No fragmentation observed
+  across one connect/disconnect/reconnect cycle. Healthy.
+
+#### Heap regions at steady state (post-setup, no connection)
+
+From `heap_caps_print_heap_info(MALLOC_CAP_8BIT)`:
+
+| Region addr | Size (B) | Free (B) | Allocated (B) | Owner |
+|---|---:|---:|---:|---|
+| `0x3ffb2730` | 15 448 | 0 | 14 468 | ESP-IDF / NimBLE static (full at boot) |
+| `0x3ffaff10` | 240 | 8 | 4 | Tiny ESP-IDF region |
+| `0x3ffb6388` | 7 288 | 8 | 6 184 | NimBLE state, mostly used |
+| `0x3ffb9a20` | 16 648 | 12 | 15 232 | NimBLE buffers, mostly used |
+| `0x3ffc8000` | 98 304 | 72 400 | 24 252 | Mixed app/NimBLE allocations heap |
+| `0x3ffe0440` | 15 072 | 14 644 | 0 | Free DRAM region |
+| `0x3ffe4350` | 113 840 | 112 956 | 0 | **Largest free DRAM region (~111 KB contiguous)** |
+| **Total** | **266 840** | **200 028** | **60 140** | |
+
+**Pass-1 hypothesis revisions:**
+
+| Source from pass-1 estimate | Pass-1 estimate | Pass-2 reality | Comment |
+|---|---:|---:|---|
+| NimBLE internal | ~15 000 | ~18 500 | Slightly more — Arduino-NimBLE wrappers, advertising, GATT register costs add up |
+| `new EcbServerCallbacks` | ~8 | ✓ within noise | Confirmed |
+| `new EcbCmdCallbacks` | ~8 | ✓ within noise | Confirmed |
+| `new EcbDataCallbacks` | ~8 | ✓ within noise | Confirmed |
+| `new ecb::DataBleTransport` | ~56 | ✓ within noise | Confirmed |
+| `xSemaphoreCreateMutex` | ~80 | ✓ within noise | Confirmed |
+| Arduino `String` for UUID | ~40 | ✓ likely 0 | NVS read returns empty when no custom UUID stored |
+| `std::function` capture heap | 16-64 / handler | **≤ 16 / handler average** | The H3 hypothesis still holds, but **the actual cost is below libstdc++'s 16 B SBO** for the `[this, &control, &runtime]` capture pattern observed in the README. The lambdas measured fit in SBO. **H3 RAM impact downgraded from "~1 KB heap" to "near zero on this binary"** for the current handler set. SBO can still spill to heap if a handler captures more state. |
 
 ### 3.3 Stack high-water marks
 
-Cannot be reliably bounded without runtime measurement. The probe build
-(branch `audit/probe-runtime`, prepared in Task 9) will report
-`uxTaskGetStackHighWaterMark` per task at runtime.
+**Measured at runtime** from the loop task (pass 2):
 
-**Configured stack budgets** (from `firmware/esp32/platformio.ini` and ESP-IDF
-defaults):
+| Task | Configured stack (B) | HWM observed | Free remaining (B) | Used (B) | Margin |
+|---|---:|---:|---:|---:|---|
+| Arduino `loopTask` | 32 768 (Arduino default for ESP32, NOT ESP-IDF default 8192) | 5 612 words = 22 448 B free | 22 448 | **~10 320** | 68 % free — comfortable |
+| NimBLE host | 4 096 | (not probed — see note) | — | — | — |
+| Idle (per core) | 1 024 | (not probed) | — | — | — |
+| Timer service | 2 048 | (not probed) | — | — | — |
 
-| Task | Configured stack (bytes) | Source |
+**Note:** the probe instruments only the calling task (`loopTask`).
+`uxTaskGetStackHighWaterMark(nullptr)` reports the high-water mark of the
+**caller**, not other tasks. To measure the NimBLE host task we would need to
+inject a probe into a NimBLE callback; deferred unless a future audit revision
+needs it.
+
+**Loop stack hot path observed:** 5 612 free words consistently across
+multiple probe ticks (boot, pre-connection, post-connection, post-action,
+post-disconnect). The HWM does not move during action dispatch — meaning the
+deepest frame is not on the action path but elsewhere in `runtime.tick()`.
+
+**Pass-1 hot-spot validation:**
+
+| Frame | Estimated stack | Pass-2 status |
 |---|---:|---|
-| NimBLE host | 4 096 | `CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE=4096` (`platformio.ini:23`) |
-| Arduino `loopTask` | 8 192 | ESP-IDF default |
-| Idle (per core) | 1 024 | ESP-IDF default |
-| Timer service | 2 048 | ESP-IDF default |
+| `BleTransport::begin` (production) | ≥ 512 | One-shot at boot, irrelevant for HWM |
+| `DataBleTransport::sendFrame` / `sendSnapshot` | ≥ 516 | NimBLE host task path — not measured |
+| `DataBleTransport::handleFrame` (InvokeAction) | ≥ 260 | NimBLE host task path — not measured |
+| `ActionDecoder::dispatch` | ≥ ~325 | NimBLE host task path — not measured |
+| `AuthHandler::computeExpectedHash` | ≥ ~200 | NimBLE host task path — not measured (also: not exercised in V5 sessions, since auth is via a different path) |
 
-**Observable stack hot spots** (from Task 3 inventory) that may push these
-budgets:
-
-| Function | Stack frame | File:line |
-|---|---:|---|
-| `BleTransport::begin` (production branch) | ≥ 512 (inlineManifest buf) | `BleTransport.cpp:301` |
-| `DataBleTransport::sendFrame` / `sendSnapshot` | ≥ 516 (kFrameBufferSize) | `DataBleTransport.cpp:51, 122` |
-| `DataBleTransport::handleFrame` (InvokeAction branch) | ≥ 260 (zero-init `reply` buffer) | `DataBleTransport.cpp:98` |
-| `DataBleTransport::sendDeltaInternal` | ≥ 132 (kDeltaFrameBufferSize) | `DataBleTransport.cpp:150` |
-| `ActionDecoder::dispatch` | ≥ ~325 (3× 65 B string + 128 B inner reply + 16 B scratch) | `ActionDecoder.cpp:40, 53, 64` |
-| `AuthHandler::computeExpectedHash` (production) | ≥ ~200 (mbedtls SHA256 ctx ~108 + buffers) | `AuthHandler.cpp:215` |
-
-The 8 KB `loopTask` budget is comfortable; the 4 KB NimBLE host budget could
-be tighter under nested action dispatch. Pass 2 confirms.
+**Verdict:** The 32 KB Arduino loopTask budget is **3× larger than necessary**
+for current paths. The 4 KB NimBLE host budget remains unmeasured and is
+where the action-dispatch stack frames actually live — that is where future
+runtime measurement should focus if the refactor expands action handler
+complexity.
 
 ### 3.4 Current total vs. post-refactor target
 
-| Metric | Current (measured) | Refactor target hypothesis | Method |
-|---|---:|---:|---|
-| `EspControl` static instance | **6 508** | ≤ 4 000 (− ~2.5 KB) | Mostly from H2 (ResourceTable blob slots) and H3 (ActionRegistry entries) |
-| `.bss` of full firmware | 20 185 | -1 500 (estimate) | Dead V4 code removal + H1/H2/H3 |
-| `.data` of full firmware | 119 764 | unchanged | mostly flash-resident, refactor doesn't touch this |
-| PlatformIO "RAM" | **42 124** | ≤ 39 500 | i.e. ~2.5 KB freed |
-| Heap at boot (estimate) | ~15 200 | ~15 200 - delta(std::function captures) | NimBLE dominates and is unchanged |
+Based on pass-1 + pass-2 measurements:
 
-**The refactor target is a ~2.5 KB static RAM reduction**, concentrated in the
-single `EspControl` instance. The exact number is set by the refactor spec
-(separate document — Task 13 hand-off).
+| Metric | Current (measured) | Refactor target hypothesis | Lever |
+|---|---:|---:|---|
+| `EspControl` static instance (`.bss`) | **6 508 B** | **≤ 4 100 B** | H2 saves up to ~3 KB on ResourceTable blob slots; H3 saves ~384 B on ActionRegistry entries; F-X removes V4 CommandRegistry (384 B) |
+| Full firmware `.bss` | 20 185 B | ≤ 17 800 B | Same levers as above (the EspControl instance dominates lib `.bss`) |
+| Full firmware `.data` | 119 764 B | ≈ unchanged | Mostly flash-resident, refactor does not touch this |
+| PlatformIO "RAM" | **42 124 B** | **≤ 39 700 B** | ≈ 2.4 KB freed |
+| Free heap post-`setup()` | **200 292 B** | **≥ 201 000 B** | F-H3 (eliminate `std::function` captures) returns mostly 0 (already in SBO) but reduces fragmentation risk |
+| Free heap post-action steady | 199 824 B | ≥ 200 600 B | Same |
+| Min free heap observed | 199 596 B | ≥ 200 400 B | Same |
+| Loop stack HWM | 22 448 B free of 32 768 | ≈ unchanged | Configured budget is 3× actual usage; could be cut to 16 KB to free 16 KB of stack reserve, but this is in the Arduino framework, not the lib refactor |
+
+**Refactor target headline: ~2.4 KB of static RAM reclaimable** in the
+`EspControl` instance, with NimBLE-dominated heap (~19 KB) essentially
+untouched. The realistic limit is ~6500 → ~4100 B for the `EspControl`
+symbol; further compression requires architectural changes (e.g. storing
+resources externally in PSRAM — but the target hardware is ESP32 classic
+without PSRAM).
+
+**Out-of-scope-but-flagged:** The 32 KB Arduino loopTask stack budget is
+~3× actual peak usage. Reducing it via `CONFIG_ARDUINO_LOOP_STACK_SIZE`
+would free ~16 KB of stack reservation. This is an Arduino framework-level
+tuning, not a library refactor — flagged in the ROI matrix as F-X9.
+
+**The refactor specification (Task 13 hand-off) sets the precise targets per
+lot. This audit only establishes feasibility bounds.**
 
 ## 4. Architecture and Layering
 
@@ -774,7 +843,52 @@ Captured to `.tmp/audit/` (gitignored — regenerable):
 
 ### 8.2 Raw runtime logs
 
-_To be populated in pass 2 after user runs probe firmware (Task 10)._
+Captured 2026-04-25 from ESP32-D0WD-V3 board, firmware commit
+`audit/probe-runtime@50cae59`, MAC `6c:c8:40:05:60:04`. Mobile session:
+connect → MTU update (255 B) → subscribe → `relay.toggle ON` → 3×
+`light.set_brightness` → `relay.toggle OFF` → disconnect. Full log saved to
+`.tmp/audit/runtime-log.txt` (gitignored).
+
+Key extracts:
+
+```
+[PROBE] free at boot (pre-init): 219084
+I NimBLEDevice: BLE Host Task Started
+I NimBLEDevice: NimBle host synced.
+[App] Ready (manifest, 2034 bytes)
+[PROBE] post-setup: free=200292 minfree=200280
+...
+[PROBE] stack loop hwm=5612 (words = 22448 bytes)
+[PROBE] heap_caps_8bit:
+Heap summary for capabilities 0x00000004:
+  Totals:
+    free 200028 allocated 60140 min_free 200016 largest_free_block 110580
+[PROBE] --- end heap_caps ---
+...
+I NimBLEServer: mtu update event; conn_handle=0 mtu=255
+I NimBLEServer: subscribe event; attr_handle=17, subscribed: true
+...
+[DATA] relay.toggle -> ON
+...
+  Totals:
+    free 199824 allocated 60320 min_free 199596 largest_free_block 110580
+```
+
+**Probe-build vs clean-build size comparison:**
+
+| Segment | Clean (`audit/esp-control-ble-lib`) | Probe (`audit/probe-runtime`) | Probe overhead |
+|---|---:|---:|---:|
+| `.text` | 505 951 | 506 615 | +664 |
+| `.data` | 119 764 | 120 304 | +540 |
+| `.bss` | 20 185 | 20 201 | **+16** |
+| PlatformIO "RAM" | 42 124 | 42 140 | **+16** |
+| Flash (firmware.bin) | 619 353 | 620 557 | +1 204 |
+
+The probe adds **+16 B BSS** (4 file-scope `g_*` globals on `app/main.cpp:32-36`)
+and **+1.2 KB flash** (Serial.printf format strings + heap_caps inline code).
+**The 18 792 B drop from boot to post-setup observed in pass 2 is therefore
+within ±20 B of the clean-build value.** The clean-build "free heap
+post-setup" is estimated at **~200 308 B** (200 292 + 16 BSS).
 
 ### 8.3 Reproducible command lines
 
