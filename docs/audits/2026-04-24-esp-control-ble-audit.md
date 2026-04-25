@@ -46,15 +46,177 @@ pio test -e native -f test_audit_sizeof -v
 
 ## 3. RAM Footprint
 
-_Filled in Task 7 (static pass 1) and Task 10 (runtime pass 2)._
+Pass 1 measurements: static analysis (`pio run -t size` segment totals,
+`xtensa-esp32-elf-nm --size-sort` per-symbol attribution, native
+`test_audit_sizeof` for verified `sizeof`). Pass 2 (runtime) populates §3.2-§3.3
+once the user runs the probe firmware (Task 10).
 
 ### 3.1 Static `.bss` / `.data` per module
 
-### 3.2 Heap allocated at `begin()` / construction
+#### Whole-firmware totals
+
+Source: `pio run -e esp32dev -t size` on commit `1e2665c` (audit branch,
+no library code modified). Captured to `.tmp/audit/size-segments.txt`.
+
+| Segment | Bytes | Notes |
+|---|---:|---|
+| `.text` | 505 951 | Code in flash. Includes Arduino, NimBLE, mbedtls, nanopb runtime, library code, app code. |
+| `.data` | 119 764 | Initialized data. Most of this is in flash (`PROGMEM`/.rodata-aliased) on ESP32 — only the in-RAM portion counts toward DRAM. |
+| `.bss` | 20 185 | Zero-initialized RAM. **This is the cleanest "RAM cost" metric.** |
+| **PlatformIO "RAM"** | **42 124** (12.9 % of 320 KB DRAM) | Effective static RAM after ESP32 segment splitting. |
+
+The PlatformIO summary reports **42 124 B** of RAM used after the ESP32-IDF
+linker assigns segments to DRAM vs IRAM vs flash. `.bss + .data` = 139 949 B
+overshoots this because most `.data` actually lives in flash (read at boot via
+`memcpy`). For audit purposes, the **42 124 B** figure is the headline.
+
+ESP32 has 520 KB SRAM total, but ESP-IDF reserves ~200 KB for IRAM, ROM cache,
+DMA, etc. PlatformIO reports **320 KB DRAM available**. **Free DRAM at boot ≈
+277 KB** (320 − 42 = 278 KB), which the heap then uses for NimBLE, FreeRTOS
+tasks, and any application allocations.
+
+#### Top RAM symbols attributable to the application + library
+
+Source: `xtensa-esp32-elf-nm --size-sort --reverse-sort --print-size --demangle`
+filtered for `.bss/.data` symbols. Captured to `.tmp/audit/nm-bss-data-top30.txt`.
+
+| # | Symbol | Size (B) | Section | Attribution |
+|---|---|---:|---|---|
+| 1 | `(anonymous namespace)::control` | **6 508** | `.bss` | **`EspControl` instance from `app/main.cpp`. Dominates application RAM.** |
+| 2 | `MANIFEST_DATA` | 3 382 | `.data` | Compiled manifest bytes — likely in flash via `PROGMEM`, read once. |
+| 3 | `vflash_mem` | 2 048 | `.bss` | ESP-IDF flash translation virtual memory, not lib. |
+| 4 | `esp_err_msg_table` | 1 720 | `.data` | ESP-IDF error strings (likely flash). |
+| 5 | `s_coredump_stack` | 1 124 | `.bss` | ESP-IDF coredump task. |
+| 6 | `rtc_io_desc` | 1 008 | `.data` | ESP-IDF RTC IO. |
+| 7 | `ble_att_svr_prep_entry_mem` | 768 | `.bss` | NimBLE ATT prepare-write buffer. |
+| 8 | `soc_memory_regions` | 704 | `.data` | ESP-IDF SOC config. |
+| 9 | `s_reg_dump$5943` | 588 | `.bss` | ESP-IDF register dump (debug). |
+| 10 | `pxReadyTasksLists` | 500 | `.bss` | FreeRTOS task lists. |
+| ... | (NimBLE/ESP-IDF internals) | | | Various sub-500 B entries |
+
+**Headline finding (§3.1):** The single largest RAM consumer in the firmware is
+the `EspControl` object instance at **6 508 bytes**. This is the entire
+library's static footprint, since `EspControl` contains `ResourceTable`
+(5000 B), `ActionRegistry` (768 B), `SubscriptionState` (260 B),
+`BleTransport` (~68 B), `AuthHandler` (12 B), `CommandRegistry` (384 B), plus
+small members. **5000 + 768 + 260 + 68 + 12 + 384 + ~16 (DataBleTransport ptr +
+manifest ptr/len + subs/auth misc) ≈ 6508**, matching the `nm` measurement
+exactly.
+
+This means the **entire library RAM footprint** is concentrated in **one
+symbol** that the linker can attribute precisely. Any refactor saving N bytes
+inside the library will show as a direct N-byte reduction in this single
+number.
+
+#### Verified `sizeof` of library types
+
+Source: `firmware/esp32/test/native/test_audit_sizeof/test_audit_sizeof.cpp`
+running on the 32-bit native test host (configured via
+`tools/configure_native_toolchain.py` to match ESP32 layout: 4-byte pointers,
+4-byte `size_t`). All 13 `static_assert`-style checks PASS as of audit commit.
+
+| Type | `sizeof` (bytes) | Members dominating the size |
+|---|---:|---|
+| `ecb::FrameHeader` | 4 | enum + uint8 + uint16 |
+| `ecb::FrameKind` | 1 | enum class : uint8_t |
+| `ParsedFrame` (global) | 16 | 2 ptrs + small fields |
+| `ecb::DataFrameCodec` | 1 | empty class (static-only) |
+| `AuthHandler` | 12 | `nonce[4]` + ptr + bool |
+| `CmdContext` | 16 | small fields, fn ptr |
+| **`CommandRegistry`** | **384** | `Entry[32]` × 12 (legacy V4 — likely dead code) |
+| `ecb::ResourceValue` | 156 | `stringValue[65]` + `bytesValue[64]` + scalars |
+| `ecb::ResourceEntry` | 12 | compact union with blob slot index |
+| **`ecb::ResourceTable`** | **5000** | `_blobSlots[64]` × 66 ≈ 4224 + `_entries[64]` × 12 = 768 + counters |
+| `ecb::ActionContext` | 116 | `stringValue[65]` + 8 ptrs + scalars |
+| **`ecb::ActionRegistry`** | **768** | `Entry[32]` × 24 (= actionId + std::function(16) + bool + pad) |
+| `ecb::SubscriptionState` | 260 | `_ids[64]` × 4 + size_t |
+| `ecb::ManifestStore` | 16 | data ptr + length + cached CRC + bool |
+| `std::function<void(ecb::ActionContext&)>` | **16** | libstdc++ small-buffer optimization (fits 16 B captures inline). Captures > 16 B → heap. |
+
+**Three structures dominate the library RAM:**
+
+1. **`ecb::ResourceTable` — 5000 B.** Almost entirely the `_blobSlots[64]`
+   array (~4224 B) used to back string and bytes resources. Dropped a few
+   slots or made the slot count compile-time configurable would reclaim
+   significant RAM.
+2. **`CommandRegistry` — 384 B.** The legacy V4 dispatch table. If V4 is
+   confirmed dead (see §5.2), this entire structure can be deleted along
+   with `CmdContext` (16 B) and the V4 `BleTransport` paths (~200 lines),
+   saving 384 + 16 + ~200 lines of source.
+3. **`ecb::ActionRegistry` — 768 B.** Smaller than the inventory predicted
+   (the SBO buffer of `std::function` is 16 B on this libstdc++, not the
+   anticipated 32 B). The H3 hypothesis still holds, but the headline savings
+   are smaller: replacing `std::function` with a fn-pointer + `void* context`
+   would shrink each entry from 24 B to 12 B (= 384 B saved) **and** eliminate
+   the heap allocation on registration of capturing lambdas. Still a clean
+   net win, but no longer a "1 KB savings" pitch — it is a "384 B + heap
+   tidiness" pitch.
+
+`std::function` SBO at 16 B is **smaller than the typical capture pattern in
+the documented firmware code** (e.g. `[this, &control, &runtime]` uses 12 B of
+captures + vtable, around the SBO boundary). Confirming the actual heap cost
+requires runtime measurement (Task 10).
+
+### 3.2 Heap allocated at `begin()` / construction (static estimate)
+
+Pass 1 estimate; pass 2 will measure.
+
+| Source | File:line | Trigger | Estimated bytes | Notes |
+|---|---|---|---:|---|
+| NimBLE init | NimBLE-Arduino internals via `BleTransport::begin` | First `EspControl::begin` | ~15 000 | NimBLE host stack, ATT, GATT, advertising — partial table in §3.1 (rows 7, 13, 18, 25-29 are NimBLE) |
+| `new EcbServerCallbacks(this)` | `transport/ble/BleTransport.cpp:282` | First `begin` | ~8 | Vtable + this ptr |
+| `new EcbCmdCallbacks(this)` | `transport/ble/BleTransport.cpp:310` | First `begin` | ~8 | idem |
+| `new EcbDataCallbacks(this)` | `transport/ble/BleTransport.cpp:317` | First `begin` | ~8 | idem |
+| `new ecb::DataBleTransport(...)` | `EspControlBle.cpp:52` | First `begin` | ~56 | sizeof(DataBleTransport) plus small alignment overhead |
+| `xSemaphoreCreateMutex()` | `transport/ble/DataBleTransport.cpp:33` | DataBleTransport constructor | ~80 | FreeRTOS mutex (allocated in heap by default config) |
+| Arduino `String` for stored UUID | `transport/ble/BleTransport.cpp:237` | NVS read | ~40 | If a custom UUID was previously written; else empty |
+| `std::function` capture heap | `protocol/actions/ActionRegistry.cpp:28` | Each `registerAction` with captures > 16 B | 16-64 / handler | H3 — measured via heap deltas in pass 2 |
+| **Total at boot (estimate)** | | | **~15 200** | NimBLE dominates by a factor of 100× |
 
 ### 3.3 Stack high-water marks
 
+Cannot be reliably bounded without runtime measurement. The probe build
+(branch `audit/probe-runtime`, prepared in Task 9) will report
+`uxTaskGetStackHighWaterMark` per task at runtime.
+
+**Configured stack budgets** (from `firmware/esp32/platformio.ini` and ESP-IDF
+defaults):
+
+| Task | Configured stack (bytes) | Source |
+|---|---:|---|
+| NimBLE host | 4 096 | `CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE=4096` (`platformio.ini:23`) |
+| Arduino `loopTask` | 8 192 | ESP-IDF default |
+| Idle (per core) | 1 024 | ESP-IDF default |
+| Timer service | 2 048 | ESP-IDF default |
+
+**Observable stack hot spots** (from Task 3 inventory) that may push these
+budgets:
+
+| Function | Stack frame | File:line |
+|---|---:|---|
+| `BleTransport::begin` (production branch) | ≥ 512 (inlineManifest buf) | `BleTransport.cpp:301` |
+| `DataBleTransport::sendFrame` / `sendSnapshot` | ≥ 516 (kFrameBufferSize) | `DataBleTransport.cpp:51, 122` |
+| `DataBleTransport::handleFrame` (InvokeAction branch) | ≥ 260 (zero-init `reply` buffer) | `DataBleTransport.cpp:98` |
+| `DataBleTransport::sendDeltaInternal` | ≥ 132 (kDeltaFrameBufferSize) | `DataBleTransport.cpp:150` |
+| `ActionDecoder::dispatch` | ≥ ~325 (3× 65 B string + 128 B inner reply + 16 B scratch) | `ActionDecoder.cpp:40, 53, 64` |
+| `AuthHandler::computeExpectedHash` (production) | ≥ ~200 (mbedtls SHA256 ctx ~108 + buffers) | `AuthHandler.cpp:215` |
+
+The 8 KB `loopTask` budget is comfortable; the 4 KB NimBLE host budget could
+be tighter under nested action dispatch. Pass 2 confirms.
+
 ### 3.4 Current total vs. post-refactor target
+
+| Metric | Current (measured) | Refactor target hypothesis | Method |
+|---|---:|---:|---|
+| `EspControl` static instance | **6 508** | ≤ 4 000 (− ~2.5 KB) | Mostly from H2 (ResourceTable blob slots) and H3 (ActionRegistry entries) |
+| `.bss` of full firmware | 20 185 | -1 500 (estimate) | Dead V4 code removal + H1/H2/H3 |
+| `.data` of full firmware | 119 764 | unchanged | mostly flash-resident, refactor doesn't touch this |
+| PlatformIO "RAM" | **42 124** | ≤ 39 500 | i.e. ~2.5 KB freed |
+| Heap at boot (estimate) | ~15 200 | ~15 200 - delta(std::function captures) | NimBLE dominates and is unchanged |
+
+**The refactor target is a ~2.5 KB static RAM reduction**, concentrated in the
+single `EspControl` instance. The exact number is set by the refactor spec
+(separate document — Task 13 hand-off).
 
 ## 4. Architecture and Layering
 
@@ -553,9 +715,62 @@ _Filled in Task 11._
 
 ### 8.1 Raw static measurement logs
 
+Captured to `.tmp/audit/` (gitignored — regenerable):
+
+- `size-segments.txt` — `pio run -e esp32dev -t size` output, full segment table
+- `nm-bss-data-top30.txt` — top 30 `.bss + .data` symbols by size (filtered from full nm output)
+- `sizeof-baseline.txt` — `pio test -e native -f native/test_audit_sizeof -v` output, all 13 cases PASSED
+- `native-test-run.txt` — full native test suite run, 44/45 PASS (1 pre-existing failure noted as F-X7 in §6.3)
+- `master-tests.txt` — same suite on `master` branch, confirming F-X7 is pre-existing
+- `smells.txt` — `count_smells.ps1` output used for §5
+- `inventory-raw.md` — full output from the 5 parallel read-only subagent passes (Task 3)
+- `depgraph.txt` — internal include edges used to compute §4.1 dependency graph
+
 ### 8.2 Raw runtime logs
 
+_To be populated in pass 2 after user runs probe firmware (Task 10)._
+
 ### 8.3 Reproducible command lines
+
+Run from repo root on Windows / PowerShell (Windows PowerShell 5.1 or PowerShell 7).
+
+```powershell
+# 1. Dependency: pio.exe (PlatformIO) at C:\Users\<user>\.platformio\penv\Scripts\pio.exe
+#    Add to PATH or use full path. Example helper:
+$pio = "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe"
+$nm  = "$env:USERPROFILE\.platformio\packages\toolchain-xtensa-esp32\bin\xtensa-esp32-elf-nm.exe"
+
+# 2. Build the firmware (produces .pio/build/esp32dev/firmware.elf)
+cd firmware/esp32
+& $pio run -e esp32dev
+cd ../..
+
+# 3. Capture segment sizes
+cd firmware/esp32
+& $pio run -e esp32dev -t size 2>&1 | Tee-Object ../../.tmp/audit/size-segments.txt
+cd ../..
+
+# 4. Top 30 BSS+DATA symbols by size
+& $nm --size-sort --reverse-sort --print-size --radix=d --demangle `
+    firmware/esp32/.pio/build/esp32dev/firmware.elf |
+  Where-Object { $_ -match '\s[bBdD]\s' } |
+  Select-Object -First 30 |
+  Out-File .tmp/audit/nm-bss-data-top30.txt -Encoding utf8
+
+# 5. Verified sizeof of library types (locks baselines via static_assert-style tests)
+cd firmware/esp32
+& $pio test -e native -f "native/test_audit_sizeof" -v 2>&1 |
+  Tee-Object ../../.tmp/audit/sizeof-baseline.txt
+cd ../..
+
+# 6. Code-smell tally
+powershell -File tools/audit/count_smells.ps1 > .tmp/audit/smells.txt 2>&1
+
+# 7. Full smoke (confirm 14 lib suites still green; F-X7 is the 1 expected failure)
+cd firmware/esp32
+& $pio test -e native 2>&1 | Tee-Object ../../.tmp/audit/native-test-run.txt
+cd ../..
+```
 
 ### 8.4 Calculation assumptions
 
