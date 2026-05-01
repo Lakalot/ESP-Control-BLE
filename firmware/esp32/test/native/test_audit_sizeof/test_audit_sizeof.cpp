@@ -50,6 +50,18 @@ static std::size_t expected_action_registry_size(void) {
     return sizeof(ExpectedEntry) * 32;
 }
 
+static constexpr std::size_t kProductionBleCharacteristicPointers = 2;
+
+static std::size_t production_ble_transport_size(void) {
+    // UNIT_TEST omits _cmdChar/_dataChar; account for the production pointers.
+    return sizeof(BleTransport) + (kProductionBleCharacteristicPointers * sizeof(void*));
+}
+
+static std::size_t production_esp_control_size(void) {
+    // EspControl embeds BleTransport, so apply the same production adjustment.
+    return sizeof(EspControl) + (kProductionBleCharacteristicPointers * sizeof(void*));
+}
+
 void setUp(void) {}
 void tearDown(void) {}
 
@@ -193,15 +205,15 @@ static void test_locked_AuthHandler(void) {
 }
 
 static void test_locked_EspControl_after_manifest_field_removal(void) {
-    const std::size_t observed = sizeof(EspControl);
-    print_size("EspControl", observed);
+    const std::size_t observed = production_esp_control_size();
+    print_size("EspControl (production-adjusted)", observed);
     TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(6500, observed,
         "EspControl grew beyond the post-manifest-field-removal guardrail");
 }
 
 static void test_locked_BleTransport_runtime_state(void) {
-    const std::size_t observed = sizeof(BleTransport);
-    print_size("BleTransport", observed);
+    const std::size_t observed = production_ble_transport_size();
+    print_size("BleTransport (production-adjusted)", observed);
     TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(80, observed,
         "BleTransport grew beyond the runtime state guardrail");
 }
