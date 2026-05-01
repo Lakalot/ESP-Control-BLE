@@ -33,16 +33,17 @@ DataBleTransport::DataBleTransport(const ManifestStore& s, ResourceTable& t,
     _mutex = xSemaphoreCreateMutex();
 }
 
-static bool sendFrame(ecb::FrameSender sender, ecb::FrameKind kind, const uint8_t* body, size_t bodyLen) {
-  uint8_t frame[516] = {0};
+static bool sendFrame(ecb::FrameSender sender, ecb::FrameKind kind,
+                      const uint8_t* body, size_t bodyLen,
+                      uint8_t* frame, size_t frameCap) {
   if (!sender || bodyLen > ecb::kMaxFrameBody) return false;
-  if (sizeof(frame) < ecb::DataFrameCodec::kHeaderSize + bodyLen) return false;
+  if (frameCap < ecb::DataFrameCodec::kHeaderSize + bodyLen) return false;
 
   ecb::FrameHeader header{kind, 0, static_cast<uint16_t>(bodyLen)};
   const size_t headerLen = ecb::DataFrameCodec::encodeHeader(header, frame, ecb::DataFrameCodec::kHeaderSize);
   if (headerLen != ecb::DataFrameCodec::kHeaderSize) return false;
 
-  if (body && bodyLen > 0) memcpy(frame + headerLen, body, bodyLen);
+  if (body && bodyLen > 0 && body != frame + headerLen) memcpy(frame + headerLen, body, bodyLen);
   sender(frame, headerLen + bodyLen);
   return true;
 }
@@ -61,7 +62,10 @@ void DataBleTransport::handleFrame(FrameKind kind, const uint8_t* body, size_t l
   xSemaphoreTake(_mutex, portMAX_DELAY);
   switch (kind) {
     case FrameKind::Ping:
-      sendFrame(_sender, FrameKind::Pong, nullptr, 0);
+      {
+        uint8_t frame[kFrameBufferSize] = {0};
+        sendFrame(_sender, FrameKind::Pong, nullptr, 0, frame, sizeof(frame));
+      }
       break;
     case FrameKind::Subscribe: {
       esp_control_Subscribe sub = esp_control_Subscribe_init_zero;
@@ -88,13 +92,15 @@ void DataBleTransport::handleFrame(FrameKind kind, const uint8_t* body, size_t l
       // The handler may call publishDelta() -> sendDelta() which needs the mutex.
       // Holding it here would cause a deadlock since FreeRTOS mutexes are not recursive.
       xSemaphoreGive(_mutex);
-      uint8_t reply[kInvokeResultBufferSize - DataFrameCodec::kHeaderSize] = {0};
+      uint8_t frame[kInvokeResultBufferSize] = {0};
       size_t replyLen = 0;
       if (ActionDecoder::dispatch(_registry, body, len,
-                                  reply,
-                                  sizeof(reply),
+                                  frame + DataFrameCodec::kHeaderSize,
+                                  sizeof(frame) - DataFrameCodec::kHeaderSize,
                                   replyLen)) {
-        sendFrame(_sender, FrameKind::InvokeResult, reply, replyLen);
+        sendFrame(_sender, FrameKind::InvokeResult,
+                  frame + DataFrameCodec::kHeaderSize, replyLen,
+                  frame, sizeof(frame));
       }
       xSemaphoreTake(_mutex, portMAX_DELAY);
       break;
@@ -112,13 +118,15 @@ void DataBleTransport::sendManifest() {
 }
 
 void DataBleTransport::sendSnapshot() {
-  uint8_t buf[kFrameBufferSize - DataFrameCodec::kHeaderSize];
+  uint8_t frame[kFrameBufferSize];
   size_t written = 0;
   if (SnapshotEncoder::encode(_table,
-                              buf,
-                              sizeof(buf),
+                              frame + DataFrameCodec::kHeaderSize,
+                              sizeof(frame) - DataFrameCodec::kHeaderSize,
                               written)) {
-    sendFrame(_sender, FrameKind::Snapshot, buf, written);
+    sendFrame(_sender, FrameKind::Snapshot,
+              frame + DataFrameCodec::kHeaderSize, written,
+              frame, sizeof(frame));
   }
 }
 
@@ -140,15 +148,17 @@ void DataBleTransport::sendDeltaInternal(uint32_t resourceId) {
     ECB_DATA_DEBUGF("[DATA] sendDeltaInternal id=%u: not found in table\n", resourceId);
     return;
   }
-  uint8_t buf[kDeltaFrameBufferSize - DataFrameCodec::kHeaderSize];
+  uint8_t frame[kDeltaFrameBufferSize];
   size_t written = 0;
   if (SnapshotEncoder::encodeDelta(v, _table.generation(),
-                                   buf,
-                                   sizeof(buf),
+                                   frame + DataFrameCodec::kHeaderSize,
+                                   sizeof(frame) - DataFrameCodec::kHeaderSize,
                                    written)) {
     ECB_DATA_DEBUGF("[DATA] sendDeltaInternal id=%u kind=%u written=%u\n",
                   resourceId, (uint8_t)v.kind, (unsigned)written);
-    sendFrame(_sender, FrameKind::Delta, buf, written);
+    sendFrame(_sender, FrameKind::Delta,
+              frame + DataFrameCodec::kHeaderSize, written,
+              frame, sizeof(frame));
   } else {
     ECB_DATA_DEBUGF("[DATA] sendDeltaInternal id=%u: encode failed\n", resourceId);
   }
@@ -175,7 +185,10 @@ void DataBleTransport::tick() {
       const size_t offset = _manifestOffset;
       _manifestOffset += n;
       xSemaphoreGive(_mutex);
-      sendFrame(_sender, FrameKind::ManifestChunk, data + offset, n);
+      {
+        uint8_t frame[kFrameBufferSize] = {0};
+        sendFrame(_sender, FrameKind::ManifestChunk, data + offset, n, frame, sizeof(frame));
+      }
       xSemaphoreTake(_mutex, portMAX_DELAY);
     } else {
       _manifestPending = false;
@@ -186,7 +199,10 @@ void DataBleTransport::tick() {
       eof[4] = (crc >> 24) & 0xFF;   eof[5] = (crc >> 16) & 0xFF;
       eof[6] = (crc >> 8) & 0xFF;    eof[7] = crc & 0xFF;
       xSemaphoreGive(_mutex);
-      sendFrame(_sender, FrameKind::ManifestEof, eof, 8);
+      {
+        uint8_t frame[kFrameBufferSize] = {0};
+        sendFrame(_sender, FrameKind::ManifestEof, eof, 8, frame, sizeof(frame));
+      }
       xSemaphoreTake(_mutex, portMAX_DELAY);
     }
   }
