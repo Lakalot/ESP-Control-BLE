@@ -51,6 +51,10 @@ static std::size_t expected_action_registry_size(void) {
 }
 
 static constexpr std::size_t kProductionBleCharacteristicPointers = 2;
+static constexpr std::size_t kEspControlEsp32Limit = 6500;
+static constexpr std::size_t kBleTransportEsp32Limit = 80;
+static constexpr std::size_t kEspControlHost64SanityLimit = 8000;
+static constexpr std::size_t kBleTransportHost64SanityLimit = 128;
 
 static std::size_t production_ble_transport_size(void) {
     // UNIT_TEST omits _cmdChar/_dataChar; account for the production pointers.
@@ -60,6 +64,18 @@ static std::size_t production_ble_transport_size(void) {
 static std::size_t production_esp_control_size(void) {
     // EspControl embeds BleTransport, so apply the same production adjustment.
     return sizeof(EspControl) + (kProductionBleCharacteristicPointers * sizeof(void*));
+}
+
+static void assert_production_adjusted_size(const char* message,
+                                            std::size_t observed,
+                                            std::size_t esp32Limit,
+                                            std::size_t host64Limit) {
+    if (sizeof(void*) == 4) {
+        TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(esp32Limit, observed, message);
+        return;
+    }
+
+    TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(host64Limit, observed, message);
 }
 
 void setUp(void) {}
@@ -206,16 +222,24 @@ static void test_locked_AuthHandler(void) {
 
 static void test_locked_EspControl_after_manifest_field_removal(void) {
     const std::size_t observed = production_esp_control_size();
+    // 32-bit native is the ESP32-equivalent guard; 64-bit native uses a host bound.
     print_size("EspControl (production-adjusted)", observed);
-    TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(6500, observed,
-        "EspControl grew beyond the post-manifest-field-removal guardrail");
+    assert_production_adjusted_size(
+        "EspControl grew beyond the post-manifest-field-removal guardrail",
+        observed,
+        kEspControlEsp32Limit,
+        kEspControlHost64SanityLimit);
 }
 
 static void test_locked_BleTransport_runtime_state(void) {
     const std::size_t observed = production_ble_transport_size();
+    // 32-bit native is the ESP32-equivalent guard; 64-bit native uses a host bound.
     print_size("BleTransport (production-adjusted)", observed);
-    TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(80, observed,
-        "BleTransport grew beyond the runtime state guardrail");
+    assert_production_adjusted_size(
+        "BleTransport grew beyond the runtime state guardrail",
+        observed,
+        kBleTransportEsp32Limit,
+        kBleTransportHost64SanityLimit);
 }
 
 int main(int /*argc*/, char** /*argv*/) {
