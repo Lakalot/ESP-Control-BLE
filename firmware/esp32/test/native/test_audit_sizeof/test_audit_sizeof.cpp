@@ -38,6 +38,16 @@ static std::size_t expected_for_pointer_width(std::size_t expected32,
     return 0;
 }
 
+static std::size_t expected_action_registry_size(void) {
+    struct ExpectedEntry {
+        uint32_t actionId;
+        std::function<void(ecb::ActionContext&)> handler;
+        bool used;
+    };
+
+    return sizeof(ExpectedEntry) * 32;
+}
+
 void setUp(void) {}
 void tearDown(void) {}
 
@@ -119,15 +129,17 @@ static void test_locked_ResourceTable_dominates_ram(void) {
 static void test_locked_ActionRegistry_dominates_ram(void) {
     // First-run measurement: 768 bytes on 32-bit native host = 32 x 24-byte Entry.
     // 64-bit native baseline is 1536 bytes = 32 x 48-byte Entry.
-    // Entry layout: uint32_t actionId(4) + std::function(16 with SBO) + bool used(1) + padding(3) = 24.
+    // Plain POD-ish types above key off pointer width. ActionRegistry also embeds
+    // std::function, whose SBO size/layout varies by STL implementation, so model
+    // the current Entry shape with this toolchain's std::function size/alignment.
     // The hypothesis H3 about std::function heap captures still holds: the 16-byte
     // SBO buffer cannot hold lambdas with non-trivial state (e.g. multiple captures
     // by reference), which heap-allocates at registration.
     const std::size_t observed = sizeof(ecb::ActionRegistry);
-    const std::size_t expected = expected_for_pointer_width(768, 1536);
+    const std::size_t expected = expected_action_registry_size();
     print_size("(headline) ActionRegistry HEADLINE", observed);
     TEST_ASSERT_EQUAL_size_t_MESSAGE(expected, observed,
-        "ActionRegistry size changed for this native pointer width");
+        "ActionRegistry size changed for this native std::function layout");
 }
 
 static void test_locked_CommandRegistry(void) {
