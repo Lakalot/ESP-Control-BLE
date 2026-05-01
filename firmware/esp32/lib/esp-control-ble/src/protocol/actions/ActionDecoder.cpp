@@ -6,9 +6,15 @@
 
 namespace ecb {
 
+struct DecodedStringValue {
+  char value[65];
+  bool seen;
+};
+
 static bool decodeStringValue(pb_istream_t* stream, const pb_field_t* /*field*/, void** arg) {
-  char* out = static_cast<char*>(*arg);
-  if (!out) return false;
+  DecodedStringValue* decoded = static_cast<DecodedStringValue*>(*arg);
+  if (!decoded) return false;
+  char* out = decoded->value;
   const size_t n = stream->bytes_left < 64 ? stream->bytes_left : 64;
   if (!pb_read(stream, reinterpret_cast<pb_byte_t*>(out), n)) return false;
   out[n] = '\0';
@@ -19,6 +25,7 @@ static bool decodeStringValue(pb_istream_t* stream, const pb_field_t* /*field*/,
       if (!pb_read(stream, scratch, chunk)) return false;
     }
   }
+  decoded->seen = true;
   return true;
 }
 
@@ -37,11 +44,11 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
                              const uint8_t* in, size_t inLen,
                              uint8_t* out, size_t outCap, size_t& outLen) {
   esp_control_InvokeAction req = esp_control_InvokeAction_init_zero;
-  char decodedString[65] = {0};
+  DecodedStringValue decodedString = {{0}, false};
   req.payload.kind.string_value.funcs.decode = decodeStringValue;
-  req.payload.kind.string_value.arg = decodedString;
+  req.payload.kind.string_value.arg = &decodedString;
   req.payload.kind.enum_value.funcs.decode = decodeStringValue;
-  req.payload.kind.enum_value.arg = decodedString;
+  req.payload.kind.enum_value.arg = &decodedString;
   pb_istream_t is = pb_istream_from_buffer(in, inLen);
   if (!pb_decode(&is, esp_control_InvokeAction_fields, &req)) {
     return encodeReply(0, ActionStatus::BadPayload, nullptr, 0, out, outCap, outLen);
@@ -84,10 +91,16 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
       case esp_control_CommonValue_string_value_tag:
       case esp_control_CommonValue_enum_value_tag:
         valueKind = ActionValueKind::String;
-        strncpy(strVal, decodedString, sizeof(strVal) - 1);
+        strncpy(strVal, decodedString.value, sizeof(strVal) - 1);
         strVal[sizeof(strVal) - 1] = '\0';
         break;
-      default: break;
+      default:
+        if (decodedString.seen) {
+          valueKind = ActionValueKind::String;
+          strncpy(strVal, decodedString.value, sizeof(strVal) - 1);
+          strVal[sizeof(strVal) - 1] = '\0';
+        }
+        break;
     }
   }
 

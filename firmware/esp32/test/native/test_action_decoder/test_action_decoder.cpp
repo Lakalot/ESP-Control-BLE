@@ -94,7 +94,7 @@ static void test_string_payload_reaches_handler() {
   req.payload.which_kind = esp_control_CommonValue_string_value_tag;
   const char* name = "party";
   req.payload.kind.string_value.funcs.encode = encode_string_value;
-  req.payload.kind.string_value.arg = const_cast<char**>(&name);
+  req.payload.kind.string_value.arg = const_cast<char*>(name);
   pb_ostream_t os = pb_ostream_from_buffer(wire, sizeof(wire));
   TEST_ASSERT_TRUE(pb_encode(&os, esp_control_InvokeAction_fields, &req));
   wireLen = os.bytes_written;
