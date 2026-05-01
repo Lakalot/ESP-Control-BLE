@@ -94,6 +94,7 @@
 #define ECB_INVOKE_REPLY_FRAMED_MAX 256
 #define ECB_SHA256_DIGEST_SIZE      32
 #define ECB_SHA256_BLOCK_SIZE       64
+#define ECB_SHA256_ROUND_COUNT      64
 #define ECB_UUID_STRING_LEN         37
 
 namespace ecb {

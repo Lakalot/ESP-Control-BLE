@@ -18,7 +18,7 @@ struct Sha256State {
   size_t blockLen;
 };
 
-constexpr uint32_t kSha256Table[ECB_SHA256_BLOCK_SIZE] = {
+constexpr uint32_t kSha256Table[ECB_SHA256_ROUND_COUNT] = {
   0x428a2f98u, 0x71374491u, 0xb5c0fbcfu, 0xe9b5dba5u, 0x3956c25bu, 0x59f111f1u, 0x923f82a4u, 0xab1c5ed5u,
   0xd807aa98u, 0x12835b01u, 0x243185beu, 0x550c7dc3u, 0x72be5d74u, 0x80deb1feu, 0x9bdc06a7u, 0xc19bf174u,
   0xe49b69c1u, 0xefbe4786u, 0x0fc19dc6u, 0x240ca1ccu, 0x2de92c6fu, 0x4a7484aau, 0x5cb0a9dcu, 0x76f988dau,
@@ -30,7 +30,7 @@ constexpr uint32_t kSha256Table[ECB_SHA256_BLOCK_SIZE] = {
 };
 
 void sha256Transform(Sha256State& state, const uint8_t block[ECB_SHA256_BLOCK_SIZE]) {
-  uint32_t schedule[ECB_SHA256_BLOCK_SIZE] = {};
+  uint32_t schedule[ECB_SHA256_ROUND_COUNT] = {};
   for (size_t i = 0; i < 16; ++i) {
     const size_t j = i * 4;
     schedule[i] = (static_cast<uint32_t>(block[j]) << 24) |
@@ -38,7 +38,7 @@ void sha256Transform(Sha256State& state, const uint8_t block[ECB_SHA256_BLOCK_SI
                   (static_cast<uint32_t>(block[j + 2]) << 8) |
                   static_cast<uint32_t>(block[j + 3]);
   }
-  for (size_t i = 16; i < ECB_SHA256_BLOCK_SIZE; ++i) {
+  for (size_t i = 16; i < ECB_SHA256_ROUND_COUNT; ++i) {
     const uint32_t s0 = rotr(schedule[i - 15], 7) ^ rotr(schedule[i - 15], 18) ^ (schedule[i - 15] >> 3);
     const uint32_t s1 = rotr(schedule[i - 2], 17) ^ rotr(schedule[i - 2], 19) ^ (schedule[i - 2] >> 10);
     schedule[i] = schedule[i - 16] + s0 + schedule[i - 7] + s1;
@@ -53,7 +53,7 @@ void sha256Transform(Sha256State& state, const uint8_t block[ECB_SHA256_BLOCK_SI
   uint32_t g = state.h[6];
   uint32_t h = state.h[7];
 
-  for (size_t i = 0; i < ECB_SHA256_BLOCK_SIZE; ++i) {
+  for (size_t i = 0; i < ECB_SHA256_ROUND_COUNT; ++i) {
     const uint32_t sum1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
     const uint32_t ch = (e & f) ^ ((~e) & g);
     const uint32_t temp1 = h + sum1 + ch + kSha256Table[i] + schedule[i];
