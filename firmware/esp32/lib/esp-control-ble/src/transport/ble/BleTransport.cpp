@@ -20,11 +20,23 @@ void BleTransport::staticNotify(const uint8_t* data, uint16_t len) {
 
 #ifdef UNIT_TEST
 
+static bool notifyTestBuffer(uint8_t* dest, size_t cap, size_t& destLen,
+                             const uint8_t* data, size_t len) {
+  destLen = len > cap ? cap : len;
+  if (destLen > 0) memcpy(dest, data, destLen);
+  return true;
+}
+
+static bool notifyTestBuffer(uint8_t* dest, size_t cap, uint16_t& destLen,
+                             const uint8_t* data, size_t len) {
+  size_t copied = 0;
+  const bool ok = notifyTestBuffer(dest, cap, copied, data, len);
+  destLen = static_cast<uint16_t>(copied);
+  return ok;
+}
+
 void BleTransport::notifyRawData(const uint8_t* data, size_t len) {
-  _lastRawDataLen = len > sizeof(_lastRawData) ? sizeof(_lastRawData) : len;
-  if (_lastRawDataLen > 0) {
-    memcpy(_lastRawData, data, _lastRawDataLen);
-  }
+  notifyTestBuffer(_lastRawData, sizeof(_lastRawData), _lastRawDataLen, data, len);
 }
 
 void BleTransport::loadOrCreateUuid() {}
@@ -53,10 +65,7 @@ void BleTransport::sendDataManifest() {
 }
 
 void BleTransport::sendNotify(const uint8_t* data, uint16_t len) {
-  _lastNotifyLen = len > sizeof(_lastNotify) ? sizeof(_lastNotify) : len;
-  if (_lastNotifyLen > 0) {
-    memcpy(_lastNotify, data, _lastNotifyLen);
-  }
+  notifyTestBuffer(_lastNotify, sizeof(_lastNotify), _lastNotifyLen, data, len);
 }
 
 void BleTransport::sendManifestChunk(uint16_t offset, uint8_t requestedLen) {
@@ -170,13 +179,16 @@ void BleTransport::handleDataWrite(const uint8_t* data, uint16_t len) {
 
 #include "../../support/EcbLogging.h"
 
-void BleTransport::notifyRawData(const uint8_t* data, size_t len) {
-  if (_dataChar) {
-    _dataChar->setValue(data, (uint16_t)len);
-    _dataChar->notify();
-  }
+static bool notifyDataCharacteristic(NimBLECharacteristic* characteristic, const uint8_t* data, size_t len) {
+  if (!characteristic) return false;
+  characteristic->setValue(data, len);
+  characteristic->notify();
+  return true;
 }
 
+void BleTransport::notifyRawData(const uint8_t* data, size_t len) {
+  notifyDataCharacteristic(_dataChar, data, len);
+}
 
 // ── NimBLE Callbacks ───────────────────────────────────────
 
@@ -338,10 +350,7 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
 }
 
 void BleTransport::sendNotify(const uint8_t* data, uint16_t len) {
-  if (_cmdChar) {
-    _cmdChar->setValue(data, len);
-    _cmdChar->notify();
-  }
+  notifyDataCharacteristic(_cmdChar, data, len);
 }
 
 void BleTransport::sendManifestChunk(uint16_t offset, uint8_t requestedLen) {
