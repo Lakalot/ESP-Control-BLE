@@ -30,6 +30,14 @@ static void print_size(const char* name, std::size_t bytes) {
     std::printf("AUDIT_SIZEOF %-40s %6zu bytes\n", name, bytes);
 }
 
+static std::size_t expected_for_pointer_width(std::size_t expected32,
+                                              std::size_t expected64) {
+    if (sizeof(void*) == 4) return expected32;
+    if (sizeof(void*) == 8) return expected64;
+    TEST_FAIL_MESSAGE("Unsupported native pointer width for sizeof audit");
+    return 0;
+}
+
 void setUp(void) {}
 void tearDown(void) {}
 
@@ -60,12 +68,10 @@ static void test_audit_sizeof_dump(void) {
 // during the refactor phase. When they do, update both the implementation AND
 // the expected value here in the same commit.
 //
-// HOST CAVEAT: native build runs on a 32-bit host (configured via
-// `firmware/esp32/tools/configure_native_toolchain.py` to match ESP32 layout).
-// Sizes measured here therefore equal target ESP32 sizes for POD types and
-// pointer-bearing structs. This was verified on first run by observing
-// sizeof(ecb::SubscriptionState) == 260 (not 264 as a 64-bit host would
-// produce), confirming size_t and pointer widths are 4 bytes.
+// HOST CAVEAT: Windows native builds are configured as 32-bit by
+// `firmware/esp32/tools/configure_native_toolchain.py`, matching ESP32 pointer
+// and size_t widths. Linux/macOS native builds may be 64-bit, so
+// pointer-bearing types use pointer-width-specific baselines below.
 // ---------------------------------------------------------------------------
 
 static void test_locked_FrameHeader(void) {
@@ -93,38 +99,35 @@ static void test_locked_ResourceEntry_compact(void) {
 }
 
 static void test_locked_SubscriptionState(void) {
-    // 64 × uint32_t + size_t = 256 + 4 = 260 on 32-bit native host (matches ESP32).
-    TEST_ASSERT_EQUAL_size_t_MESSAGE(260, sizeof(ecb::SubscriptionState),
-        "SubscriptionState size changed (32-bit native: 64*4+4)");
+    // 64 x uint32_t + size_t = 260 on 32-bit native/ESP32, 264 on 64-bit native.
+    const std::size_t expected = expected_for_pointer_width(260, 264);
+    TEST_ASSERT_EQUAL_size_t_MESSAGE(expected, sizeof(ecb::SubscriptionState),
+        "SubscriptionState size changed for this native pointer width");
 }
 
 static void test_locked_ResourceTable_dominates_ram(void) {
     // The headline finding: ResourceTable is huge.
-    // On 64-bit host the layout is slightly different from ESP32 due to
-    // size_t and pointer widths. The expected value was captured on first
-    // run.
+    // 32-bit native/ESP32: 5000 bytes. 64-bit native: size_t padding raises it
+    // to 5008 bytes.
     const std::size_t observed = sizeof(ecb::ResourceTable);
+    const std::size_t expected = expected_for_pointer_width(5000, 5008);
     print_size("(headline) ResourceTable HEADLINE", observed);
-    // Sanity bound: at least 4500 (the BlobSlot array alone is ~4224).
-    TEST_ASSERT_GREATER_THAN_size_t_MESSAGE(4500, observed,
-        "ResourceTable shrank below 4500 bytes - audit report needs update");
-    // Upper bound: we expect roughly 5000-5100 on either target.
-    TEST_ASSERT_LESS_THAN_size_t_MESSAGE(5100, observed,
-        "ResourceTable grew above 5100 bytes - audit headline finding may need refresh");
+    TEST_ASSERT_EQUAL_size_t_MESSAGE(expected, observed,
+        "ResourceTable size changed for this native pointer width");
 }
 
 static void test_locked_ActionRegistry_dominates_ram(void) {
-    // First-run measurement: 768 bytes on 32-bit native host = 32 × 24-byte Entry.
+    // First-run measurement: 768 bytes on 32-bit native host = 32 x 24-byte Entry.
+    // 64-bit native baseline is 1536 bytes = 32 x 48-byte Entry.
     // Entry layout: uint32_t actionId(4) + std::function(16 with SBO) + bool used(1) + padding(3) = 24.
     // The hypothesis H3 about std::function heap captures still holds: the 16-byte
     // SBO buffer cannot hold lambdas with non-trivial state (e.g. multiple captures
     // by reference), which heap-allocates at registration.
     const std::size_t observed = sizeof(ecb::ActionRegistry);
+    const std::size_t expected = expected_for_pointer_width(768, 1536);
     print_size("(headline) ActionRegistry HEADLINE", observed);
-    TEST_ASSERT_GREATER_THAN_size_t_MESSAGE(700, observed,
-        "ActionRegistry shrank below 700 bytes - audit headline needs refresh");
-    TEST_ASSERT_LESS_THAN_size_t_MESSAGE(2200, observed,
-        "ActionRegistry grew above 2200 bytes - audit headline needs refresh");
+    TEST_ASSERT_EQUAL_size_t_MESSAGE(expected, observed,
+        "ActionRegistry size changed for this native pointer width");
 }
 
 static void test_locked_CommandRegistry(void) {
@@ -132,11 +135,10 @@ static void test_locked_CommandRegistry(void) {
     // On 64-bit host: 8-byte fn-pointer => Entry = 16, total = 512.
     // On 32-bit ESP32: 4-byte fn-pointer => Entry = 12, total = 384.
     const std::size_t observed = sizeof(CommandRegistry);
+    const std::size_t expected = expected_for_pointer_width(384, 512);
     print_size("(footprint) CommandRegistry", observed);
-    TEST_ASSERT_GREATER_THAN_size_t_MESSAGE(300, observed,
-        "CommandRegistry shrank unexpectedly");
-    TEST_ASSERT_LESS_THAN_size_t_MESSAGE(700, observed,
-        "CommandRegistry grew unexpectedly");
+    TEST_ASSERT_EQUAL_size_t_MESSAGE(expected, observed,
+        "CommandRegistry size changed for this native pointer width");
 }
 
 static void test_locked_ActionContext_has_stringValue_buffer(void) {
