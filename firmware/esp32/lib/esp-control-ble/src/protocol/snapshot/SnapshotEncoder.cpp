@@ -63,7 +63,7 @@ struct SnapshotCallbackCtx {
 
 static bool encodeValuesCallback(pb_ostream_t* stream, const pb_field_t* field, void* const* arg) {
   const SnapshotCallbackCtx* ctx = static_cast<const SnapshotCallbackCtx*>(*arg);
-  const size_t n = ctx->table->size() > 64 ? 64 : ctx->table->size();
+  const size_t n = ctx->table->size() > kMaxResources ? kMaxResources : ctx->table->size();
   for (size_t i = 0; i < n; ++i) {
     ResourceValue rv{};
     if (!ctx->table->at(i, rv)) break;

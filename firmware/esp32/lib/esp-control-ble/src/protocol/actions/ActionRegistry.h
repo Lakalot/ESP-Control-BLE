@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <functional>
+#include "../core/Protocol.h"
 
 namespace ecb {
 
@@ -23,7 +24,7 @@ struct ActionContext {
   int32_t  intValue;
   uint32_t uintValue;
   float    floatValue;
-  char     stringValue[65];
+  char     stringValue[kMaxResourceValueLen + 1];
 
   // Legacy raw bytes kept for backward compatibility (always nullptr now).
   const uint8_t* payload;
@@ -45,7 +46,7 @@ using ActionHandler = std::function<void(ActionContext&)>;
 
 class ActionRegistry {
 public:
-  static constexpr size_t kMaxHandlers = 32;
+  static constexpr size_t kMaxHandlers = kMaxActions;
   ActionRegistry();
   bool registerAction(uint32_t actionId, ActionHandler handler);
   const ActionHandler* find(uint32_t actionId) const;
@@ -53,5 +54,8 @@ private:
   struct Entry { uint32_t actionId; ActionHandler handler; bool used; };
   Entry _entries[kMaxHandlers];
 };
+
+static_assert(ActionRegistry::kMaxHandlers == kMaxActions,
+              "ActionRegistry capacity must match protocol max actions");
 
 } // namespace

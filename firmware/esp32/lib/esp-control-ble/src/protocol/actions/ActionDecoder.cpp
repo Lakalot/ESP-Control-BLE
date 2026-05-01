@@ -7,7 +7,7 @@
 namespace ecb {
 
 struct DecodedStringValue {
-  char value[65];
+  char value[kMaxResourceValueLen + 1];
   bool seen;
 };
 
@@ -15,7 +15,7 @@ static bool decodeStringValue(pb_istream_t* stream, const pb_field_t* /*field*/,
   DecodedStringValue* decoded = static_cast<DecodedStringValue*>(*arg);
   if (!decoded) return false;
   char* out = decoded->value;
-  const size_t n = stream->bytes_left < 64 ? stream->bytes_left : 64;
+  const size_t n = stream->bytes_left < kMaxResourceValueLen ? stream->bytes_left : kMaxResourceValueLen;
   if (!pb_read(stream, reinterpret_cast<pb_byte_t*>(out), n)) return false;
   out[n] = '\0';
   if (stream->bytes_left > 0) {
@@ -57,7 +57,7 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
   if (!h) {
     return encodeReply(req.correlation_id, ActionStatus::UnknownAction, nullptr, 0, out, outCap, outLen);
   }
-  uint8_t innerReply[128] = {0};
+  uint8_t innerReply[kInvokeReplyInnerMax] = {0};
   size_t  innerLen = 0;
   bool replied = false;
   ActionStatus status = ActionStatus::Unspecified;
@@ -68,7 +68,7 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
   int32_t  intVal    = 0;
   uint32_t uintVal   = 0;
   float    floatVal  = 0.0f;
-  char     strVal[65] = {0};
+  char     strVal[kMaxResourceValueLen + 1] = {0};
 
   if (req.has_payload) {
     switch (req.payload.which_kind) {

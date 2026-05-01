@@ -45,7 +45,7 @@ struct FrameSender {
 class DataBleTransport {
 public:
   static constexpr size_t kFrameBufferSize = DataFrameCodec::kHeaderSize + kMaxFrameBody;
-  static constexpr size_t kInvokeResultBufferSize = DataFrameCodec::kHeaderSize + 256u;
+  static constexpr size_t kInvokeResultBufferSize = DataFrameCodec::kHeaderSize + kInvokeReplyFramedMax;
   static constexpr size_t kDeltaFrameBufferSize = DataFrameCodec::kHeaderSize + 128u;
 
   DataBleTransport(const ManifestStore& store,
@@ -66,7 +66,8 @@ private:
   const ActionRegistry&   _registry;
   FrameSender             _sender;
   volatile bool           _snapshotPending = false;
-  static_assert(ecb::SubscriptionState::kMaxIds <= 64, "_deltaPendingMask must be widened if SubscriptionState::kMaxIds exceeds 64");
+  static constexpr size_t kDeltaPendingBits = sizeof(uint64_t) * 8;
+  static_assert(ecb::SubscriptionState::kMaxIds <= kDeltaPendingBits, "_deltaPendingMask must be widened if SubscriptionState::kMaxIds exceeds mask bits");
   uint64_t                _deltaPendingMask = 0;
   bool                    _manifestPending = false;
   size_t                  _manifestOffset = 0;

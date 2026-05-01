@@ -89,11 +89,23 @@
 #define ECB_NONCE_SIZE       4
 #define ECB_HASH_SIZE        4
 
+#define ECB_MAX_RESOURCE_VALUE_LEN  64
+#define ECB_INVOKE_REPLY_INNER_MAX  128
+#define ECB_INVOKE_REPLY_FRAMED_MAX 256
+#define ECB_SHA256_DIGEST_SIZE      32
+#define ECB_SHA256_BLOCK_SIZE       64
+#define ECB_UUID_STRING_LEN         37
+
 namespace ecb {
 
 static constexpr size_t kManifestChunkSize = ECB_MANIFEST_CHUNK_SIZE;
 static constexpr size_t kMaxFrameBody = 512;
 static constexpr size_t kFrameHeaderSize = 4;
+constexpr size_t kMaxResources         = 64;
+constexpr size_t kMaxActions           = 32;
+constexpr size_t kMaxResourceValueLen  = ECB_MAX_RESOURCE_VALUE_LEN;
+constexpr size_t kInvokeReplyInnerMax  = ECB_INVOKE_REPLY_INNER_MAX;
+constexpr size_t kInvokeReplyFramedMax = ECB_INVOKE_REPLY_FRAMED_MAX;
 
 enum class FrameKind : uint8_t {
   ManifestChunk = 0x01,

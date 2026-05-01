@@ -1,6 +1,7 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
+#include "../core/Protocol.h"
 
 namespace ecb {
 
@@ -13,8 +14,8 @@ struct ResourceValue {
   int32_t  intValue;
   uint32_t uintValue;
   float    floatValue;
-  char     stringValue[65];
-  uint8_t  bytesValue[64];
+  char     stringValue[kMaxResourceValueLen + 1];
+  uint8_t  bytesValue[kMaxResourceValueLen];
   size_t   bytesLength;
 };
 
@@ -34,9 +35,9 @@ struct ResourceEntry {
 
 class ResourceTable {
 public:
-  static constexpr size_t kMaxEntries = 64;
-  static constexpr size_t kMaxStringLen = 64;
-  static constexpr size_t kMaxBytesLen = 64;
+  static constexpr size_t kMaxEntries = kMaxResources;
+  static constexpr size_t kMaxStringLen = kMaxResourceValueLen;
+  static constexpr size_t kMaxBytesLen = kMaxResourceValueLen;
   static constexpr size_t kMaxBlobSlots = kMaxEntries;
   ResourceTable();
   bool get(uint32_t resourceId, ResourceValue& out) const;
@@ -65,5 +66,8 @@ private:
   void releaseBlobSlot(ResourceEntry& entry);
   uint8_t ensureBlobSlot(ResourceEntry& entry);
 };
+
+static_assert(ResourceTable::kMaxEntries == kMaxResources,
+              "ResourceTable capacity must match protocol max resources");
 
 } // namespace
