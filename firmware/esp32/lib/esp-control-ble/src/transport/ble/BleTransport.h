@@ -36,7 +36,7 @@ private:
   static BleTransport* _instance;
   static void staticNotify(const uint8_t* data, uint16_t len);
 
-  char _serviceUuid[37];
+  char _serviceUuid[ECB_UUID_STRING_LEN];
   void loadOrCreateUuid();
 
   void sendNotify(const uint8_t* data, uint16_t len);

@@ -246,7 +246,7 @@ static EcbServerCallbacks* s_serverCallbacks = nullptr;
 // ── BleTransport ───────────────────────────────────────────
 
 static void formatUuid(char* out, uint32_t a, uint16_t b, uint16_t c, uint16_t d, uint32_t e_hi, uint16_t e_lo) {
-  snprintf(out, 37, "%08lx-%04x-%04x-%04x-%08lx%04x",
+  snprintf(out, ECB_UUID_STRING_LEN, "%08lx-%04x-%04x-%04x-%08lx%04x",
            (unsigned long)a, b, c, d, (unsigned long)e_hi, e_lo);
 }
 
@@ -254,8 +254,8 @@ void BleTransport::loadOrCreateUuid() {
   Preferences prefs;
   prefs.begin("ecb", false);
   String stored = prefs.getString("svc_uuid", "");
-  if (stored.length() == 36) {
-    memcpy(_serviceUuid, stored.c_str(), 37);
+  if (stored.length() == ECB_UUID_STRING_LEN - 1) {
+    memcpy(_serviceUuid, stored.c_str(), ECB_UUID_STRING_LEN);
     ECB_LOGF("[ECB] UUID loaded from NVS: %s\n", _serviceUuid);
   } else {
     uint32_t a    = esp_random();
