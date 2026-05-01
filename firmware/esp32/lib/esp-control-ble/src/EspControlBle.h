@@ -33,6 +33,4 @@ private:
   ecb::ResourceTable      _resources;
   ecb::SubscriptionState  _subs;
   ecb::DataBleTransport*    _dataTransport;
-  const uint8_t*              _dataManifestData;
-  uint16_t                    _dataManifestLen;
 };

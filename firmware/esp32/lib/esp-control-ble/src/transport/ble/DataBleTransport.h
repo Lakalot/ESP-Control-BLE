@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "../../protocol/core/Protocol.h"
+#include "../../protocol/subscriptions/SubscriptionState.h"
 #include "../frame/DataFrameCodec.h"
 
 #ifdef UNIT_TEST
@@ -23,7 +24,6 @@ namespace ecb {
 
 class ManifestStore;
 class ResourceTable;
-class SubscriptionState;
 class ActionRegistry;
 
 struct FrameSender {
@@ -66,6 +66,7 @@ private:
   const ActionRegistry&   _registry;
   FrameSender             _sender;
   volatile bool           _snapshotPending = false;
+  static_assert(ecb::SubscriptionState::kMaxIds <= 64, "_deltaPendingMask must be widened if SubscriptionState::kMaxIds exceeds 64");
   uint64_t                _deltaPendingMask = 0;
   bool                    _manifestPending = false;
   size_t                  _manifestOffset = 0;

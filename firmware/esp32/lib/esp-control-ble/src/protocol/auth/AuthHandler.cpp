@@ -185,6 +185,7 @@ bool AuthHandler::verifyResponse(const uint8_t* response, uint8_t len) {
 #include <Arduino.h>
 #include <mbedtls/sha256.h>
 #include <string.h>
+#include "../../support/EcbLogging.h"
 
 void AuthHandler::setPin(const char* pin) {
   _pin = pin;
@@ -205,7 +206,7 @@ void AuthHandler::computeExpectedHash(uint8_t* hashOut) {
 
   uint8_t combined[64];
   if (totalLen > sizeof(combined)) {
-    Serial.printf("[ECB] Auth error: PIN too long (%u bytes)\n", (unsigned)pinLen);
+    ECB_LOGF("[ECB] Auth error: PIN too long (%u bytes)\n", (unsigned)pinLen);
     memset(hashOut, 0, ECB_HASH_SIZE);
     return;
   }

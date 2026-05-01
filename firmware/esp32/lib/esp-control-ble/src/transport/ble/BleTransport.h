@@ -48,10 +48,10 @@ private:
   void handleDisconnect();
 
 #ifdef UNIT_TEST
-  uint8_t _lastNotify[3 + ECB_MANIFEST_CHUNK_SIZE] = {};
-  uint16_t _lastNotifyLen = 0;
-  uint8_t _lastRawData[ecb::kMaxFrameBody + 4] = {};
-  size_t _lastRawDataLen = 0;
+  static uint8_t _lastNotify[3 + ECB_MANIFEST_CHUNK_SIZE];
+  static uint16_t _lastNotifyLen;
+  static uint8_t _lastRawData[ecb::kMaxFrameBody + 4];
+  static size_t _lastRawDataLen;
 #else
   NimBLECharacteristic* _cmdChar = nullptr;
   NimBLECharacteristic* _dataChar = nullptr;

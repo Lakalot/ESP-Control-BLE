@@ -21,6 +21,8 @@
 #include "protocol/manifest/ManifestStore.h"
 #include "protocol/auth/AuthHandler.h"
 #include "protocol/commands/CommandRegistry.h"
+#include "EspControlBle.h"
+#include "transport/ble/BleTransport.h"
 #include "transport/frame/FrameCodec.h"
 #include "transport/frame/DataFrameCodec.h"
 
@@ -190,6 +192,20 @@ static void test_locked_AuthHandler(void) {
         "AuthHandler grew - did mbedtls context become persistent?");
 }
 
+static void test_locked_EspControl_after_manifest_field_removal(void) {
+    const std::size_t observed = sizeof(EspControl);
+    print_size("EspControl", observed);
+    TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(6500, observed,
+        "EspControl grew beyond the post-manifest-field-removal guardrail");
+}
+
+static void test_locked_BleTransport_runtime_state(void) {
+    const std::size_t observed = sizeof(BleTransport);
+    print_size("BleTransport", observed);
+    TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(80, observed,
+        "BleTransport grew beyond the runtime state guardrail");
+}
+
 int main(int /*argc*/, char** /*argv*/) {
     UNITY_BEGIN();
     RUN_TEST(test_audit_sizeof_dump);
@@ -205,5 +221,7 @@ int main(int /*argc*/, char** /*argv*/) {
     RUN_TEST(test_locked_ResourceValue_has_string_and_bytes_buffers);
     RUN_TEST(test_locked_ManifestStore_is_a_borrow);
     RUN_TEST(test_locked_AuthHandler);
+    RUN_TEST(test_locked_EspControl_after_manifest_field_removal);
+    RUN_TEST(test_locked_BleTransport_runtime_state);
     return UNITY_END();
 }

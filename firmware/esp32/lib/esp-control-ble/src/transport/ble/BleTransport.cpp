@@ -5,6 +5,13 @@
 // -- Shared instance hook ----------------------------------------------------
 BleTransport* BleTransport::_instance = nullptr;
 
+#ifdef UNIT_TEST
+uint8_t BleTransport::_lastNotify[3 + ECB_MANIFEST_CHUNK_SIZE] = {};
+uint16_t BleTransport::_lastNotifyLen = 0;
+uint8_t BleTransport::_lastRawData[ecb::kMaxFrameBody + 4] = {};
+size_t BleTransport::_lastRawDataLen = 0;
+#endif
+
 void BleTransport::staticNotify(const uint8_t* data, uint16_t len) {
   if (_instance) {
     _instance->sendNotify(data, len);
@@ -282,7 +289,7 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   if (!s_serverCallbacks) s_serverCallbacks = new EcbServerCallbacks(this);
   server->setCallbacks(s_serverCallbacks);
 
-  NimBLEService* service = server->createService(ECB_DATA_SERVICE_UUID);
+  NimBLEService* service = server->createService(ECB_SERVICE_UUID);
 
   NimBLECharacteristic* manifestChar = service->createCharacteristic(
     ECB_MANIFEST_CHAR_UUID,
@@ -304,7 +311,7 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   }
 
   _cmdChar = service->createCharacteristic(
-    ECB_DATA_CMD_CHAR_UUID,
+    ECB_CMD_CHAR_UUID,
     NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
   );
   if (!s_cmdCallbacks) s_cmdCallbacks = new EcbCmdCallbacks(this);
@@ -320,7 +327,7 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
   service->start();
 
   NimBLEAdvertising* advertising = NimBLEDevice::getAdvertising();
-  advertising->addServiceUUID(ECB_DATA_SERVICE_UUID);
+  advertising->addServiceUUID(ECB_SERVICE_UUID);
   advertising->setScanResponse(true);
   advertising->start();
 
