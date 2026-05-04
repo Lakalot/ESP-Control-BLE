@@ -68,7 +68,6 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
   int32_t  intVal    = 0;
   uint32_t uintVal   = 0;
   float    floatVal  = 0.0f;
-  char     strVal[kMaxResourceValueLen + 1] = {0};
 
   if (req.has_payload) {
     switch (req.payload.which_kind) {
@@ -91,14 +90,10 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
       case esp_control_CommonValue_string_value_tag:
       case esp_control_CommonValue_enum_value_tag:
         valueKind = ActionValueKind::String;
-        strncpy(strVal, decodedString.value, sizeof(strVal) - 1);
-        strVal[sizeof(strVal) - 1] = '\0';
         break;
       default:
         if (decodedString.seen) {
           valueKind = ActionValueKind::String;
-          strncpy(strVal, decodedString.value, sizeof(strVal) - 1);
-          strVal[sizeof(strVal) - 1] = '\0';
         }
         break;
     }
@@ -111,7 +106,7 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
     &replied, &status, innerReply, sizeof(innerReply), &innerLen
   };
   if (valueKind == ActionValueKind::String) {
-    strncpy(ctx.stringValue, strVal, sizeof(ctx.stringValue) - 1);
+    strncpy(ctx.stringValue, decodedString.value, sizeof(ctx.stringValue) - 1);
     ctx.stringValue[sizeof(ctx.stringValue) - 1] = '\0';
   }
   (*h)(ctx);
