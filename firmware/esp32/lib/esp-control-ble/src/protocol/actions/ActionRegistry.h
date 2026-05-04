@@ -55,9 +55,6 @@ public:
   static constexpr size_t kMaxHandlers = kMaxActions;
   ActionRegistry();
   RegisterResult tryRegisterAction(uint32_t actionId, ActionFn fn, void* context);
-  bool registerAction(uint32_t actionId, ActionFn fn, void* context) {
-    return tryRegisterAction(actionId, fn, context) == RegisterResult::Ok;
-  }
   const ActionHandler* find(uint32_t actionId) const;
 private:
   struct Entry { uint32_t actionId; ActionHandler handler; bool used; };

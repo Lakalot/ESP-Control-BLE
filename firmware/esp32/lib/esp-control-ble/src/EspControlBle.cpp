@@ -52,7 +52,7 @@ void EspControl::onSubscribe(void* context) {
   static_cast<EspControl*>(context)->_dispatcher.sendManifest();
 }
 
-void EspControl::registerAction(uint32_t actionId, ecb::ActionFn fn, void* context) { _state.actions.registerAction(actionId, fn, context); }
+void EspControl::registerAction(uint32_t actionId, ecb::ActionFn fn, void* context) { _state.actions.tryRegisterAction(actionId, fn, context); }
 void EspControl::publishDelta(uint32_t resourceId) { _dispatcher.publishDelta(resourceId); }
 void EspControl::tick() { _dispatcher.tick(); }
 

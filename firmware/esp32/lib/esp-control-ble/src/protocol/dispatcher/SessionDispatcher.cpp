@@ -60,8 +60,8 @@ static bool decodeResourceIds(pb_istream_t* stream, const pb_field_t* /*field*/,
   SubDecodeCtx* ctx = static_cast<SubDecodeCtx*>(*arg);
   uint64_t id = 0;
   if (!pb_decode_varint(stream, &id)) return false;
-  if (ctx->add) ctx->subs->add(static_cast<uint32_t>(id));
-  else          ctx->subs->remove(static_cast<uint32_t>(id));
+  if (ctx->add) ctx->subs->tryAdd(static_cast<uint32_t>(id));
+  else          ctx->subs->tryRemove(static_cast<uint32_t>(id));
   return true;
 }
 
@@ -125,10 +125,10 @@ void SessionDispatcher::onFrame(FrameKind kind, const uint8_t* body, size_t len)
 void SessionDispatcher::sendSnapshot() {
   uint8_t frame[DataFrameCodec::kHeaderSize + kMaxFrameBody];
   size_t written = 0;
-  if (SnapshotEncoder::encode(_resources,
+  if (SnapshotEncoder::tryEncode(_resources,
                               frame + DataFrameCodec::kHeaderSize,
                               sizeof(frame) - DataFrameCodec::kHeaderSize,
-                              written)) {
+                              written) == EncodeResult::Ok) {
     sendFrame(_sender, _senderContext, FrameKind::Snapshot,
               frame + DataFrameCodec::kHeaderSize, written,
               frame, sizeof(frame));
@@ -159,10 +159,10 @@ void SessionDispatcher::sendDeltaInternal(uint32_t resourceId) {
   }
   uint8_t frame[DataFrameCodec::kHeaderSize + 128u];
   size_t written = 0;
-  if (SnapshotEncoder::encodeDelta(v, _resources.generation(),
+  if (SnapshotEncoder::tryEncodeDelta(v, _resources.generation(),
                                    frame + DataFrameCodec::kHeaderSize,
                                    sizeof(frame) - DataFrameCodec::kHeaderSize,
-                                   written)) {
+                                   written) == EncodeResult::Ok) {
     ECB_DATA_DEBUGF("[DATA] sendDeltaInternal id=%u kind=%u written=%u\n",
                   resourceId, (uint8_t)v.kind, (unsigned)written);
     sendFrame(_sender, _senderContext, FrameKind::Delta,

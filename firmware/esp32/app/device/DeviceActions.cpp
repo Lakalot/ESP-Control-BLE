@@ -42,8 +42,8 @@ static void onRelayToggle(ecb::ActionContext& ctx, void* context) {
     c->runtime->setBrightness(100u);
   }
   c->actions->applyLightOutput(c->runtime->state());
-  c->control->resources().setBool(manifest_resources::relay_auto, c->runtime->state().relayEnabled);
-  c->control->resources().setUint(manifest_resources::light_brightness, c->runtime->state().brightness);
+  c->control->resources().trySetBool(manifest_resources::relay_auto, c->runtime->state().relayEnabled);
+  c->control->resources().trySetUint(manifest_resources::light_brightness, c->runtime->state().brightness);
   c->control->publishDelta(manifest_resources::relay_auto);
   c->control->publishDelta(manifest_resources::light_brightness);
   Serial.printf("[DATA] relay.toggle -> %s\n", c->runtime->state().relayEnabled ? "ON" : "OFF");
@@ -62,7 +62,7 @@ static void onSetBrightness(ecb::ActionContext& ctx, void* context) {
   }
 
   c->actions->applyLightOutput(c->runtime->state());
-  c->control->resources().setUint(manifest_resources::light_brightness, c->runtime->state().brightness);
+  c->control->resources().trySetUint(manifest_resources::light_brightness, c->runtime->state().brightness);
   c->control->publishDelta(manifest_resources::light_brightness);
   Serial.printf("[DATA] light.set_brightness -> %u%%\n", c->runtime->state().brightness);
   ctx.replyOk(nullptr, 0);
@@ -77,7 +77,7 @@ static void onSetFanProfile(ecb::ActionContext& ctx, void* context) {
     return;
   }
 
-  c->control->resources().setString(manifest_resources::fan_profile, fanProfileName(c->runtime->state().fanProfile));
+  c->control->resources().trySetString(manifest_resources::fan_profile, fanProfileName(c->runtime->state().fanProfile));
   c->control->publishDelta(manifest_resources::fan_profile);
   Serial.printf("[DATA] fan.set_profile -> %s\n", fanProfileName(c->runtime->state().fanProfile));
   ctx.replyOk(nullptr, 0);
@@ -91,7 +91,7 @@ static void onSetDebug(ecb::ActionContext& ctx, void* context) {
   }
 
   c->runtime->setDebugEnabled(ctx.boolValue);
-  c->control->resources().setBool(manifest_resources::device_debug, c->runtime->state().debugEnabled);
+  c->control->resources().trySetBool(manifest_resources::device_debug, c->runtime->state().debugEnabled);
   c->control->publishDelta(manifest_resources::device_debug);
   Serial.printf("[DATA] device.set_debug -> %s\n", c->runtime->state().debugEnabled ? "true" : "false");
   ctx.replyOk(nullptr, 0);
@@ -105,7 +105,7 @@ static void onDeviceRename(ecb::ActionContext& ctx, void* context) {
   }
 
   c->runtime->setDeviceName(ctx.stringValue);
-  c->control->resources().setString(manifest_resources::device_name, c->runtime->state().deviceName);
+  c->control->resources().trySetString(manifest_resources::device_name, c->runtime->state().deviceName);
   c->control->publishDelta(manifest_resources::device_name);
   Serial.printf("[DATA] device.rename -> %s\n", c->runtime->state().deviceName);
   ctx.replyOk(nullptr, 0);
@@ -119,7 +119,7 @@ static void onSetColor(ecb::ActionContext& ctx, void* context) {
   }
 
   c->runtime->setColorPreset(ctx.stringValue);
-  c->control->resources().setString(manifest_resources::light_color, colorPresetName(c->runtime->state().colorPreset));
+  c->control->resources().trySetString(manifest_resources::light_color, colorPresetName(c->runtime->state().colorPreset));
   c->control->publishDelta(manifest_resources::light_color);
   Serial.printf("[DATA] light.set_color -> %s\n", colorPresetName(c->runtime->state().colorPreset));
   ctx.replyOk(nullptr, 0);
@@ -156,12 +156,12 @@ void DeviceActions::registerAll(ecb::EspControl& control, AppRuntime& runtime) c
 
 void DeviceActions::syncResources(ecb::EspControl& control, const DeviceState& state) const {
   applyLightOutput(state);
-  control.resources().setBool(manifest_resources::relay_auto, state.relayEnabled);
-  control.resources().setUint(manifest_resources::light_brightness, state.brightness);
-  control.resources().setString(manifest_resources::fan_profile, fanProfileName(state.fanProfile));
-  control.resources().setString(manifest_resources::light_color, colorPresetName(state.colorPreset));
-  control.resources().setBool(manifest_resources::device_debug, state.debugEnabled);
-  control.resources().setString(manifest_resources::device_name, state.deviceName);
+  control.resources().trySetBool(manifest_resources::relay_auto, state.relayEnabled);
+  control.resources().trySetUint(manifest_resources::light_brightness, state.brightness);
+  control.resources().trySetString(manifest_resources::fan_profile, fanProfileName(state.fanProfile));
+  control.resources().trySetString(manifest_resources::light_color, colorPresetName(state.colorPreset));
+  control.resources().trySetBool(manifest_resources::device_debug, state.debugEnabled);
+  control.resources().trySetString(manifest_resources::device_name, state.deviceName);
 }
 
 void DeviceActions::applyLightOutput(const DeviceState& state) const {

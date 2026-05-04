@@ -75,10 +75,10 @@ static void test_send_delta_preserves_full_resource_id() {
   uint8_t manifest[4] = {1, 2, 3, 4};
   ManifestStore store(manifest, sizeof(manifest));
   ecb::ResourceTable<> table;
-  table.setUint(1, 11);
-  table.setUint(65, 65);
+  table.trySetUint(1, 11);
+  table.trySetUint(65, 65);
   SubscriptionState subs;
-  subs.add(65);
+  subs.tryAdd(65);
   ActionRegistry reg;
   SessionDispatcher dispatcher(table, subs, reg, store, fakeSender, nullptr);
 

@@ -67,7 +67,6 @@ public:
     _generation += 1;
     return SetResult::Ok;
   }
-  void setBool(uint32_t id, bool v) { trySetBool(id, v); }
   
   SetResult trySetInt(uint32_t id, int32_t v) {
     auto* e = upsert(id);
@@ -78,7 +77,6 @@ public:
     _generation += 1;
     return SetResult::Ok;
   }
-  void setInt(uint32_t id, int32_t v) { trySetInt(id, v); }
   
   SetResult trySetUint(uint32_t id, uint32_t v) {
     auto* e = upsert(id);
@@ -89,7 +87,6 @@ public:
     _generation += 1;
     return SetResult::Ok;
   }
-  void setUint(uint32_t id, uint32_t v) { trySetUint(id, v); }
   
   SetResult trySetFloat(uint32_t id, float v) {
     auto* e = upsert(id);
@@ -100,7 +97,6 @@ public:
     _generation += 1;
     return SetResult::Ok;
   }
-  void setFloat(uint32_t id, float v) { trySetFloat(id, v); }
   
   SetResult trySetString(uint32_t id, const char* s) {
     auto* e = upsert(id);
@@ -116,7 +112,6 @@ public:
     _generation += 1;
     return SetResult::Ok;
   }
-  void setString(uint32_t id, const char* s) { trySetString(id, s); }
   
   SetResult trySetBytes(uint32_t id, const uint8_t* data, size_t len) {
     auto* e = upsert(id);
@@ -130,7 +125,6 @@ public:
     _generation += 1;
     return SetResult::Ok;
   }
-  void setBytes(uint32_t id, const uint8_t* data, size_t len) { trySetBytes(id, data, len); }
   
   uint32_t generation() const { return _generation; }
   size_t size() const { return _count; }

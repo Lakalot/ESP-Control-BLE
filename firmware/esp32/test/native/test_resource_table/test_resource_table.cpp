@@ -11,11 +11,11 @@ void tearDown() {}
 
 static void test_default_blob_slot_capacity_is_four() {
   ecb::ResourceTable<> table;
-  table.setString(1, "a");
-  table.setString(2, "b");
-  table.setString(3, "c");
-  table.setString(4, "d");
-  table.setString(5, "e");
+  table.trySetString(1, "a");
+  table.trySetString(2, "b");
+  table.trySetString(3, "c");
+  table.trySetString(4, "d");
+  table.trySetString(5, "e");
 
   ecb::ResourceValue value{};
   TEST_ASSERT_TRUE(table.get(1, value));
@@ -24,7 +24,7 @@ static void test_default_blob_slot_capacity_is_four() {
 
 static void test_expanded_blob_slot_capacity_compiles() {
   ecb::ResourceTable<16> table;
-  table.setString(16, "sixteen");
+  table.trySetString(16, "sixteen");
   ecb::ResourceValue value{};
   TEST_ASSERT_TRUE(table.get(16, value));
   TEST_ASSERT_EQUAL_STRING("sixteen", value.stringValue);
@@ -32,7 +32,7 @@ static void test_expanded_blob_slot_capacity_compiles() {
 
 static void test_set_and_get_bool() {
   ResourceTable t;
-  t.setBool(1, true);
+  t.trySetBool(1, true);
   ResourceValue v{};
   TEST_ASSERT_TRUE(t.get(1, v));
   TEST_ASSERT_EQUAL(static_cast<int>(ResourceValueKind::Bool), static_cast<int>(v.kind));
@@ -42,7 +42,7 @@ static void test_set_and_get_bool() {
 static void test_set_and_get_int_and_bump_generation() {
   ResourceTable t;
   uint32_t before = t.generation();
-  t.setInt(2, -42);
+  t.trySetInt(2, -42);
   uint32_t after = t.generation();
   TEST_ASSERT_EQUAL(before + 1u, after);
   ResourceValue v{};
@@ -54,7 +54,7 @@ static void test_set_string_truncates_at_max() {
   ResourceTable t;
   char big[96] = {};
   memset(big, 'x', 95);
-  t.setString(3, big);
+  t.trySetString(3, big);
   ResourceValue v{};
   TEST_ASSERT_TRUE(t.get(3, v));
   TEST_ASSERT_EQUAL(static_cast<int>(ResourceValueKind::String), static_cast<int>(v.kind));
@@ -67,9 +67,9 @@ static void test_entry_layout_stays_compact() {
 
 static void test_string_values_use_external_storage_without_affecting_scalar_reads() {
   ResourceTable t;
-  t.setBool(1, true);
-  t.setString(2, "hello");
-  t.setInt(3, -7);
+  t.trySetBool(1, true);
+  t.trySetString(2, "hello");
+  t.trySetInt(3, -7);
 
   ResourceValue stringValue{};
   ResourceValue boolValue{};
@@ -90,13 +90,13 @@ static void test_string_values_use_external_storage_without_affecting_scalar_rea
 static void test_blob_slots_are_released_and_reused_after_scalar_transition() {
   ResourceTable t;
   for (uint32_t i = 1; i <= ResourceTable::kMaxBlobSlots; ++i) {
-    t.setString(i, "slot");
+    t.trySetString(i, "slot");
   }
 
-  t.setBool(1, true);
+  t.trySetBool(1, true);
 
   const uint8_t bytes[] = {0x00, 0x7F, 0xFF};
-  t.setBytes(1, bytes, sizeof(bytes));
+  t.trySetBytes(1, bytes, sizeof(bytes));
 
   ResourceValue v{};
   TEST_ASSERT_TRUE(t.get(1, v));
@@ -107,10 +107,10 @@ static void test_blob_slots_are_released_and_reused_after_scalar_transition() {
 
 static void test_blob_backed_value_can_change_kind_without_stale_payload() {
   ResourceTable t;
-  t.setString(9, "hello");
+  t.trySetString(9, "hello");
 
   const uint8_t bytes[] = {0x61, 0x00, 0x62, 0x7F};
-  t.setBytes(9, bytes, sizeof(bytes));
+  t.trySetBytes(9, bytes, sizeof(bytes));
 
   ResourceValue v{};
   TEST_ASSERT_TRUE(t.get(9, v));

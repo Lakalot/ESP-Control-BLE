@@ -47,7 +47,7 @@ static void on_string_action(ecb::ActionContext& ctx, void*) {
 
 static void register_and_dispatch_flows() {
   ActionRegistry reg;
-  reg.registerAction(7, &on_counting_action, nullptr);
+  TEST_ASSERT_EQUAL(ecb::RegisterResult::Ok, reg.tryRegisterAction(7, &on_counting_action, nullptr));
   uint8_t wire[128] = {0};
   size_t wireLen = 0;
   {
@@ -87,7 +87,7 @@ static void test_unknown_action_produces_error_reply() {
 static void test_string_payload_reaches_handler() {
   resetCounters();
   ActionRegistry reg;
-  reg.registerAction(7, &on_string_action, nullptr);
+  TEST_ASSERT_EQUAL(ecb::RegisterResult::Ok, reg.tryRegisterAction(7, &on_string_action, nullptr));
 
   uint8_t wire[128] = {0};
   size_t wireLen = 0;

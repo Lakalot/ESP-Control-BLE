@@ -17,7 +17,7 @@ static void test_verify_response_accepts_sha256_pin_plus_nonce_prefix() {
 
   const uint8_t response[] = {ECB_AUTH_OK, 0x65, 0xC6, 0x65, 0xFD};
 
-  TEST_ASSERT_TRUE(auth.verifyResponse(response, sizeof(response)));
+  TEST_ASSERT_EQUAL(ecb::AuthResult::Ok, auth.tryVerifyResponse(response, sizeof(response)));
   TEST_ASSERT_TRUE(auth.isAuthenticated());
 }
 
