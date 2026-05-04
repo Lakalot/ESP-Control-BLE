@@ -178,15 +178,11 @@ static void test_locked_AuthHandler(void) {
         "AuthHandler grew - did mbedtls context become persistent?");
 }
 
-static void test_locked_EspControl_after_manifest_field_removal(void) {
+static void test_locked_EspControl_headline_target(void) {
     const std::size_t observed = production_esp_control_size();
-    // 32-bit native is the ESP32-equivalent guard; 64-bit native uses a host bound.
-    print_size("EspControl (production-adjusted)", observed);
-    assert_production_adjusted_size(
-        "EspControl grew beyond the post-manifest-field-removal guardrail",
-        observed,
-        kEspControlEsp32Limit,
-        kEspControlHost64SanityLimit);
+    print_size("(headline) EspControl", observed);
+    TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(4200, observed,
+        "EspControl should meet the L4 RAM headline target");
 }
 
 static void test_locked_BleTransport_runtime_state(void) {
@@ -214,7 +210,7 @@ int main(int /*argc*/, char** /*argv*/) {
     RUN_TEST(test_locked_ResourceValue_has_string_and_bytes_buffers);
     RUN_TEST(test_locked_ManifestStore_is_a_borrow);
     RUN_TEST(test_locked_AuthHandler);
-    RUN_TEST(test_locked_EspControl_after_manifest_field_removal);
+    RUN_TEST(test_locked_EspControl_headline_target);
     RUN_TEST(test_locked_BleTransport_runtime_state);
     return UNITY_END();
 }
