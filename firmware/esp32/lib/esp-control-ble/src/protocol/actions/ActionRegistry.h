@@ -48,11 +48,16 @@ struct ActionHandler {
   void* context;
 };
 
+enum class RegisterResult : uint8_t { Ok, Duplicate, TableFull, NullHandler };
+
 class ActionRegistry {
 public:
   static constexpr size_t kMaxHandlers = kMaxActions;
   ActionRegistry();
-  bool registerAction(uint32_t actionId, ActionFn fn, void* context);
+  RegisterResult tryRegisterAction(uint32_t actionId, ActionFn fn, void* context);
+  bool registerAction(uint32_t actionId, ActionFn fn, void* context) {
+    return tryRegisterAction(actionId, fn, context) == RegisterResult::Ok;
+  }
   const ActionHandler* find(uint32_t actionId) const;
 private:
   struct Entry { uint32_t actionId; ActionHandler handler; bool used; };

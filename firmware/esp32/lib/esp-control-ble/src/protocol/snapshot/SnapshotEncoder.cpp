@@ -77,7 +77,7 @@ static bool encodeValuesCallback(pb_ostream_t* stream, const pb_field_t* field, 
   return true;
 }
 
-bool SnapshotEncoder::encode(const ResourceTable<>& table, uint8_t* out, size_t cap, size_t& written) {
+EncodeResult SnapshotEncoder::tryEncode(const ResourceTable<>& table, uint8_t* out, size_t cap, size_t& written) {
   esp_control_ResourceSnapshot msg = esp_control_ResourceSnapshot_init_zero;
   SnapshotCallbackCtx ctx{&table};
   msg.values.funcs.encode = encodeValuesCallback;
@@ -86,10 +86,10 @@ bool SnapshotEncoder::encode(const ResourceTable<>& table, uint8_t* out, size_t 
   pb_ostream_t os = pb_ostream_from_buffer(out, cap);
   bool ok = pb_encode(&os, esp_control_ResourceSnapshot_fields, &msg);
   written = ok ? os.bytes_written : 0;
-  return ok;
+  return ok ? EncodeResult::Ok : EncodeResult::BufferTooSmall;
 }
 
-bool SnapshotEncoder::encodeDelta(const ResourceValue& value, uint32_t generation,
+EncodeResult SnapshotEncoder::tryEncodeDelta(const ResourceValue& value, uint32_t generation,
                                   uint8_t* out, size_t cap, size_t& written) {
   esp_control_ResourceDelta msg = esp_control_ResourceDelta_init_zero;
   BlobEncodeCtx blobCtx{};
@@ -99,7 +99,7 @@ bool SnapshotEncoder::encodeDelta(const ResourceValue& value, uint32_t generatio
   pb_ostream_t os = pb_ostream_from_buffer(out, cap);
   bool ok = pb_encode(&os, esp_control_ResourceDelta_fields, &msg);
   written = ok ? os.bytes_written : 0;
-  return ok;
+  return ok ? EncodeResult::Ok : EncodeResult::BufferTooSmall;
 }
 
 } // namespace

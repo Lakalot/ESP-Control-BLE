@@ -7,6 +7,7 @@
 namespace ecb {
 
 enum class ResourceValueKind : uint8_t { None=0, Bool=1, Int=2, Uint=3, Float=4, String=5, Bytes=6 };
+enum class SetResult : uint8_t { Ok, TableFull, NoBlobSlot };
 
 struct ResourceValue {
   uint32_t resourceId;
@@ -57,47 +58,55 @@ public:
     return fillValue(_entries[idx], out);
   }
   
-  void setBool(uint32_t id, bool v) {
+  SetResult trySetBool(uint32_t id, bool v) {
     auto* e = upsert(id);
-    if (!e) return;
+    if (!e) return SetResult::TableFull;
     if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
     e->kind = ResourceValueKind::Bool;
     e->value.boolValue = v;
     _generation += 1;
+    return SetResult::Ok;
   }
+  void setBool(uint32_t id, bool v) { trySetBool(id, v); }
   
-  void setInt(uint32_t id, int32_t v) {
+  SetResult trySetInt(uint32_t id, int32_t v) {
     auto* e = upsert(id);
-    if (!e) return;
+    if (!e) return SetResult::TableFull;
     if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
     e->kind = ResourceValueKind::Int;
     e->value.intValue = v;
     _generation += 1;
+    return SetResult::Ok;
   }
+  void setInt(uint32_t id, int32_t v) { trySetInt(id, v); }
   
-  void setUint(uint32_t id, uint32_t v) {
+  SetResult trySetUint(uint32_t id, uint32_t v) {
     auto* e = upsert(id);
-    if (!e) return;
+    if (!e) return SetResult::TableFull;
     if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
     e->kind = ResourceValueKind::Uint;
     e->value.uintValue = v;
     _generation += 1;
+    return SetResult::Ok;
   }
+  void setUint(uint32_t id, uint32_t v) { trySetUint(id, v); }
   
-  void setFloat(uint32_t id, float v) {
+  SetResult trySetFloat(uint32_t id, float v) {
     auto* e = upsert(id);
-    if (!e) return;
+    if (!e) return SetResult::TableFull;
     if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
     e->kind = ResourceValueKind::Float;
     e->value.floatValue = v;
     _generation += 1;
+    return SetResult::Ok;
   }
+  void setFloat(uint32_t id, float v) { trySetFloat(id, v); }
   
-  void setString(uint32_t id, const char* s) {
+  SetResult trySetString(uint32_t id, const char* s) {
     auto* e = upsert(id);
-    if (!e) return;
+    if (!e) return SetResult::TableFull;
     const uint8_t slot = ensureBlobSlot(*e);
-    if (slot == 0xFF) return;
+    if (slot == 0xFF) return SetResult::NoBlobSlot;
     const char* value = s ? s : "";
     const size_t n = strnlen(value, kMaxStringLen);
     memcpy(_blobSlots[slot].data, value, n);
@@ -105,19 +114,23 @@ public:
     e->kind = ResourceValueKind::String;
     e->blobLength = static_cast<uint8_t>(n);
     _generation += 1;
+    return SetResult::Ok;
   }
+  void setString(uint32_t id, const char* s) { trySetString(id, s); }
   
-  void setBytes(uint32_t id, const uint8_t* data, size_t len) {
+  SetResult trySetBytes(uint32_t id, const uint8_t* data, size_t len) {
     auto* e = upsert(id);
-    if (!e) return;
+    if (!e) return SetResult::TableFull;
     const uint8_t slot = ensureBlobSlot(*e);
-    if (slot == 0xFF) return;
+    if (slot == 0xFF) return SetResult::NoBlobSlot;
     const size_t n = len > kMaxBytesLen ? kMaxBytesLen : len;
     if (n > 0 && data) memcpy(_blobSlots[slot].data, data, n);
     e->kind = ResourceValueKind::Bytes;
     e->blobLength = static_cast<uint8_t>(n);
     _generation += 1;
+    return SetResult::Ok;
   }
+  void setBytes(uint32_t id, const uint8_t* data, size_t len) { trySetBytes(id, data, len); }
   
   uint32_t generation() const { return _generation; }
   size_t size() const { return _count; }

@@ -1,11 +1,16 @@
 #pragma once
 #include "../core/Protocol.h"
 
+namespace ecb { enum class AuthResult : uint8_t { Ok, BadFrame, BadHash }; }
+
 class AuthHandler {
 public:
   void setPin(const char* pin);
   void generateChallenge(uint8_t* nonceOut);
-  bool verifyResponse(const uint8_t* response, uint8_t len);
+  ecb::AuthResult tryVerifyResponse(const uint8_t* response, uint8_t len);
+  bool verifyResponse(const uint8_t* response, uint8_t len) {
+    return tryVerifyResponse(response, len) == ecb::AuthResult::Ok;
+  }
   bool isAuthenticated() const { return _authenticated; }
   void reset() { _authenticated = false; }
 

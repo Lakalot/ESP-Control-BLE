@@ -168,16 +168,16 @@ void AuthHandler::computeExpectedHash(uint8_t* hashOut) {
   memcpy(hashOut, fullHash, ECB_HASH_SIZE);
 }
 
-bool AuthHandler::verifyResponse(const uint8_t* response, uint8_t len) {
+ecb::AuthResult AuthHandler::tryVerifyResponse(const uint8_t* response, uint8_t len) {
   if (len < 1 + ECB_HASH_SIZE || response[0] != ECB_AUTH_OK) {
     _authenticated = false;
-    return false;
+    return ecb::AuthResult::BadFrame;
   }
 
   uint8_t expected[ECB_HASH_SIZE];
   computeExpectedHash(expected);
   _authenticated = memcmp(response + 1, expected, ECB_HASH_SIZE) == 0;
-  return _authenticated;
+  return _authenticated ? ecb::AuthResult::Ok : ecb::AuthResult::BadHash;
 }
 
 #else
@@ -224,10 +224,10 @@ void AuthHandler::computeExpectedHash(uint8_t* hashOut) {
   memcpy(hashOut, fullHash, ECB_HASH_SIZE);
 }
 
-bool AuthHandler::verifyResponse(const uint8_t* response, uint8_t len) {
+ecb::AuthResult AuthHandler::tryVerifyResponse(const uint8_t* response, uint8_t len) {
   if (len < 1 + ECB_HASH_SIZE || response[0] != ECB_AUTH_OK) {
     _authenticated = false;
-    return false;
+    return ecb::AuthResult::BadFrame;
   }
 
   uint8_t expected[ECB_HASH_SIZE];
@@ -235,11 +235,11 @@ bool AuthHandler::verifyResponse(const uint8_t* response, uint8_t len) {
 
   if (memcmp(response + 1, expected, ECB_HASH_SIZE) == 0) {
     _authenticated = true;
-    return true;
+    return ecb::AuthResult::Ok;
   }
 
   _authenticated = false;
-  return false;
+  return ecb::AuthResult::BadHash;
 }
 
 #endif

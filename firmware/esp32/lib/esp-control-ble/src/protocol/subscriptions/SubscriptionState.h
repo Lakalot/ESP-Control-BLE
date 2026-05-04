@@ -5,12 +5,16 @@
 
 namespace ecb {
 
+enum class SubResult : uint8_t { Ok, AlreadyPresent, NotPresent, Full, Empty };
+
 class SubscriptionState {
 public:
   static constexpr size_t kMaxIds = kMaxResources;
   SubscriptionState();
-  bool add(uint32_t resourceId);
-  bool remove(uint32_t resourceId);
+  SubResult tryAdd(uint32_t resourceId);
+  bool add(uint32_t resourceId) { return tryAdd(resourceId) == SubResult::Ok; }
+  SubResult tryRemove(uint32_t resourceId);
+  bool remove(uint32_t resourceId) { return tryRemove(resourceId) == SubResult::Ok; }
   bool isWatching(uint32_t resourceId) const;
   int indexOf(uint32_t resourceId) const;
   uint32_t idAt(size_t index) const;

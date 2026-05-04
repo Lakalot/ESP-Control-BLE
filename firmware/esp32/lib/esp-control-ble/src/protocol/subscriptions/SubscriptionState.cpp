@@ -4,24 +4,24 @@ namespace ecb {
 
 SubscriptionState::SubscriptionState() : _ids{}, _count(0) {}
 
-bool SubscriptionState::add(uint32_t id) {
-  if (isWatching(id)) return false;
-  if (_count >= kMaxIds) return false;
+SubResult SubscriptionState::tryAdd(uint32_t id) {
+  if (isWatching(id)) return SubResult::AlreadyPresent;
+  if (_count >= kMaxIds) return SubResult::Full;
   _ids[_count++] = id;
-  return true;
+  return SubResult::Ok;
 }
 
-bool SubscriptionState::remove(uint32_t id) {
+SubResult SubscriptionState::tryRemove(uint32_t id) {
   for (size_t i = 0; i < _count; ++i) {
     if (_ids[i] == id) {
       for (size_t j = i + 1; j < _count; ++j) {
         _ids[j - 1] = _ids[j];
       }
       --_count;
-      return true;
+      return SubResult::Ok;
     }
   }
-  return false;
+  return SubResult::NotPresent;
 }
 
 bool SubscriptionState::isWatching(uint32_t id) const {
