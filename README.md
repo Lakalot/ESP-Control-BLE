@@ -505,72 +505,39 @@ struct DeviceState {
 
 ### Registering Actions
 
-Use `control.registerAction(symbol, handler)` in your `DeviceActions::registerAll()`:
+Use `control.registerAction(symbol, handler, context)` in your `DeviceActions::registerAll()`:
 
 ```cpp
 #include "../../src/manifest_symbols.h"
 
+// Define a context structure holding what you need in callbacks
+struct DeviceActionContext {
+  const DeviceActions* actions;
+  EspControl* control;
+  AppRuntime* runtime;
+};
+
+static void onRelayToggle(ecb::ActionContext& ctx, void* context) {
+  auto* c = static_cast<DeviceActionContext*>(context);
+  c->runtime->toggleRelay();
+  c->actions->applyLightOutput(c->runtime->state());
+  c->control->resources().setBool(manifest_resources::relay_auto, c->runtime->state().relayEnabled);
+  c->control->publishDelta(manifest_resources::relay_auto);
+  ctx.replyOk(nullptr, 0);
+}
+
 void DeviceActions::registerAll(EspControl& control, AppRuntime& runtime) const {
+  static DeviceActionContext ctx{this, &control, &runtime};
 
   // Toggle relay -- no input
-  control.registerAction(manifest_actions::relay_toggle,
-    [this, &control, &runtime](ecb::ActionContext& ctx) {
-      runtime.toggleRelay();
-      applyRelayOutput(runtime.state());
-      control.resources().setBool(manifest_resources::relay_auto, runtime.state().relayEnabled);
-      control.publishDelta(manifest_resources::relay_auto);
-      ctx.replyOk(nullptr, 0);
-    });
-
-  // Set brightness -- integer input
-  control.registerAction(manifest_actions::light_set_brightness,
-    [this, &control, &runtime](ecb::ActionContext& ctx) {
-      if (ctx.valueKind == ecb::ActionValueKind::Uint) {
-        runtime.setBrightness(ctx.uintValue);
-      } else if (ctx.valueKind == ecb::ActionValueKind::Int) {
-        runtime.setBrightness(ctx.intValue);
-      } else {
-        ctx.replyError(ecb::ActionStatus::BadPayload, "need uint");
-        return;
-      }
-      applyBrightnessOutput(runtime.state());
-      control.resources().setUint(manifest_resources::light_brightness, runtime.state().brightness);
-      control.publishDelta(manifest_resources::light_brightness);
-      ctx.replyOk(nullptr, 0);
-    });
-
-  // Set fan profile -- enum (string) input
-  control.registerAction(manifest_actions::fan_set_profile,
-    [&control, &runtime](ecb::ActionContext& ctx) {
-      if (ctx.valueKind != ecb::ActionValueKind::String) {
-        ctx.replyError(ecb::ActionStatus::BadPayload, "need string");
-        return;
-      }
-      runtime.setFanProfile(ctx.stringValue);
-      control.resources().setString(manifest_resources::fan_profile, fanProfileName(runtime.state().fanProfile));
-      control.publishDelta(manifest_resources::fan_profile);
-      ctx.replyOk(nullptr, 0);
-    });
-
-  // Debug toggle -- boolean input
-  control.registerAction(manifest_actions::device_set_debug,
-    [&control, &runtime](ecb::ActionContext& ctx) {
-      if (ctx.valueKind != ecb::ActionValueKind::Bool) {
-        ctx.replyError(ecb::ActionStatus::BadPayload, "need bool");
-        return;
-      }
-      runtime.setDebugEnabled(ctx.boolValue);
-      control.resources().setBool(manifest_resources::device_debug, runtime.state().debugEnabled);
-      control.publishDelta(manifest_resources::device_debug);
-      ctx.replyOk(nullptr, 0);
-    });
+  control.registerAction(manifest_actions::relay_toggle, &onRelayToggle, &ctx);
 
   // Dangerous action with no input
   control.registerAction(manifest_actions::system_factory_reset,
-    [](ecb::ActionContext& ctx) {
+    [](ecb::ActionContext& ctx, void*) {
       // ... perform factory reset ...
       ctx.replyOk(nullptr, 0);
-    });
+    }, nullptr);
 }
 ```
 

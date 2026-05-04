@@ -22,10 +22,12 @@ void ActionContext::replyError(ActionStatus s, const char* /*msg*/) {
 
 ActionRegistry::ActionRegistry() : _entries{} {}
 
-bool ActionRegistry::registerAction(uint32_t actionId, ActionHandler handler) {
+bool ActionRegistry::registerAction(uint32_t actionId, ActionFn fn, void* context) {
+  if (!fn) return false;
+  if (find(actionId)) return false;
   for (auto& e : _entries) {
     if (!e.used) {
-      e.used = true; e.actionId = actionId; e.handler = handler; return true;
+      e.used = true; e.actionId = actionId; e.handler = {fn, context}; return true;
     }
   }
   return false;

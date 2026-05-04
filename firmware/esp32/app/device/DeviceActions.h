@@ -57,6 +57,8 @@ class DeviceActions {
     state.deviceName[sizeof(state.deviceName) - 1] = '\0';
   }
 
+  void applyLightOutput(const DeviceState& state) const;
+
  private:
   static uint8_t clampBrightness(uint32_t brightness) {
     return static_cast<uint8_t>(brightness > 100u ? 100u : brightness);
@@ -96,8 +98,6 @@ class DeviceActions {
     if (strcmp(colorPreset, "party") == 0) return 5u;
     return 0u;
   }
-
-  void applyLightOutput(const DeviceState& state) const;
 
   uint8_t ledPin_;
 };

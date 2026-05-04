@@ -11,7 +11,7 @@ public:
   EspControl(const char* deviceName, const char* pin);
 
   // Data API â€” additive alongside v4.
-  void registerAction(uint32_t actionId, ecb::ActionHandler handler);
+  void registerAction(uint32_t actionId, ecb::ActionFn fn, void* context);
   ecb::ResourceTable<>& resources() { return _resources; }
   void publishDelta(uint32_t resourceId);
   void tick();

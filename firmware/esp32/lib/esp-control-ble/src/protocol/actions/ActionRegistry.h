@@ -1,7 +1,6 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-#include <functional>
 #include "../core/Protocol.h"
 
 namespace ecb {
@@ -42,13 +41,18 @@ struct ActionContext {
   void replyError(ActionStatus s, const char* msg);
 };
 
-using ActionHandler = std::function<void(ActionContext&)>;
+using ActionFn = void (*)(ActionContext&, void*);
+
+struct ActionHandler {
+  ActionFn fn;
+  void* context;
+};
 
 class ActionRegistry {
 public:
   static constexpr size_t kMaxHandlers = kMaxActions;
   ActionRegistry();
-  bool registerAction(uint32_t actionId, ActionHandler handler);
+  bool registerAction(uint32_t actionId, ActionFn fn, void* context);
   const ActionHandler* find(uint32_t actionId) const;
 private:
   struct Entry { uint32_t actionId; ActionHandler handler; bool used; };

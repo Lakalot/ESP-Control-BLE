@@ -109,7 +109,7 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
     strncpy(ctx.stringValue, decodedString.value, sizeof(ctx.stringValue) - 1);
     ctx.stringValue[sizeof(ctx.stringValue) - 1] = '\0';
   }
-  (*h)(ctx);
+  h->fn(ctx, h->context);
   if (!replied) status = ActionStatus::Internal;
   return encodeReply(req.correlation_id, status, innerReply, innerLen, out, outCap, outLen);
 }

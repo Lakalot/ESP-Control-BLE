@@ -35,7 +35,7 @@ void EspControl::sendDataFrame(void* context, const uint8_t* data, size_t len) {
   static_cast<EspControl*>(context)->_transport.notifyRawData(data, len);
 }
 
-void EspControl::registerAction(uint32_t actionId, ecb::ActionHandler h) { _actionRegistry.registerAction(actionId, h); }
+void EspControl::registerAction(uint32_t actionId, ecb::ActionFn fn, void* context) { _actionRegistry.registerAction(actionId, fn, context); }
 void EspControl::publishDelta(uint32_t resourceId) { if (_dataTransport) _dataTransport->sendDelta(resourceId); }
 void EspControl::tick() { if (_dataTransport) _dataTransport->tick(); }
 

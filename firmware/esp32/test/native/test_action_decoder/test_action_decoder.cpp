@@ -31,13 +31,23 @@ static void resetCounters() {
   g_lastString[0] = '\0';
 }
 
+static void on_counting_action(ecb::ActionContext& ctx, void*) {
+  g_calls += 1;
+  g_lastCorrelation = ctx.correlationId;
+  ctx.replyOk(nullptr, 0);
+}
+
+static void on_string_action(ecb::ActionContext& ctx, void*) {
+  g_calls += 1;
+  g_lastCorrelation = ctx.correlationId;
+  g_lastValueKind = ctx.valueKind;
+  strncpy(g_lastString, ctx.stringValue, sizeof(g_lastString) - 1);
+  ctx.replyOk(nullptr, 0);
+}
+
 static void register_and_dispatch_flows() {
   ActionRegistry reg;
-  reg.registerAction(7, [](ActionContext& ctx) {
-    g_calls += 1;
-    g_lastCorrelation = ctx.correlationId;
-    ctx.replyOk(nullptr, 0);
-  });
+  reg.registerAction(7, &on_counting_action, nullptr);
   uint8_t wire[128] = {0};
   size_t wireLen = 0;
   {
@@ -77,13 +87,7 @@ static void test_unknown_action_produces_error_reply() {
 static void test_string_payload_reaches_handler() {
   resetCounters();
   ActionRegistry reg;
-  reg.registerAction(7, [](ActionContext& ctx) {
-    g_calls += 1;
-    g_lastCorrelation = ctx.correlationId;
-    g_lastValueKind = ctx.valueKind;
-    strncpy(g_lastString, ctx.stringValue, sizeof(g_lastString) - 1);
-    ctx.replyOk(nullptr, 0);
-  });
+  reg.registerAction(7, &on_string_action, nullptr);
 
   uint8_t wire[128] = {0};
   size_t wireLen = 0;

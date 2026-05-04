@@ -12,7 +12,6 @@
 #include <cstdio>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 
 #include "protocol/core/Protocol.h"
 #include "protocol/resources/ResourceTable.h"
@@ -36,16 +35,6 @@ static std::size_t expected_for_pointer_width(std::size_t expected32,
     if (sizeof(void*) == 8) return expected64;
     TEST_FAIL_MESSAGE("Unsupported native pointer width for sizeof audit");
     return 0;
-}
-
-static std::size_t expected_action_registry_size(void) {
-    struct ExpectedEntry {
-        uint32_t actionId;
-        std::function<void(ecb::ActionContext&)> handler;
-        bool used;
-    };
-
-    return sizeof(ExpectedEntry) * 32;
 }
 
 static constexpr std::size_t kProductionBleCharacteristicPointers = 2;
@@ -92,8 +81,6 @@ static void test_audit_sizeof_dump(void) {
     print_size("ecb::ActionRegistry",      sizeof(ecb::ActionRegistry));
     print_size("ecb::SubscriptionState",   sizeof(ecb::SubscriptionState));
     print_size("ecb::ManifestStore",       sizeof(ecb::ManifestStore));
-    print_size("std::function<void(ecb::ActionContext&)>",
-               sizeof(std::function<void(ecb::ActionContext&)>));
     TEST_ASSERT_TRUE(true);
 }
 
@@ -148,19 +135,10 @@ static void test_locked_ResourceTable_dominates_ram(void) {
 }
 
 static void test_locked_ActionRegistry_dominates_ram(void) {
-    // First-run measurement: 768 bytes on 32-bit native host = 32 x 24-byte Entry.
-    // 64-bit native baseline is 1536 bytes = 32 x 48-byte Entry.
-    // Plain POD-ish types above key off pointer width. ActionRegistry also embeds
-    // std::function, whose SBO size/layout varies by STL implementation, so model
-    // the current Entry shape with this toolchain's std::function size/alignment.
-    // The hypothesis H3 about std::function heap captures still holds: the 16-byte
-    // SBO buffer cannot hold lambdas with non-trivial state (e.g. multiple captures
-    // by reference), which heap-allocates at registration.
     const std::size_t observed = sizeof(ecb::ActionRegistry);
-    const std::size_t expected = expected_action_registry_size();
-    print_size("(headline) ActionRegistry HEADLINE", observed);
-    TEST_ASSERT_EQUAL_size_t_MESSAGE(expected, observed,
-        "ActionRegistry size changed for this native std::function layout");
+    print_size("(headline) ActionRegistry", observed);
+    TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(expected_for_pointer_width(512, 1024), observed,
+        "ActionRegistry should use fn pointer plus context after L4");
 }
 
 static void test_locked_ActionContext_has_stringValue_buffer(void) {
