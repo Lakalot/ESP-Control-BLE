@@ -14,7 +14,16 @@ enum class ActionValueKind : uint8_t {
   None = 0, Bool = 1, Int = 2, Uint = 3, Float = 4, String = 5,
 };
 
+struct ActionReplySink {
+  bool* replied;
+  ActionStatus* status;
+  uint8_t* replyBuf;
+  size_t replyCap;
+  size_t* replyLen;
+};
+
 struct ActionContext {
+  ActionContext(uint32_t correlationId, ActionReplySink sink);
   uint32_t correlationId;
 
   // Typed value extracted from the InvokeAction.payload CommonValue.
@@ -25,16 +34,7 @@ struct ActionContext {
   float    floatValue;
   char     stringValue[kMaxResourceValueLen + 1];
 
-  // Legacy raw bytes kept for backward compatibility (always nullptr now).
-  const uint8_t* payload;
-  size_t payloadLen;
-
-  // reply sinks (set by ActionDecoder)
-  bool*         replied;
-  ActionStatus* status;
-  uint8_t*      replyBuf;
-  size_t        replyCap;
-  size_t*       replyLen;
+  ActionReplySink sink;
 
   bool hasValue() const { return valueKind != ActionValueKind::None; }
   void replyOk(const uint8_t* data, size_t len);

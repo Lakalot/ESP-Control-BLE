@@ -99,12 +99,15 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
     }
   }
 
-  ActionContext ctx{
+  ActionContext ctx(
     req.correlation_id,
-    valueKind, boolVal, intVal, uintVal, floatVal, {},
-    nullptr, 0,
-    &replied, &status, innerReply, sizeof(innerReply), &innerLen
-  };
+    ActionReplySink{&replied, &status, innerReply, sizeof(innerReply), &innerLen}
+  );
+  ctx.valueKind = valueKind;
+  ctx.boolValue = boolVal;
+  ctx.intValue = intVal;
+  ctx.uintValue = uintVal;
+  ctx.floatValue = floatVal;
   if (valueKind == ActionValueKind::String) {
     strncpy(ctx.stringValue, decodedString.value, sizeof(ctx.stringValue) - 1);
     ctx.stringValue[sizeof(ctx.stringValue) - 1] = '\0';

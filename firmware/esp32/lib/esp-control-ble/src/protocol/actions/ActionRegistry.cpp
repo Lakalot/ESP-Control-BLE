@@ -3,21 +3,25 @@
 
 namespace ecb {
 
+ActionContext::ActionContext(uint32_t correlationId, ActionReplySink sink)
+  : correlationId(correlationId), valueKind(ActionValueKind::None), boolValue(false),
+    intValue(0), uintValue(0), floatValue(0.0f), stringValue{0}, sink(sink) {}
+
 void ActionContext::replyOk(const uint8_t* data, size_t len) {
-  *replied = true;
-  *status = ActionStatus::Ok;
-  if (len > 0 && data && replyBuf && replyCap >= len) {
-    memcpy(replyBuf, data, len);
-    *replyLen = len;
+  *sink.replied = true;
+  *sink.status = ActionStatus::Ok;
+  if (len > 0 && data && sink.replyBuf && sink.replyCap >= len) {
+    memcpy(sink.replyBuf, data, len);
+    *sink.replyLen = len;
   } else {
-    *replyLen = 0;
+    *sink.replyLen = 0;
   }
 }
 
 void ActionContext::replyError(ActionStatus s, const char* /*msg*/) {
-  *replied = true;
-  *status = s;
-  *replyLen = 0;
+  *sink.replied = true;
+  *sink.status = s;
+  *sink.replyLen = 0;
 }
 
 ActionRegistry::ActionRegistry() : _entries{} {}

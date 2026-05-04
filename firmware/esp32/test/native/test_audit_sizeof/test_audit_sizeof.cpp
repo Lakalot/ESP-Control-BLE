@@ -143,12 +143,10 @@ static void test_locked_ActionRegistry_dominates_ram(void) {
 }
 
 static void test_locked_ActionContext_has_stringValue_buffer(void) {
-    // ActionContext is the H1 finding: contains char stringValue[65].
-    // Sanity-check: at least 65 + a few pointers + correlationId.
     const std::size_t observed = sizeof(ecb::ActionContext);
     print_size("(H1) ActionContext", observed);
-    TEST_ASSERT_GREATER_THAN_size_t_MESSAGE(100, observed,
-        "ActionContext smaller than expected");
+    TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(120, observed,
+        "ActionContext should shrink after legacy public pointers are removed");
 }
 
 static void test_locked_ResourceValue_has_string_and_bytes_buffers(void) {
