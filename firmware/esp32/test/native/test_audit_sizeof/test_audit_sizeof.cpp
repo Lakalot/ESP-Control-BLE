@@ -51,7 +51,7 @@ static std::size_t production_ble_transport_size(void) {
 
 static std::size_t production_esp_control_size(void) {
     // EspControl embeds BleTransport, so apply the same production adjustment.
-    return sizeof(EspControl) + (kProductionBleCharacteristicPointers * sizeof(void*));
+    return sizeof(ecb::EspControl) + (kProductionBleCharacteristicPointers * sizeof(void*));
 }
 
 static void assert_production_adjusted_size(const char* message,
@@ -181,9 +181,9 @@ static void test_locked_AuthHandler(void) {
 
 static void test_locked_EspControl_headline_target(void) {
     const std::size_t observed = production_esp_control_size();
-    print_size("(headline) EspControl", observed);
+    print_size("(headline) ecb::EspControl", observed);
     TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(4200, observed,
-        "EspControl should meet the L4 RAM headline target");
+        "ecb::EspControl should meet the L4 RAM headline target");
 }
 
 static void test_locked_BleTransport_runtime_state(void) {

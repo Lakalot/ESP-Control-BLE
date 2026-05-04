@@ -9,7 +9,7 @@
 
 namespace app {
 
-void DeviceTelemetry::begin(EspControl& control, AppRuntime& runtime, float initialTemperature, int64_t nowUs) {
+void DeviceTelemetry::begin(ecb::EspControl& control, AppRuntime& runtime, float initialTemperature, int64_t nowUs) {
   runtime.updateTemperature(initialTemperature);
   runtime.updateHumidity(45.0f);
   runtime.updateLoadPercent(0u);
@@ -21,7 +21,7 @@ void DeviceTelemetry::begin(EspControl& control, AppRuntime& runtime, float init
   lastPublishedLoad_ = runtime.state().loadPercent;
 }
 
-void DeviceTelemetry::tick(EspControl& control, AppRuntime& runtime, float currentTemperature) {
+void DeviceTelemetry::tick(ecb::EspControl& control, AppRuntime& runtime, float currentTemperature) {
   const int64_t loopStartUs = esp_timer_get_time();
 
   const uint32_t nowMs = millis();
@@ -57,7 +57,7 @@ void DeviceTelemetry::tick(EspControl& control, AppRuntime& runtime, float curre
   windowWorkUs_ += static_cast<uint64_t>(esp_timer_get_time() - loopStartUs);
 }
 
-void DeviceTelemetry::syncResources(EspControl& control, const DeviceState& state) const {
+void DeviceTelemetry::syncResources(ecb::EspControl& control, const DeviceState& state) const {
   control.resources().setFloat(manifest_resources::env_humidity, state.humidityPercent);
   control.resources().setFloat(manifest_resources::env_temperature, state.temperatureC);
   control.resources().setUint(manifest_resources::system_load, state.loadPercent);

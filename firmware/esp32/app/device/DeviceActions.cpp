@@ -31,7 +31,7 @@ const char* colorPresetName(uint8_t preset) {
 
 struct DeviceActionContext {
   const DeviceActions* actions;
-  EspControl* control;
+  ecb::EspControl* control;
   AppRuntime* runtime;
 };
 
@@ -142,7 +142,7 @@ void DeviceActions::begin() const {
   applyLightOutput(DeviceState{});
 }
 
-void DeviceActions::registerAll(EspControl& control, AppRuntime& runtime) const {
+void DeviceActions::registerAll(ecb::EspControl& control, AppRuntime& runtime) const {
   static DeviceActionContext ctx{this, &control, &runtime};
   control.registerAction(manifest_actions::relay_toggle, &onRelayToggle, &ctx);
   control.registerAction(manifest_actions::light_set_brightness, &onSetBrightness, &ctx);
@@ -154,7 +154,7 @@ void DeviceActions::registerAll(EspControl& control, AppRuntime& runtime) const 
   control.registerAction(manifest_actions::system_restart, &onRestart, nullptr);
 }
 
-void DeviceActions::syncResources(EspControl& control, const DeviceState& state) const {
+void DeviceActions::syncResources(ecb::EspControl& control, const DeviceState& state) const {
   applyLightOutput(state);
   control.resources().setBool(manifest_resources::relay_auto, state.relayEnabled);
   control.resources().setUint(manifest_resources::light_brightness, state.brightness);

@@ -6,7 +6,7 @@
 
 namespace app {
 
-void AppRuntime::setup(EspControl& control, DeviceActions& actions, DeviceTelemetry& telemetry,
+void AppRuntime::setup(ecb::EspControl& control, DeviceActions& actions, DeviceTelemetry& telemetry,
                        const uint8_t* manifestData, uint16_t manifestLen, float initialTemperature) {
   actions.begin();
   actions.registerAll(control, *this);
@@ -15,7 +15,7 @@ void AppRuntime::setup(EspControl& control, DeviceActions& actions, DeviceTeleme
   control.begin(manifestData, manifestLen);
 }
 
-void AppRuntime::tick(EspControl& control, DeviceTelemetry& telemetry, float currentTemperature) {
+void AppRuntime::tick(ecb::EspControl& control, DeviceTelemetry& telemetry, float currentTemperature) {
   control.tick();
   telemetry.tick(control, *this, currentTemperature);
   vTaskDelay(pdMS_TO_TICKS(50));

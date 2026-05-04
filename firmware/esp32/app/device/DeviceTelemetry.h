@@ -5,7 +5,7 @@
 
 #include "DeviceState.h"
 
-class EspControl;
+namespace ecb { class EspControl; }
 
 namespace app {
 
@@ -13,8 +13,8 @@ class AppRuntime;
 
 class DeviceTelemetry {
  public:
-  void begin(EspControl& control, AppRuntime& runtime, float initialTemperature, int64_t nowUs);
-  void tick(EspControl& control, AppRuntime& runtime, float currentTemperature);
+  void begin(ecb::EspControl& control, AppRuntime& runtime, float initialTemperature, int64_t nowUs);
+  void tick(ecb::EspControl& control, AppRuntime& runtime, float currentTemperature);
 
   static void updateTemperature(DeviceState& state, float temperatureC) {
     state.temperatureC = temperatureC;
@@ -54,7 +54,7 @@ class DeviceTelemetry {
   }
 
  private:
-  void syncResources(EspControl& control, const DeviceState& state) const;
+  void syncResources(ecb::EspControl& control, const DeviceState& state) const;
 
   uint32_t lastPublishedLoad_ = 255u;
   int64_t windowStartUs_ = 0;

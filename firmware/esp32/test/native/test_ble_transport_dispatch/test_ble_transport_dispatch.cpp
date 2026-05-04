@@ -1,7 +1,7 @@
 #include <unity.h>
 #include <pb_decode.h>
 #include <string.h>
-#include "transport/ble/DataBleTransport.h"
+#include "protocol/dispatcher/SessionDispatcher.h"
 #include "transport/frame/DataFrameCodec.h"
 #include "protocol/core/Protocol.h"
 #include "protocol/actions/ActionRegistry.h"
@@ -46,9 +46,9 @@ static void test_dispatch_subscribe_marks_subscription() {
   ecb::ResourceTable<> table;
   SubscriptionState subs;
   ActionRegistry reg;
-  DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});
+  SessionDispatcher dispatcher(table, subs, reg, store, fakeSender, nullptr);
   uint8_t body[8] = {0x08, 0x0A};  // varint field 1 (resource_ids) value 10
-  transport.handleFrame(FrameKind::Subscribe, body, sizeof(body));
+  dispatcher.onFrame(FrameKind::Subscribe, body, sizeof(body));
   TEST_ASSERT_TRUE(subs.isWatching(10));
 }
 
@@ -61,8 +61,8 @@ static void test_dispatch_ping_emits_pong() {
   ecb::ResourceTable<> table;
   SubscriptionState subs;
   ActionRegistry reg;
-  DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});
-  transport.handleFrame(FrameKind::Ping, nullptr, 0);
+  SessionDispatcher dispatcher(table, subs, reg, store, fakeSender, nullptr);
+  dispatcher.onFrame(FrameKind::Ping, nullptr, 0);
   TEST_ASSERT_EQUAL(1u, g_sentFrames);
   TEST_ASSERT_EQUAL(static_cast<uint8_t>(FrameKind::Pong), g_lastFrameKind);
 }
@@ -80,10 +80,10 @@ static void test_send_delta_preserves_full_resource_id() {
   SubscriptionState subs;
   subs.add(65);
   ActionRegistry reg;
-  DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});
+  SessionDispatcher dispatcher(table, subs, reg, store, fakeSender, nullptr);
 
-  transport.sendDelta(65);
-  transport.tick();
+  dispatcher.publishDelta(65);
+  dispatcher.tick();
 
   TEST_ASSERT_EQUAL_UINT32(1u, g_sentFrames);
   TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FrameKind::Delta), g_lastFrameKind);
@@ -102,24 +102,24 @@ static void test_send_manifest_is_chunked_across_ticks_and_finishes_with_eof() {
   ecb::ResourceTable<> table;
   SubscriptionState subs;
   ActionRegistry reg;
-  DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});
+  SessionDispatcher dispatcher(table, subs, reg, store, fakeSender, nullptr);
 
-  transport.sendManifest();
+  dispatcher.sendManifest();
   TEST_ASSERT_EQUAL_UINT32(0u, g_sentFrames);
 
-  transport.tick();
+  dispatcher.tick();
   TEST_ASSERT_EQUAL_UINT32(1u, g_sentFrames);
   TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FrameKind::ManifestChunk), g_lastFrameKind);
 
-  transport.tick();
+  dispatcher.tick();
   TEST_ASSERT_EQUAL_UINT32(2u, g_sentFrames);
   TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FrameKind::ManifestChunk), g_lastFrameKind);
 
-  transport.tick();
+  dispatcher.tick();
   TEST_ASSERT_EQUAL_UINT32(3u, g_sentFrames);
   TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FrameKind::ManifestChunk), g_lastFrameKind);
 
-  transport.tick();
+  dispatcher.tick();
   TEST_ASSERT_EQUAL_UINT32(4u, g_sentFrames);
   TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FrameKind::ManifestEof), g_lastFrameKind);
 }

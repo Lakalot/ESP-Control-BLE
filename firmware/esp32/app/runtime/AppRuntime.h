@@ -7,7 +7,7 @@
 #include "../device/DeviceTelemetry.h"
 #include "PublishScheduler.h"
 
-class EspControl;
+namespace ecb { class EspControl; }
 
 namespace app {
 
@@ -35,9 +35,9 @@ class AppRuntime {
   void updateWifiRssi(int32_t wifiRssiDbm) { DeviceTelemetry::updateWifiRssi(state_, wifiRssiDbm); }
   void updateUptimeMs(uint32_t uptimeMs) { DeviceTelemetry::updateUptimeMs(state_, uptimeMs); }
 
-  void setup(EspControl& control, DeviceActions& actions, DeviceTelemetry& telemetry, const uint8_t* manifestData,
+  void setup(ecb::EspControl& control, DeviceActions& actions, DeviceTelemetry& telemetry, const uint8_t* manifestData,
              uint16_t manifestLen, float initialTemperature);
-  void tick(EspControl& control, DeviceTelemetry& telemetry, float currentTemperature);
+  void tick(ecb::EspControl& control, DeviceTelemetry& telemetry, float currentTemperature);
 
  private:
   DeviceState state_{};

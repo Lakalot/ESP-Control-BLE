@@ -25,10 +25,10 @@ static void test_data_write_rejects_truncated_frame_payloads() {
   ecb::ResourceTable<> table;
   ecb::SubscriptionState subs;
   ecb::ActionRegistry actions;
-  ecb::DataBleTransport dataTransport(store, table, subs, actions,
-                                      ecb::FrameSender{&transport, [](void* context, const uint8_t* data, size_t len) {
+  ecb::DataBleTransport dataTransport([](void* context, const uint8_t* data, size_t len) {
                                         static_cast<BleTransport*>(context)->notifyRawData(data, len);
-                                      }});
+                                      }, &transport,
+                                      [](ecb::FrameKind, const uint8_t*, size_t, void*) {}, nullptr);
   transport.setDataTransport(&dataTransport);
 
   const uint8_t truncatedPing[] = {

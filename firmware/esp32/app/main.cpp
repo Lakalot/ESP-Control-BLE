@@ -15,7 +15,7 @@ constexpr uint8_t kLedPin = 2u;
 app::AppRuntime runtime;
 app::DeviceActions actions(kLedPin);
 app::DeviceTelemetry telemetry;
-EspControl control("ESP32-Test", "1234");
+ecb::EspControl control("ESP32-Test", "1234");
 
 }  // namespace
 

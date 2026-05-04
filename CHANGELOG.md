@@ -2,4 +2,7 @@
 
 ## Unreleased
 
-- Refactor esp-control-ble internals in L0-L6 while preserving the V5 wire format.
+- Refactor `esp-control-ble` internals in L0-L6 while preserving the V5 wire format.
+- Removed unreachable V4 command registry and frame parser paths from `esp-control-ble`.
+- Changed `EspControl::registerAction` to accept a function pointer plus context pointer instead of `std::function`.
+- Moved `EspControl` into `namespace ecb`; applications should use `ecb::EspControl`.

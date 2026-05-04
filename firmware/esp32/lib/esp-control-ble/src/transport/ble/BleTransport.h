@@ -19,11 +19,14 @@ public:
              const uint8_t* manifest, uint16_t manifestLen);
 
   void setDataTransport(ecb::DataBleTransport* t);
+  void setProtocolCallbacks(void (*onDisconnect)(void*), void (*onSubscribe)(void*), void* ctx);
   void notifyRawData(const uint8_t* data, size_t len);
-  void sendDataManifest();
 private:
   AuthHandler*     _auth     = nullptr;
   ecb::DataBleTransport* _dataTransport = nullptr;
+  void (*_onDisconnect)(void*) = nullptr;
+  void (*_onSubscribe)(void*) = nullptr;
+  void* _protocolCtx = nullptr;
 
   const uint8_t* _manifest = nullptr;
   uint16_t _manifestLen = 0;

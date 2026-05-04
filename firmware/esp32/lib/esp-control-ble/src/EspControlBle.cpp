@@ -28,26 +28,42 @@ void logManifestSummary(const uint8_t* manifestData, uint16_t manifestLen) {
 }
 } // namespace
 
+namespace ecb {
+
 EspControl::EspControl(const char* deviceName, const char* pin)
-  : _deviceName(deviceName), _pin(pin), _dataTransport(nullptr) {}
+  : _deviceName(deviceName), _pin(pin),
+    _state{AuthHandler{}, ActionRegistry{}, ResourceTable<>{}, SubscriptionState{}, ManifestStore(nullptr, 0)},
+    _dispatcher(_state.resources, _state.subscriptions, _state.actions, _state.manifest, &EspControl::sendDataFrame, this),
+    _dataTransport(&EspControl::sendDataFrame, this, &EspControl::onDataFrame, this) {}
 
 void EspControl::sendDataFrame(void* context, const uint8_t* data, size_t len) {
   static_cast<EspControl*>(context)->_transport.notifyRawData(data, len);
 }
 
-void EspControl::registerAction(uint32_t actionId, ecb::ActionFn fn, void* context) { _actionRegistry.registerAction(actionId, fn, context); }
-void EspControl::publishDelta(uint32_t resourceId) { if (_dataTransport) _dataTransport->sendDelta(resourceId); }
-void EspControl::tick() { if (_dataTransport) _dataTransport->tick(); }
+void EspControl::onDataFrame(ecb::FrameKind kind, const uint8_t* body, size_t len, void* context) {
+  static_cast<EspControl*>(context)->_dispatcher.onFrame(kind, body, len);
+}
+
+void EspControl::onDisconnect(void* context) {
+  static_cast<EspControl*>(context)->_dispatcher.reset();
+}
+
+void EspControl::onSubscribe(void* context) {
+  static_cast<EspControl*>(context)->_dispatcher.sendManifest();
+}
+
+void EspControl::registerAction(uint32_t actionId, ecb::ActionFn fn, void* context) { _state.actions.registerAction(actionId, fn, context); }
+void EspControl::publishDelta(uint32_t resourceId) { _dispatcher.publishDelta(resourceId); }
+void EspControl::tick() { _dispatcher.tick(); }
 
 void EspControl::begin(const uint8_t* manifestData, uint16_t manifestLen) {
-  _auth.setPin(_pin);
+  _state.auth.setPin(_pin);
   logManifestSummary(manifestData, manifestLen);
-  _transport.begin(_deviceName, &_auth, manifestData, manifestLen);
+  _transport.begin(_deviceName, &_state.auth, manifestData, manifestLen);
 
-  static ecb::ManifestStore dataStore(manifestData, manifestLen); // Simplification: assume data manifest is passed here too
-  _dataTransport = new ecb::DataBleTransport(
-    dataStore,
-    _resources, _subs, _actionRegistry,
-    ecb::FrameSender{this, &EspControl::sendDataFrame});
-  _transport.setDataTransport(_dataTransport);
+  _state.manifest = ecb::ManifestStore(manifestData, manifestLen);
+  _transport.setProtocolCallbacks(&EspControl::onDisconnect, &EspControl::onSubscribe, this);
+  _transport.setDataTransport(&_dataTransport);
 }
+
+} // namespace ecb

@@ -5,7 +5,7 @@
 
 #include "DeviceState.h"
 
-class EspControl;
+namespace ecb { class EspControl; }
 
 namespace app {
 
@@ -16,8 +16,8 @@ class DeviceActions {
   explicit DeviceActions(uint8_t ledPin) : ledPin_(ledPin) {}
 
   void begin() const;
-  void registerAll(EspControl& control, AppRuntime& runtime) const;
-  void syncResources(EspControl& control, const DeviceState& state) const;
+  void registerAll(ecb::EspControl& control, AppRuntime& runtime) const;
+  void syncResources(ecb::EspControl& control, const DeviceState& state) const;
 
   static void toggleRelay(DeviceState& state) {
     state.relayEnabled = !state.relayEnabled;
