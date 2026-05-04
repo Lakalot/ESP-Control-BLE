@@ -35,10 +35,6 @@ void EspControl::sendDataFrame(void* context, const uint8_t* data, size_t len) {
   static_cast<EspControl*>(context)->_transport.notifyRawData(data, len);
 }
 
-void EspControl::registerCallback(uint8_t cmdId, EcbCommandFn callback) {
-  _registry.registerCommand(cmdId, callback);
-}
-
 void EspControl::registerAction(uint32_t actionId, ecb::ActionHandler h) { _actionRegistry.registerAction(actionId, h); }
 void EspControl::publishDelta(uint32_t resourceId) { if (_dataTransport) _dataTransport->sendDelta(resourceId); }
 void EspControl::tick() { if (_dataTransport) _dataTransport->tick(); }
@@ -46,8 +42,8 @@ void EspControl::tick() { if (_dataTransport) _dataTransport->tick(); }
 void EspControl::begin(const uint8_t* manifestData, uint16_t manifestLen) {
   _auth.setPin(_pin);
   logManifestSummary(manifestData, manifestLen);
-  _transport.begin(_deviceName, &_auth, &_registry, manifestData, manifestLen);
-  
+  _transport.begin(_deviceName, &_auth, manifestData, manifestLen);
+
   static ecb::ManifestStore dataStore(manifestData, manifestLen); // Simplification: assume data manifest is passed here too
   _dataTransport = new ecb::DataBleTransport(
     dataStore,

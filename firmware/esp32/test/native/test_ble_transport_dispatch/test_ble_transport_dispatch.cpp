@@ -43,7 +43,7 @@ static void test_dispatch_subscribe_marks_subscription() {
   g_lastFrameLen = 0;
   uint8_t manifest[4] = {1, 2, 3, 4};
   ManifestStore store(manifest, sizeof(manifest));
-  ResourceTable table;
+  ecb::ResourceTable<> table;
   SubscriptionState subs;
   ActionRegistry reg;
   DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});
@@ -58,7 +58,7 @@ static void test_dispatch_ping_emits_pong() {
   g_lastFrameLen = 0;
   uint8_t manifest[4] = {1, 2, 3, 4};
   ManifestStore store(manifest, sizeof(manifest));
-  ResourceTable table;
+  ecb::ResourceTable<> table;
   SubscriptionState subs;
   ActionRegistry reg;
   DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});
@@ -74,7 +74,7 @@ static void test_send_delta_preserves_full_resource_id() {
 
   uint8_t manifest[4] = {1, 2, 3, 4};
   ManifestStore store(manifest, sizeof(manifest));
-  ResourceTable table;
+  ecb::ResourceTable<> table;
   table.setUint(1, 11);
   table.setUint(65, 65);
   SubscriptionState subs;
@@ -99,7 +99,7 @@ static void test_send_manifest_is_chunked_across_ticks_and_finishes_with_eof() {
   for (size_t i = 0; i < sizeof(manifest); ++i) manifest[i] = static_cast<uint8_t>(i & 0xFF);
 
   ManifestStore store(manifest, sizeof(manifest));
-  ResourceTable table;
+  ecb::ResourceTable<> table;
   SubscriptionState subs;
   ActionRegistry reg;
   DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});

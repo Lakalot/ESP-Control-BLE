@@ -6,16 +6,11 @@
 BleTransport* BleTransport::_instance = nullptr;
 
 #ifdef UNIT_TEST
-uint8_t BleTransport::_lastNotify[3 + ECB_MANIFEST_CHUNK_SIZE] = {};
-uint16_t BleTransport::_lastNotifyLen = 0;
 uint8_t BleTransport::_lastRawData[ecb::kMaxFrameBody + 4] = {};
 size_t BleTransport::_lastRawDataLen = 0;
 #endif
 
 void BleTransport::staticNotify(const uint8_t* data, uint16_t len) {
-  if (_instance) {
-    _instance->sendNotify(data, len);
-  }
 }
 
 #ifdef UNIT_TEST
@@ -27,14 +22,6 @@ static bool notifyTestBuffer(uint8_t* dest, size_t cap, size_t& destLen,
   return true;
 }
 
-static bool notifyTestBuffer(uint8_t* dest, size_t cap, uint16_t& destLen,
-                             const uint8_t* data, size_t len) {
-  size_t copied = 0;
-  const bool ok = notifyTestBuffer(dest, cap, copied, data, len);
-  destLen = static_cast<uint16_t>(copied);
-  return ok;
-}
-
 void BleTransport::notifyRawData(const uint8_t* data, size_t len) {
   notifyTestBuffer(_lastRawData, sizeof(_lastRawData), _lastRawDataLen, data, len);
 }
@@ -42,14 +29,11 @@ void BleTransport::notifyRawData(const uint8_t* data, size_t len) {
 void BleTransport::loadOrCreateUuid() {}
 
 void BleTransport::begin(const char*, AuthHandler* auth,
-                         CommandRegistry* registry,
                          const uint8_t* manifest, uint16_t manifestLen) {
   _auth = auth;
-  _registry = registry;
   _manifest = manifest;
   _manifestLen = manifestLen;
   _manifestChunked = manifestLen > 512;
-  _lastNotifyLen = 0;
   _lastRawDataLen = 0;
   _instance = this;
 }
@@ -61,84 +45,6 @@ void BleTransport::setDataTransport(ecb::DataBleTransport* t) {
 void BleTransport::sendDataManifest() {
   if (_dataTransport) {
     _dataTransport->sendManifest();
-  }
-}
-
-void BleTransport::sendNotify(const uint8_t* data, uint16_t len) {
-  notifyTestBuffer(_lastNotify, sizeof(_lastNotify), _lastNotifyLen, data, len);
-}
-
-void BleTransport::sendManifestChunk(uint16_t offset, uint8_t requestedLen) {
-  if (!_manifest || _manifestLen == 0 || offset >= _manifestLen) {
-    const uint8_t resp[3] = {ECB_SYSTEM_CMD_MANIFEST_CHUNK, ECB_STATUS_BAD_FRAME, 0x00};
-    sendNotify(resp, sizeof(resp));
-    return;
-  }
-
-  uint8_t safeLen = requestedLen;
-  if (safeLen == 0 || safeLen > ECB_MANIFEST_CHUNK_SIZE) safeLen = ECB_MANIFEST_CHUNK_SIZE;
-  if (static_cast<uint16_t>(offset + safeLen) > _manifestLen) {
-    safeLen = static_cast<uint8_t>(_manifestLen - offset);
-  }
-
-  uint8_t resp[3 + ECB_MANIFEST_CHUNK_SIZE] = {};
-  resp[0] = ECB_SYSTEM_CMD_MANIFEST_CHUNK;
-  resp[1] = ECB_STATUS_OK;
-  resp[2] = safeLen;
-  memcpy(resp + 3, _manifest + offset, safeLen);
-  sendNotify(resp, static_cast<uint16_t>(3 + safeLen));
-}
-
-void BleTransport::handleSubscribe() {
-  if (_auth->isAuthenticated()) {
-    return;
-  }
-
-  uint8_t nonce[ECB_NONCE_SIZE] = {};
-  _auth->generateChallenge(nonce);
-  uint8_t challenge[1 + ECB_NONCE_SIZE] = {ECB_AUTH_CHALLENGE};
-  memcpy(challenge + 1, nonce, ECB_NONCE_SIZE);
-  sendNotify(challenge, sizeof(challenge));
-}
-
-void BleTransport::handleWrite(const uint8_t* data, uint16_t len) {
-  if (len == 0) return;
-
-  if (data[0] == ECB_AUTH_OK) {
-    const bool ok = _auth->verifyResponse(data, static_cast<uint8_t>(len));
-    const uint8_t resp[1] = {ok ? static_cast<uint8_t>(ECB_AUTH_OK) : static_cast<uint8_t>(ECB_AUTH_FAIL)};
-    sendNotify(resp, 1);
-    return;
-  }
-
-  if (!_auth->isAuthenticated()) {
-    const uint8_t resp[3] = {data[0], ECB_STATUS_NOT_AUTH, 0x00};
-    sendNotify(resp, sizeof(resp));
-    return;
-  }
-
-  const ParsedFrame frame = ecbParseFrame(data, len);
-  if (!frame.valid) {
-    const uint8_t resp[3] = {data[0], ECB_STATUS_BAD_FRAME, 0x00};
-    sendNotify(resp, sizeof(resp));
-    return;
-  }
-
-  if (frame.cmdId == ECB_SYSTEM_CMD_MANIFEST_CHUNK) {
-    if (frame.length < 3) {
-      const uint8_t resp[3] = {frame.cmdId, ECB_STATUS_BAD_FRAME, 0x00};
-      sendNotify(resp, sizeof(resp));
-      return;
-    }
-
-    const uint16_t offset = static_cast<uint16_t>((frame.payload[0] << 8) | frame.payload[1]);
-    sendManifestChunk(offset, frame.payload[2]);
-    return;
-  }
-
-  if (!_registry->dispatch(frame.cmdId, frame.payload, frame.length, staticNotify)) {
-    const uint8_t resp[3] = {frame.cmdId, ECB_STATUS_UNKNOWN_CMD, 0x00};
-    sendNotify(resp, sizeof(resp));
   }
 }
 
@@ -192,22 +98,6 @@ void BleTransport::notifyRawData(const uint8_t* data, size_t len) {
 
 // ── NimBLE Callbacks ───────────────────────────────────────
 
-class EcbCmdCallbacks : public NimBLECharacteristicCallbacks {
-  BleTransport* _transport;
-public:
-  EcbCmdCallbacks(BleTransport* t) : _transport(t) {}
-
-  void onSubscribe(NimBLECharacteristic* pChar, ble_gap_conn_desc* desc, uint16_t subValue) override {
-    if (subValue == 0) return;
-    _transport->handleSubscribe();
-  }
-
-  void onWrite(NimBLECharacteristic* pChar) override {
-    NimBLEAttValue v = pChar->getValue();
-    _transport->handleWrite(v.data(), (uint16_t)v.size());
-  }
-};
-
 class EcbDataCallbacks : public NimBLECharacteristicCallbacks {
   BleTransport* _transport;
 public:
@@ -239,7 +129,6 @@ public:
   }
 };
 
-static EcbCmdCallbacks*    s_cmdCallbacks    = nullptr;
 static EcbDataCallbacks* s_dataCallbacks = nullptr;
 static EcbServerCallbacks* s_serverCallbacks = nullptr;
 
@@ -283,12 +172,10 @@ void BleTransport::sendDataManifest() {
 }
 
 void BleTransport::begin(const char* deviceName, AuthHandler* auth,
-                          CommandRegistry* registry,
                           const uint8_t* manifest, uint16_t manifestLen) {
   // loadOrCreateUuid();
 
   _auth      = auth;
-  _registry  = registry;
   _instance  = this;
   _manifest  = manifest;
   _manifestLen = manifestLen;
@@ -322,13 +209,6 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
     manifestChar->setValue(inlineManifest, _manifestLen);
   }
 
-  _cmdChar = service->createCharacteristic(
-    ECB_CMD_CHAR_UUID,
-    NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
-  );
-  if (!s_cmdCallbacks) s_cmdCallbacks = new EcbCmdCallbacks(this);
-  _cmdChar->setCallbacks(s_cmdCallbacks);
-
   _dataChar = service->createCharacteristic(
     ECB_DATA_DATA_CHAR_UUID,
     NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
@@ -347,104 +227,6 @@ void BleTransport::begin(const char* deviceName, AuthHandler* auth,
            deviceName,
            _manifestChunked ? "chunked" : "inline",
            _manifestLen);
-}
-
-void BleTransport::sendNotify(const uint8_t* data, uint16_t len) {
-  notifyDataCharacteristic(_cmdChar, data, len);
-}
-
-void BleTransport::sendManifestChunk(uint16_t offset, uint8_t requestedLen) {
-  if (!_manifest || _manifestLen == 0) {
-    uint8_t resp[3] = { ECB_SYSTEM_CMD_MANIFEST_CHUNK, ECB_STATUS_BAD_FRAME, 0x00 };
-    sendNotify(resp, sizeof(resp));
-    return;
-  }
-
-  if (offset >= _manifestLen) {
-    uint8_t resp[3] = { ECB_SYSTEM_CMD_MANIFEST_CHUNK, ECB_STATUS_BAD_FRAME, 0x00 };
-    sendNotify(resp, sizeof(resp));
-    return;
-  }
-
-  uint8_t safeLen = requestedLen;
-  if (safeLen == 0 || safeLen > ECB_MANIFEST_CHUNK_SIZE) safeLen = ECB_MANIFEST_CHUNK_SIZE;
-  if ((uint16_t)(offset + safeLen) > _manifestLen) {
-    safeLen = (uint8_t)(_manifestLen - offset);
-  }
-
-  uint8_t resp[3 + ECB_MANIFEST_CHUNK_SIZE];
-  resp[0] = ECB_SYSTEM_CMD_MANIFEST_CHUNK;
-  resp[1] = ECB_STATUS_OK;
-  resp[2] = safeLen;
-  memcpy_P(resp + 3, _manifest + offset, safeLen);
-  sendNotify(resp, (uint16_t)(3 + safeLen));
-}
-
-void BleTransport::handleSubscribe() {
-  ECB_LOGF("[ECB] handleSubscribe this=%p _auth=%p _cmdChar=%p _instance=%p\n",
-           this, _auth, _cmdChar, _instance);
-  if (_auth->isAuthenticated()) {
-    ECB_LOGF("[ECB] Client re-subscribed (already authenticated, skipping challenge)\n");
-    return;
-  }
-
-  ECB_LOGF("[ECB] Client subscribed, sending challenge\n");
-  uint8_t nonce[ECB_NONCE_SIZE];
-  _auth->generateChallenge(nonce);
-
-  uint8_t challenge[1 + ECB_NONCE_SIZE];
-  challenge[0] = ECB_AUTH_CHALLENGE;
-  memcpy(challenge + 1, nonce, ECB_NONCE_SIZE);
-  sendNotify(challenge, sizeof(challenge));
-}
-
-void BleTransport::handleWrite(const uint8_t* data, uint16_t len) {
-  ECB_LOGF("[ECB] handleWrite len=%d cmd=%02x\n", len, data[0]);
-  if (len == 0) return;
-
-  // Auth response
-  if (data[0] == ECB_AUTH_OK) {
-    bool ok = _auth->verifyResponse(data, (uint8_t)len);
-    uint8_t resp[1] = { ok ? (uint8_t)ECB_AUTH_OK : (uint8_t)ECB_AUTH_FAIL };
-    sendNotify(resp, 1);
-    ECB_LOGF("[ECB] Auth %s\n", ok ? "OK" : "FAIL");
-    return;
-  }
-
-  // Not authenticated
-  if (!_auth->isAuthenticated()) {
-    uint8_t resp[3] = { data[0], ECB_STATUS_NOT_AUTH, 0x00 };
-    sendNotify(resp, 3);
-    return;
-  }
-
-  // Parse command frame
-  ParsedFrame frame = ecbParseFrame(data, len);
-  if (!frame.valid) {
-    uint8_t resp[3] = { data[0], ECB_STATUS_BAD_FRAME, 0x00 };
-    sendNotify(resp, 3);
-    return;
-  }
-
-  if (frame.cmdId == ECB_SYSTEM_CMD_MANIFEST_CHUNK) {
-    if (frame.length < 3) {
-      uint8_t resp[3] = { frame.cmdId, ECB_STATUS_BAD_FRAME, 0x00 };
-      sendNotify(resp, sizeof(resp));
-      return;
-    }
-
-    uint16_t offset = (uint16_t)((frame.payload[0] << 8) | frame.payload[1]);
-    uint8_t requestedLen = frame.payload[2];
-    sendManifestChunk(offset, requestedLen);
-    return;
-  }
-
-  // Dispatch via static notify (no lambda capture needed)
-  bool found = _registry->dispatch(frame.cmdId, frame.payload, frame.length, staticNotify);
-  if (!found) {
-    uint8_t resp[3] = { frame.cmdId, ECB_STATUS_UNKNOWN_CMD, 0x00 };
-    sendNotify(resp, 3);
-  }
 }
 
 void BleTransport::handleConnect() {
@@ -480,3 +262,4 @@ void BleTransport::handleDataWrite(const uint8_t* data, uint16_t len) {
 }
 
 #endif
+

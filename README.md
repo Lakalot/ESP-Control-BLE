@@ -624,6 +624,10 @@ void DeviceTelemetry::tick(EspControl& control, AppRuntime& runtime, float curre
 }
 ```
 
+### Resource blob slots
+
+`EspControl` uses `ecb::ResourceTable<>`, whose default stores up to four simultaneous string/bytes resources. Applications that need more blob resources can instantiate `ecb::ResourceTable<16>` in lower-level tests or future custom facades; scalar resources still support up to 64 entries.
+
 ### ResourceTable API
 
 ```cpp

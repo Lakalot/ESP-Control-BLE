@@ -26,7 +26,7 @@
 
 namespace ecb {
 
-DataBleTransport::DataBleTransport(const ManifestStore& s, ResourceTable& t,
+DataBleTransport::DataBleTransport(const ManifestStore& s, ResourceTable<>& t,
                                SubscriptionState& su, const ActionRegistry& r,
                                FrameSender sender)
   : _store(s), _table(t), _subs(su), _registry(r), _sender(sender) {

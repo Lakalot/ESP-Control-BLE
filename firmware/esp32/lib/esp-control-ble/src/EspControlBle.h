@@ -10,11 +10,9 @@ class EspControl {
 public:
   EspControl(const char* deviceName, const char* pin);
 
-  void registerCallback(uint8_t cmdId, EcbCommandFn callback);
-
-  // Data API — additive alongside v4.
+  // Data API â€” additive alongside v4.
   void registerAction(uint32_t actionId, ecb::ActionHandler handler);
-  ecb::ResourceTable& resources() { return _resources; }
+  ecb::ResourceTable<>& resources() { return _resources; }
   void publishDelta(uint32_t resourceId);
   void tick();
 
@@ -26,11 +24,10 @@ private:
   const char*                 _deviceName;
   const char*                 _pin;
   AuthHandler                 _auth;
-  CommandRegistry             _registry;
   BleTransport                _transport;
 
   ecb::ActionRegistry     _actionRegistry;
-  ecb::ResourceTable      _resources;
+  ecb::ResourceTable<>    _resources;
   ecb::SubscriptionState  _subs;
-  ecb::DataBleTransport*    _dataTransport;
+  ecb::DataBleTransport*  _dataTransport;
 };

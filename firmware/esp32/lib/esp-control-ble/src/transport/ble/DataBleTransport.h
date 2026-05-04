@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "../../protocol/core/Protocol.h"
 #include "../../protocol/subscriptions/SubscriptionState.h"
+#include "../../protocol/resources/ResourceTable.h"
 #include "../frame/DataFrameCodec.h"
 
 #ifdef UNIT_TEST
@@ -23,7 +24,6 @@ inline void xSemaphoreGive(SemaphoreHandle_t) {}
 namespace ecb {
 
 class ManifestStore;
-class ResourceTable;
 class ActionRegistry;
 
 struct FrameSender {
@@ -49,7 +49,7 @@ public:
   static constexpr size_t kDeltaFrameBufferSize = DataFrameCodec::kHeaderSize + 128u;
 
   DataBleTransport(const ManifestStore& store,
-                 ResourceTable& table,
+                 ResourceTable<>& table,
                  SubscriptionState& subs,
                  const ActionRegistry& registry,
                  FrameSender sender);
@@ -61,7 +61,7 @@ public:
   void tick();
 private:
   const ManifestStore&    _store;
-  ResourceTable&          _table;
+  ResourceTable<>&        _table;
   SubscriptionState&      _subs;
   const ActionRegistry&   _registry;
   FrameSender             _sender;

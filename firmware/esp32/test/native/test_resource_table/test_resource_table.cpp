@@ -2,12 +2,33 @@
 #include <string.h>
 #include "protocol/resources/ResourceTable.h"
 
-using ecb::ResourceTable;
+using ResourceTable = ecb::ResourceTable<>;
 using ecb::ResourceValue;
 using ecb::ResourceValueKind;
 
 void setUp() {}
 void tearDown() {}
+
+static void test_default_blob_slot_capacity_is_four() {
+  ecb::ResourceTable<> table;
+  table.setString(1, "a");
+  table.setString(2, "b");
+  table.setString(3, "c");
+  table.setString(4, "d");
+  table.setString(5, "e");
+
+  ecb::ResourceValue value{};
+  TEST_ASSERT_TRUE(table.get(1, value));
+  TEST_ASSERT_TRUE(table.get(4, value));
+}
+
+static void test_expanded_blob_slot_capacity_compiles() {
+  ecb::ResourceTable<16> table;
+  table.setString(16, "sixteen");
+  ecb::ResourceValue value{};
+  TEST_ASSERT_TRUE(table.get(16, value));
+  TEST_ASSERT_EQUAL_STRING("sixteen", value.stringValue);
+}
 
 static void test_set_and_get_bool() {
   ResourceTable t;
@@ -106,6 +127,8 @@ static void test_missing_key_returns_false() {
 
 int main(int, char**) {
   UNITY_BEGIN();
+  RUN_TEST(test_default_blob_slot_capacity_is_four);
+  RUN_TEST(test_expanded_blob_slot_capacity_compiles);
   RUN_TEST(test_set_and_get_bool);
   RUN_TEST(test_set_and_get_int_and_bump_generation);
   RUN_TEST(test_set_string_truncates_at_max);

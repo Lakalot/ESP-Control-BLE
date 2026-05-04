@@ -22,7 +22,7 @@ static void test_data_write_rejects_truncated_frame_payloads() {
   transport.begin("native-test", &auth, manifest, sizeof(manifest));
 
   ecb::ManifestStore store(manifest, sizeof(manifest));
-  ecb::ResourceTable table;
+  ecb::ResourceTable<> table;
   ecb::SubscriptionState subs;
   ecb::ActionRegistry actions;
   ecb::DataBleTransport dataTransport(store, table, subs, actions,

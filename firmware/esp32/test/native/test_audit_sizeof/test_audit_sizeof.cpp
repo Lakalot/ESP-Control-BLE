@@ -20,10 +20,8 @@
 #include "protocol/subscriptions/SubscriptionState.h"
 #include "protocol/manifest/ManifestStore.h"
 #include "protocol/auth/AuthHandler.h"
-#include "protocol/commands/CommandRegistry.h"
 #include "EspControlBle.h"
 #include "transport/ble/BleTransport.h"
-#include "transport/frame/FrameCodec.h"
 #include "transport/frame/DataFrameCodec.h"
 
 // Helper that prints "AUDIT_SIZEOF <name> <bytes>" for visual inspection
@@ -85,14 +83,11 @@ void tearDown(void) {}
 static void test_audit_sizeof_dump(void) {
     print_size("ecb::FrameHeader",         sizeof(ecb::FrameHeader));
     print_size("ecb::FrameKind",           sizeof(ecb::FrameKind));
-    print_size("ParsedFrame (global)",     sizeof(ParsedFrame));
     print_size("ecb::DataFrameCodec",      sizeof(ecb::DataFrameCodec));
     print_size("AuthHandler",              sizeof(AuthHandler));
-    print_size("CmdContext",               sizeof(CmdContext));
-    print_size("CommandRegistry",          sizeof(CommandRegistry));
     print_size("ecb::ResourceValue",       sizeof(ecb::ResourceValue));
     print_size("ecb::ResourceEntry",       sizeof(ecb::ResourceEntry));
-    print_size("ecb::ResourceTable",       sizeof(ecb::ResourceTable));
+    print_size("ecb::ResourceTable<>",       sizeof(ecb::ResourceTable<>));
     print_size("ecb::ActionContext",       sizeof(ecb::ActionContext));
     print_size("ecb::ActionRegistry",      sizeof(ecb::ActionRegistry));
     print_size("ecb::SubscriptionState",   sizeof(ecb::SubscriptionState));
@@ -146,14 +141,10 @@ static void test_locked_SubscriptionState(void) {
 }
 
 static void test_locked_ResourceTable_dominates_ram(void) {
-    // The headline finding: ResourceTable is huge.
-    // 32-bit native/ESP32: 5000 bytes. 64-bit native: size_t padding raises it
-    // to 5008 bytes.
-    const std::size_t observed = sizeof(ecb::ResourceTable);
-    const std::size_t expected = expected_for_pointer_width(5000, 5008);
-    print_size("(headline) ResourceTable HEADLINE", observed);
-    TEST_ASSERT_EQUAL_size_t_MESSAGE(expected, observed,
-        "ResourceTable size changed for this native pointer width");
+    const std::size_t observed = sizeof(ecb::ResourceTable<>);
+    print_size("(headline) ResourceTable<4>", observed);
+    TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(1200, observed,
+        "ResourceTable<4> should stay near the L4 RAM target");
 }
 
 static void test_locked_ActionRegistry_dominates_ram(void) {
@@ -170,17 +161,6 @@ static void test_locked_ActionRegistry_dominates_ram(void) {
     print_size("(headline) ActionRegistry HEADLINE", observed);
     TEST_ASSERT_EQUAL_size_t_MESSAGE(expected, observed,
         "ActionRegistry size changed for this native std::function layout");
-}
-
-static void test_locked_CommandRegistry(void) {
-    // 32 × Entry, Entry = uint8_t + fn-pointer + bool with padding.
-    // On 64-bit host: 8-byte fn-pointer => Entry = 16, total = 512.
-    // On 32-bit ESP32: 4-byte fn-pointer => Entry = 12, total = 384.
-    const std::size_t observed = sizeof(CommandRegistry);
-    const std::size_t expected = expected_for_pointer_width(384, 512);
-    print_size("(footprint) CommandRegistry", observed);
-    TEST_ASSERT_EQUAL_size_t_MESSAGE(expected, observed,
-        "CommandRegistry size changed for this native pointer width");
 }
 
 static void test_locked_ActionContext_has_stringValue_buffer(void) {
@@ -252,7 +232,6 @@ int main(int /*argc*/, char** /*argv*/) {
     RUN_TEST(test_locked_SubscriptionState);
     RUN_TEST(test_locked_ResourceTable_dominates_ram);
     RUN_TEST(test_locked_ActionRegistry_dominates_ram);
-    RUN_TEST(test_locked_CommandRegistry);
     RUN_TEST(test_locked_ActionContext_has_stringValue_buffer);
     RUN_TEST(test_locked_ResourceValue_has_string_and_bytes_buffers);
     RUN_TEST(test_locked_ManifestStore_is_a_borrow);

@@ -182,7 +182,7 @@ static bool deltaContainsBytesValue(const uint8_t* data, size_t len, uint32_t re
 }
 
 static void test_encode_two_resources_round_trips_via_nanopb() {
-  ResourceTable t;
+  ecb::ResourceTable<> t;
   t.setBool(10, true);
   t.setInt(20, -5);
   uint8_t buf[256] = {0};
@@ -201,7 +201,7 @@ static void test_encode_two_resources_round_trips_via_nanopb() {
 }
 
 static void test_encode_includes_string_values() {
-  ResourceTable t;
+  ecb::ResourceTable<> t;
   t.setString(10, "hello");
 
   uint8_t buf[256] = {0};
@@ -220,7 +220,7 @@ static void test_encode_includes_string_values() {
 }
 
 static void test_encode_includes_bytes_values() {
-  ResourceTable t;
+  ecb::ResourceTable<> t;
   const uint8_t payload[] = {0x00, 0x7F, 0x80, 0xFF};
   t.setBytes(21, payload, sizeof(payload));
 
@@ -247,7 +247,7 @@ static void test_encode_delta_includes_blob_backed_bytes_values() {
 }
 
 static void test_encode_overflow_returns_false() {
-  ResourceTable t;
+  ecb::ResourceTable<> t;
   for (uint32_t i = 0; i < 64; ++i) t.setInt(i, 0);
   uint8_t tiny[8] = {0};
   size_t written = 0;

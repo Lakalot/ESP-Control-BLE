@@ -39,16 +39,16 @@ static bool fillCommonValue(esp_control_CommonValue& dst, const ResourceValue& s
     case ResourceValueKind::String:
       dst.which_kind = esp_control_CommonValue_string_value_tag;
       blobCtx->data = reinterpret_cast<const uint8_t*>(src.stringValue);
-      blobCtx->length = strnlen(src.stringValue, ResourceTable::kMaxStringLen);
+      blobCtx->length = strnlen(src.stringValue, ResourceTable<>::kMaxStringLen);
       dst.kind.string_value.funcs.encode = encodeBlobValue;
       dst.kind.string_value.arg = blobCtx;
       return true;
     case ResourceValueKind::Bytes:
       dst.which_kind = esp_control_CommonValue_string_value_tag;
       blobCtx->data = src.bytesValue;
-      blobCtx->length = src.bytesLength <= ResourceTable::kMaxBytesLen
+      blobCtx->length = src.bytesLength <= ResourceTable<>::kMaxBytesLen
           ? src.bytesLength
-          : ResourceTable::kMaxBytesLen;
+          : ResourceTable<>::kMaxBytesLen;
       dst.kind.string_value.funcs.encode = encodeBlobValue;
       dst.kind.string_value.arg = blobCtx;
       return true;
@@ -58,7 +58,7 @@ static bool fillCommonValue(esp_control_CommonValue& dst, const ResourceValue& s
 }
 
 struct SnapshotCallbackCtx {
-  const ResourceTable* table;
+  const ResourceTable<>* table;
 };
 
 static bool encodeValuesCallback(pb_ostream_t* stream, const pb_field_t* field, void* const* arg) {
@@ -77,7 +77,7 @@ static bool encodeValuesCallback(pb_ostream_t* stream, const pb_field_t* field, 
   return true;
 }
 
-bool SnapshotEncoder::encode(const ResourceTable& table, uint8_t* out, size_t cap, size_t& written) {
+bool SnapshotEncoder::encode(const ResourceTable<>& table, uint8_t* out, size_t cap, size_t& written) {
   esp_control_ResourceSnapshot msg = esp_control_ResourceSnapshot_init_zero;
   SnapshotCallbackCtx ctx{&table};
   msg.values.funcs.encode = encodeValuesCallback;

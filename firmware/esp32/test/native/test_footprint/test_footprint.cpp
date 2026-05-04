@@ -11,9 +11,9 @@ void setUp() {}
 void tearDown() {}
 
 static void test_runtime_state_fits_in_budget() {
-  TEST_ASSERT_LESS_OR_EQUAL(6u * 1024u, sizeof(ResourceTable));
+  TEST_ASSERT_LESS_OR_EQUAL(6u * 1024u, sizeof(ecb::ResourceTable<>));
 
-  size_t total = sizeof(ResourceTable) + sizeof(SubscriptionState) + sizeof(ActionRegistry);
+  size_t total = sizeof(ecb::ResourceTable<>) + sizeof(SubscriptionState) + sizeof(ActionRegistry);
   // ResourceTable now keeps compact entries and shared blob storage; the full
   // runtime state should stay comfortably below the original 16 KB ceiling.
   TEST_ASSERT_LESS_OR_EQUAL(12u * 1024u, total);
