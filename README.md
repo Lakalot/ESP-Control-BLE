@@ -521,12 +521,12 @@ static void onRelayToggle(ecb::ActionContext& ctx, void* context) {
   auto* c = static_cast<DeviceActionContext*>(context);
   c->runtime->toggleRelay();
   c->actions->applyLightOutput(c->runtime->state());
-  c->control->resources().setBool(manifest_resources::relay_auto, c->runtime->state().relayEnabled);
+  c->control->resources().trySetBool(manifest_resources::relay_auto, c->runtime->state().relayEnabled);
   c->control->publishDelta(manifest_resources::relay_auto);
   ctx.replyOk(nullptr, 0);
 }
 
-void DeviceActions::registerAll(EspControl& control, AppRuntime& runtime) const {
+void DeviceActions::registerAll(ecb::EspControl& control, AppRuntime& runtime) const {
   static DeviceActionContext ctx{this, &control, &runtime};
 
   // Toggle relay -- no input
@@ -581,13 +581,13 @@ void DeviceTelemetry::tick(EspControl& control, AppRuntime& runtime, float curre
   // Update temperature (rate-limited by PublishScheduler)
   if (runtime.temperaturePublisher().shouldPublish(nowMs)) {
     runtime.updateTemperature(currentTemperature);
-    control.resources().setFloat(manifest_resources::env_temperature, runtime.state().temperatureC);
+    control.resources().trySetFloat(manifest_resources::env_temperature, runtime.state().temperatureC);
     control.publishDelta(manifest_resources::env_temperature);
   }
 
   // Update uptime
   runtime.updateUptimeMs(nowMs);
-  control.resources().setUint(manifest_resources::system_uptime, runtime.state().uptimeMs);
+  control.resources().trySetUint(manifest_resources::system_uptime, runtime.state().uptimeMs);
 }
 ```
 
@@ -601,12 +601,12 @@ void DeviceTelemetry::tick(EspControl& control, AppRuntime& runtime, float curre
 ecb::ResourceTable& table = control.resources();
 
 // Setters (upsert -- creates entry if it doesn't exist)
-table.setBool(resourceId, true);
-table.setInt(resourceId, -58);
-table.setUint(resourceId, 75);
-table.setFloat(resourceId, 23.5f);
-table.setString(resourceId, "hello");
-table.setBytes(resourceId, data, len);
+table.trySetBool(resourceId, true);
+table.trySetInt(resourceId, -58);
+table.trySetUint(resourceId, 75);
+table.trySetFloat(resourceId, 23.5f);
+table.trySetString(resourceId, "hello");
+table.trySetBytes(resourceId, data, len);
 
 // Getter
 ecb::ResourceValue val;
@@ -620,13 +620,13 @@ if (table.get(resourceId, val)) {
 On startup, sync all resource values so the mobile app gets a complete snapshot:
 
 ```cpp
-void DeviceActions::syncResources(EspControl& control, const DeviceState& state) const {
-  control.resources().setBool(manifest_resources::relay_auto, state.relayEnabled);
-  control.resources().setUint(manifest_resources::light_brightness, state.brightness);
-  control.resources().setFloat(manifest_resources::env_temperature, state.temperatureC);
-  control.resources().setString(manifest_resources::fan_profile, fanProfileName(state.fanProfile));
-  control.resources().setBool(manifest_resources::device_debug, state.debugEnabled);
-  control.resources().setString(manifest_resources::device_name, state.deviceName);
+void DeviceActions::syncResources(ecb::EspControl& control, const DeviceState& state) const {
+  control.resources().trySetBool(manifest_resources::relay_auto, state.relayEnabled);
+  control.resources().trySetUint(manifest_resources::light_brightness, state.brightness);
+  control.resources().trySetFloat(manifest_resources::env_temperature, state.temperatureC);
+  control.resources().trySetString(manifest_resources::fan_profile, fanProfileName(state.fanProfile));
+  control.resources().trySetBool(manifest_resources::device_debug, state.debugEnabled);
+  control.resources().trySetString(manifest_resources::device_name, state.deviceName);
 }
 ```
 
@@ -705,13 +705,13 @@ control.registerAction(manifest_actions::motor_set_speed,
     }
     runtime.setMotorSpeed(ctx.uintValue);
     // ... apply to hardware ...
-    control.resources().setUint(manifest_resources::motor_speed, runtime.state().motorSpeedRpm);
+    control.resources().trySetUint(manifest_resources::motor_speed, runtime.state().motorSpeedRpm);
     control.publishDelta(manifest_resources::motor_speed);
     ctx.replyOk(nullptr, 0);
   });
 
 // In syncResources -- set initial value
-control.resources().setUint(manifest_resources::motor_speed, state.motorSpeedRpm);
+control.resources().trySetUint(manifest_resources::motor_speed, state.motorSpeedRpm);
 ```
 
 ### 4. Rebuild & flash
