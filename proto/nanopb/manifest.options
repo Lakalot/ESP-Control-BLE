@@ -3,14 +3,14 @@ esp_control.Rule.jsonlogic max_size:256
 
 esp_control.CapabilitiesDef.feature_idxs max_count:16
 esp_control.ResourceDef.enum_value_idxs max_count:32
-esp_control.ScreenDef.entry_rules max_count:4
-esp_control.NodeDef.children_ids max_count:32
+esp_control.ScreenDef.entry_rules max_count:2
+esp_control.NodeDef.children_ids max_count:16
 
-esp_control.ManifestBundle.strings max_count:256
+esp_control.ManifestBundle.strings max_count:128
 esp_control.ManifestBundle.resources max_count:64
-esp_control.ManifestBundle.actions max_count:64
-esp_control.ManifestBundle.screens max_count:16
-esp_control.ManifestBundle.nodes max_count:256
+esp_control.ManifestBundle.actions max_count:32
+esp_control.ManifestBundle.screens max_count:8
+esp_control.ManifestBundle.nodes max_count:64
 
 esp_control.ResourceSnapshot.values  type:FT_CALLBACK
 esp_control.CommonValue.string_value type:FT_CALLBACK
