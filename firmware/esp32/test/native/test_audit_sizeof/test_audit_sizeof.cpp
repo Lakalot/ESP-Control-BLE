@@ -19,6 +19,7 @@
 #include "protocol/subscriptions/SubscriptionState.h"
 #include "protocol/manifest/ManifestStore.h"
 #include "protocol/auth/AuthHandler.h"
+#include "protocol/dispatcher/SessionDispatcher.h"
 #include "EspControlBle.h"
 #include "transport/ble/BleTransport.h"
 #include "transport/frame/DataFrameCodec.h"
@@ -196,6 +197,13 @@ static void test_locked_BleTransport_runtime_state(void) {
         kBleTransportHost64SanityLimit);
 }
 
+static void test_locked_SessionDispatcher_initial_size(void) {
+    const std::size_t observed = sizeof(ecb::SessionDispatcher);
+    print_size("SessionDispatcher", observed);
+    TEST_ASSERT_LESS_OR_EQUAL_size_t_MESSAGE(70, observed,
+        "SessionDispatcher should stay small; protocol buffers remain stack-local");
+}
+
 int main(int /*argc*/, char** /*argv*/) {
     UNITY_BEGIN();
     RUN_TEST(test_audit_sizeof_dump);
@@ -212,5 +220,6 @@ int main(int /*argc*/, char** /*argv*/) {
     RUN_TEST(test_locked_AuthHandler);
     RUN_TEST(test_locked_EspControl_headline_target);
     RUN_TEST(test_locked_BleTransport_runtime_state);
+    RUN_TEST(test_locked_SessionDispatcher_initial_size);
     return UNITY_END();
 }
