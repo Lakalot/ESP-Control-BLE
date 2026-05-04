@@ -42,10 +42,10 @@ void BleTransport::setDataTransport(ecb::DataBleTransport* t) {
   _dataTransport = t;
 }
 
-void BleTransport::sendDataManifest() {
-  if (_dataTransport) {
-    _dataTransport->sendManifest();
-  }
+void BleTransport::setProtocolCallbacks(void (*onDisconnect)(void*), void (*onSubscribe)(void*), void* ctx) {
+  _onDisconnect = onDisconnect;
+  _onSubscribe = onSubscribe;
+  _protocolCtx = ctx;
 }
 
 void BleTransport::handleConnect() {
@@ -54,28 +54,14 @@ void BleTransport::handleConnect() {
 
 void BleTransport::handleDisconnect() {
   _auth->reset();
-  if (_dataTransport) {
-    _dataTransport->reset();
-  }
+  if (_onDisconnect) _onDisconnect(_protocolCtx);
 }
 
 void BleTransport::handleDataWrite(const uint8_t* data, uint16_t len) {
   if (!_dataTransport) {
     return;
   }
-
-  ecb::FrameHeader header;
-  if (len < ecb::DataFrameCodec::kHeaderSize) {
-    return;
-  }
-  if (!ecb::DataFrameCodec::decodeHeader(data, len, header)) {
-    return;
-  }
-  if (len != static_cast<uint16_t>(ecb::DataFrameCodec::kHeaderSize + header.length)) {
-    return;
-  }
-
-  _dataTransport->handleFrame(header.kind, data + ecb::DataFrameCodec::kHeaderSize, header.length);
+  _dataTransport->onRawFrame(data, len);
 }
 
 #else
@@ -106,7 +92,7 @@ public:
   void onSubscribe(NimBLECharacteristic* pChar, ble_gap_conn_desc* desc, uint16_t subValue) override {
     if (subValue == 0) return;
     ECB_DATA_DEBUGF("[ECB DATA] Client subscribed to data char, sending manifest\n");
-    _transport->sendDataManifest();
+    if (_transport->_onSubscribe) _transport->_onSubscribe(_transport->_protocolCtx);
   }
 
   void onWrite(NimBLECharacteristic* pChar) override {
@@ -164,11 +150,10 @@ void BleTransport::setDataTransport(ecb::DataBleTransport* t) {
   _dataTransport = t;
 }
 
-void BleTransport::sendDataManifest() {
-  if (_dataTransport) {
-    ECB_DATA_DEBUGF("[ECB DATA] Triggering manifest send via data transport\n");
-    _dataTransport->sendManifest();
-  }
+void BleTransport::setProtocolCallbacks(void (*onDisconnect)(void*), void (*onSubscribe)(void*), void* ctx) {
+  _onDisconnect = onDisconnect;
+  _onSubscribe = onSubscribe;
+  _protocolCtx = ctx;
 }
 
 void BleTransport::begin(const char* deviceName, AuthHandler* auth,
@@ -237,27 +222,14 @@ void BleTransport::handleConnect() {
 void BleTransport::handleDisconnect() {
   ECB_LOGF("[ECB] Client disconnected\n");
   _auth->reset();
-  if (_dataTransport) _dataTransport->reset();
+  if (_onDisconnect) _onDisconnect(_protocolCtx);
   NimBLEDevice::startAdvertising();
 }
 
 void BleTransport::handleDataWrite(const uint8_t* data, uint16_t len) {
   ECB_DATA_DEBUGF("[ECB DATA] handleDataWrite len=%d\n", len);
   if (_dataTransport) {
-    ecb::FrameHeader header;
-    if (len < ecb::DataFrameCodec::kHeaderSize) {
-      ECB_DATA_DEBUGF("[ECB] Data frame too short\n");
-      return;
-    }
-    if (!ecb::DataFrameCodec::decodeHeader(data, len, header)) {
-      ECB_DATA_DEBUGF("[ECB] Data header decode failed\n");
-      return;
-    }
-    if (len != static_cast<uint16_t>(ecb::DataFrameCodec::kHeaderSize + header.length)) {
-      ECB_DATA_DEBUGF("[ECB] Data payload length mismatch\n");
-      return;
-    }
-    _dataTransport->handleFrame(header.kind, data + ecb::DataFrameCodec::kHeaderSize, header.length);
+    _dataTransport->onRawFrame(data, len);
   }
 }
 
