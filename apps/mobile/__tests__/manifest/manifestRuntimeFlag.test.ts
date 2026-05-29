@@ -1,16 +1,22 @@
+import { describe, expect, it, beforeEach } from '@jest/globals';
 import { getManifestRuntime, setManifestRuntime } from '@/settings/manifestRuntimeFlag';
 
 describe('manifestRuntimeFlag', () => {
-  it('defaults to v5', () => {
-    setManifestRuntime(null);
-    expect(getManifestRuntime()).toBe('manifest');
+  beforeEach(() => setManifestRuntime('device'));
+
+  it('defaults to device', () => {
+    expect(getManifestRuntime()).toBe('device');
   });
-  it('round-trips v5', () => {
-    setManifestRuntime('manifest');
-    expect(getManifestRuntime()).toBe('manifest');
+
+  it('can switch to fixture (debug) and back', () => {
+    setManifestRuntime('fixture');
+    expect(getManifestRuntime()).toBe('fixture');
+    setManifestRuntime('device');
+    expect(getManifestRuntime()).toBe('device');
   });
-  it('defaults the product runtime to v5', () => {
+
+  it('falls back to device for an invalid value', () => {
     setManifestRuntime(null);
-    expect(getManifestRuntime()).toBe('manifest');
+    expect(getManifestRuntime()).toBe('device');
   });
 });

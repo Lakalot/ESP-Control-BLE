@@ -1,15 +1,16 @@
-export type ManifestRuntime = 'manifest' | 'fixture';
-
-let inMemory: ManifestRuntime = 'manifest';
-
 /**
- * In-memory feature flag for Plan B. Plan C (or a later settings UI task)
- * should promote this to expo-secure-store for persistence. For now the
- * flag is flipped via a dev-only toggle in the debug screen; production
- * builds always start on 'manifest'.
+ * Which runtime backs the control screen:
+ *  - 'device'  : BleRuntime over real BLE (production default).
+ *  - 'fixture' : bundled FixtureRuntime (no hardware) — a debug mode for
+ *                exercising the full UI without an ESP32.
+ * In-memory only; production builds start on 'device'.
  */
-export function getManifestRuntime(): ManifestRuntime { return inMemory; }
+export type ManifestRuntimeFlag = 'device' | 'fixture';
 
-export function setManifestRuntime(value: ManifestRuntime | null): void {
-  inMemory = (value === 'manifest') ? value : 'manifest';
+let inMemory: ManifestRuntimeFlag = 'device';
+
+export function getManifestRuntime(): ManifestRuntimeFlag { return inMemory; }
+
+export function setManifestRuntime(value: ManifestRuntimeFlag | null): void {
+  inMemory = value === 'fixture' ? 'fixture' : 'device';
 }
