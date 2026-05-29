@@ -18,6 +18,7 @@ static uint32_t g_lastCorrelation;
 static ecb::ActionValueKind g_lastValueKind;
 static char g_lastString[65];
 
+// nanopb encode callback: arg holds the C string pointer directly (idiom A).
 static bool encode_string_value(pb_ostream_t* stream, const pb_field_t* field, void* const* arg) {
   const char* value = static_cast<const char*>(*arg);
   if (!pb_encode_tag_for_field(stream, field)) return false;
@@ -94,7 +95,7 @@ static void test_string_payload_reaches_handler() {
   req.payload.which_kind = esp_control_CommonValue_string_value_tag;
   const char* name = "party";
   req.payload.kind.string_value.funcs.encode = encode_string_value;
-  req.payload.kind.string_value.arg = const_cast<char**>(&name);
+  req.payload.kind.string_value.arg = const_cast<char*>(name);
   pb_ostream_t os = pb_ostream_from_buffer(wire, sizeof(wire));
   TEST_ASSERT_TRUE(pb_encode(&os, esp_control_InvokeAction_fields, &req));
   wireLen = os.bytes_written;
@@ -108,11 +109,50 @@ static void test_string_payload_reaches_handler() {
   TEST_ASSERT_EQUAL_STRING("party", g_lastString);
 }
 
+// The mobile client encodes string action inputs as the `enum_value` oneof
+// member (see apps/mobile BleRuntime.buildPayload), so cover that wire shape
+// explicitly: like string_value it is a CALLBACK oneof field whose which_kind
+// nanopb leaves unset.
+static void test_enum_payload_reaches_handler() {
+  resetCounters();
+  ActionRegistry reg;
+  reg.registerAction(7, [](ActionContext& ctx) {
+    g_calls += 1;
+    g_lastCorrelation = ctx.correlationId;
+    g_lastValueKind = ctx.valueKind;
+    strncpy(g_lastString, ctx.stringValue, sizeof(g_lastString) - 1);
+    ctx.replyOk(nullptr, 0);
+  });
+
+  uint8_t wire[128] = {0};
+  size_t wireLen = 0;
+  esp_control_InvokeAction req = esp_control_InvokeAction_init_zero;
+  req.action_id = 7;
+  req.correlation_id = 42;
+  req.has_payload = true;
+  req.payload.which_kind = esp_control_CommonValue_enum_value_tag;
+  const char* name = "mode_a";
+  req.payload.kind.enum_value.funcs.encode = encode_string_value;
+  req.payload.kind.enum_value.arg = const_cast<char*>(name);
+  pb_ostream_t os = pb_ostream_from_buffer(wire, sizeof(wire));
+  TEST_ASSERT_TRUE(pb_encode(&os, esp_control_InvokeAction_fields, &req));
+  wireLen = os.bytes_written;
+
+  uint8_t reply[64] = {0};
+  size_t replyLen = 0;
+  TEST_ASSERT_TRUE(ActionDecoder::dispatch(reg, wire, wireLen, reply, sizeof(reply), replyLen));
+  TEST_ASSERT_EQUAL_UINT32(1u, g_calls);
+  TEST_ASSERT_EQUAL_UINT32(42u, g_lastCorrelation);
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ecb::ActionValueKind::String), static_cast<uint8_t>(g_lastValueKind));
+  TEST_ASSERT_EQUAL_STRING("mode_a", g_lastString);
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   resetCounters();
   RUN_TEST(register_and_dispatch_flows);
   RUN_TEST(test_unknown_action_produces_error_reply);
   RUN_TEST(test_string_payload_reaches_handler);
+  RUN_TEST(test_enum_payload_reaches_handler);
   return UNITY_END();
 }
