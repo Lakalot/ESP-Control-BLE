@@ -172,4 +172,77 @@ describe('BleRuntime', () => {
     device.queueIncoming(encodeFrame(FrameKind.AuthResult, 0, new Uint8Array([0x01])));
     await expect(second).resolves.toBeUndefined();
   }, 10000);
+
+  // CRC32 helper mirroring BleRuntime's private implementation, for building
+  // valid ManifestEof frames in the disconnect/timeout tests below.
+  function crc32(buf: Uint8Array): number {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < buf.length; i++) {
+      crc ^= buf[i];
+      for (let j = 0; j < 8; j++) {
+        crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
+      }
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function makeEofFrame(bytes: Uint8Array): Uint8Array {
+    const eofBody = new Uint8Array(8);
+    const view = new DataView(eofBody.buffer);
+    view.setUint32(0, bytes.length, false);
+    view.setUint32(4, crc32(bytes), false);
+    return encodeFrame(FrameKind.ManifestEof, 0, eofBody);
+  }
+
+  it('onDisconnected fires registered listeners', () => {
+    const device = createFixtureBleDevice();
+    let fired = 0;
+    const unsubscribe = device.onDisconnected(() => { fired += 1; });
+
+    device.simulateDisconnect();
+    expect(fired).toBe(1);
+
+    // Unsubscribe stops further notifications.
+    unsubscribe();
+    device.simulateDisconnect();
+    expect(fired).toBe(1);
+  });
+
+  it('disconnect mid-transfer resets partial manifest state', async () => {
+    const device = createFixtureBleDevice();
+    const runtime = new BleRuntime(device);
+
+    // Feed a partial ManifestChunk with NO EOF: a stale, never-completed transfer.
+    device.queueIncoming(
+      encodeFrame(FrameKind.ManifestChunk, 0, new Uint8Array([0xDE, 0xAD, 0xBE, 0xEF])),
+    );
+
+    // A disconnect must clear the in-flight chunk via BleRuntime.reset (wired in
+    // the constructor to device.onDisconnected).
+    device.simulateDisconnect();
+
+    // Now a fresh, complete transfer arrives. If the leftover chunk had not been
+    // cleared, the assembled bytes would be corrupted (4 stale bytes prepended)
+    // and decode would fail / produce the wrong manifest.
+    const chunkSize = 100;
+    for (let i = 0; i < testManifestBytes.length; i += chunkSize) {
+      device.queueIncoming(
+        encodeFrame(FrameKind.ManifestChunk, 0, testManifestBytes.slice(i, i + chunkSize)),
+      );
+    }
+    device.queueIncoming(makeEofFrame(testManifestBytes));
+
+    const loadedManifest = await runtime.loadManifest();
+    expect(loadedManifest.actions.has('relay.toggle')).toBe(true);
+    expect(loadedManifest.actions.size).toBeGreaterThan(0);
+  }, 10000);
+
+  it('loadManifest rejects on timeout when no manifest arrives', async () => {
+    const device = createFixtureBleDevice();
+    const runtime = new BleRuntime(device);
+
+    // No manifest queued; the short timeout must fire and reject cleanly with no
+    // leaked timer.
+    await expect(runtime.loadManifest(50)).rejects.toThrow(/timed out/i);
+  }, 10000);
 });

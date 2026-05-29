@@ -42,6 +42,7 @@ export class BleRuntime implements ManifestRuntime {
   private manifestTotalLen = 0;
   private manifestResolve: ((bytes: Uint8Array) => void) | null = null;
   private manifestReject: ((err: Error) => void) | null = null;
+  private manifestTimer: ReturnType<typeof setTimeout> | null = null;
   private bufferedManifest: Uint8Array | null = null;
   private pin: string | null = null;
   private authResolve: (() => void) | null = null;
@@ -51,6 +52,30 @@ export class BleRuntime implements ManifestRuntime {
   constructor(private device: FixtureBleDevice) {
     device.onNotify((chunk) => this.stream.feed(chunk));
     this.stream.onFrame((frame) => this.dispatchFrame(frame.kind, frame.body));
+    // A transport drop must clear any partial manifest transfer so a later
+    // reconnect starts from a clean slate (no stale chunks corrupting the next
+    // assembly).
+    device.onDisconnected(() => this.reset());
+  }
+
+  /**
+   * Clears in-flight manifest-transfer state. Called on disconnect so a partial
+   * (un-EOF'd) transfer is discarded and any pending loadManifest() rejects
+   * rather than hanging forever.
+   */
+  reset(): void {
+    this.manifestChunks = [];
+    this.manifestTotalLen = 0;
+    const reject = this.manifestReject;
+    this.clearManifestWaiters();
+    reject?.(new Error('disconnected'));
+  }
+
+  /** Clears the manifest-transfer resolvers and any pending timeout timer. */
+  private clearManifestWaiters() {
+    if (this.manifestTimer) { clearTimeout(this.manifestTimer); this.manifestTimer = null; }
+    this.manifestResolve = null;
+    this.manifestReject = null;
   }
 
   /**
@@ -175,9 +200,9 @@ export class BleRuntime implements ManifestRuntime {
       this.manifestTotalLen = 0;
 
       if (body.length < 8) {
-        this.manifestReject?.(new Error('Manifest EOF frame too small'));
-        this.manifestResolve = null;
-        this.manifestReject = null;
+        const reject = this.manifestReject;
+        this.clearManifestWaiters();
+        reject?.(new Error('Manifest EOF frame too small'));
         return;
       }
       const view = new DataView(body.buffer, body.byteOffset, body.byteLength);
@@ -185,21 +210,21 @@ export class BleRuntime implements ManifestRuntime {
       const expectedCrc = view.getUint32(4, false);
 
       if (fullManifest.length !== expectedSize) {
-        this.manifestReject?.(new Error(`Manifest size mismatch: ${fullManifest.length} vs ${expectedSize}`));
-        this.manifestResolve = null;
-        this.manifestReject = null;
+        const reject = this.manifestReject;
+        this.clearManifestWaiters();
+        reject?.(new Error(`Manifest size mismatch: ${fullManifest.length} vs ${expectedSize}`));
         return;
       }
       if (this.crc32(fullManifest) !== expectedCrc) {
-        this.manifestReject?.(new Error('Manifest CRC mismatch'));
-        this.manifestResolve = null;
-        this.manifestReject = null;
+        const reject = this.manifestReject;
+        this.clearManifestWaiters();
+        reject?.(new Error('Manifest CRC mismatch'));
         return;
       }
       if (this.manifestResolve) {
-        this.manifestResolve(fullManifest);
-        this.manifestResolve = null;
-        this.manifestReject = null;
+        const resolve = this.manifestResolve;
+        this.clearManifestWaiters();
+        resolve(fullManifest);
       } else {
         this.bufferedManifest = fullManifest;
       }
@@ -214,10 +239,10 @@ export class BleRuntime implements ManifestRuntime {
     this.listeners.get(slug)?.forEach((l) => l(update));
   }
 
-  async loadManifest(): Promise<RuntimeManifest> {
+  async loadManifest(timeoutMs = 10000): Promise<RuntimeManifest> {
     if (this.manifest) return this.manifest;
     console.log('[BleRuntime] loadManifest: waiting for manifest transfer');
-    const bytes = await this.readManifestTransfer();
+    const bytes = await this.readManifestTransfer(timeoutMs);
     console.log('[BleRuntime] loadManifest: got', bytes.length, 'bytes, decoding...');
     this.manifest = decodeManifest(bytes);
     console.log('[BleRuntime] loadManifest: decoded OK, resources=', this.manifest.resources.size, 'actions=', this.manifest.actions.size);
@@ -250,7 +275,7 @@ export class BleRuntime implements ManifestRuntime {
     });
   }
 
-  private async readManifestTransfer(): Promise<Uint8Array> {
+  private async readManifestTransfer(timeoutMs = 10000): Promise<Uint8Array> {
     if (this.bufferedManifest) {
       console.log('[BleRuntime] readManifestTransfer: using buffered manifest', this.bufferedManifest.length);
       const cached = this.bufferedManifest;
@@ -266,6 +291,13 @@ export class BleRuntime implements ManifestRuntime {
       console.log('[BleRuntime] readManifestTransfer: awaiting live manifest frames');
       this.manifestResolve = resolve;
       this.manifestReject = reject;
+      // Guard against a transfer that never completes (no EOF / silent peer).
+      // The timer is cleared on any settle path via clearManifestWaiters().
+      this.manifestTimer = setTimeout(() => {
+        const rej = this.manifestReject;
+        this.clearManifestWaiters();
+        rej?.(new Error('manifest transfer timed out'));
+      }, timeoutMs);
     });
   }
 
