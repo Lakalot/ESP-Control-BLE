@@ -31,6 +31,12 @@ DataBleTransport::DataBleTransport(const ManifestStore& s, ResourceTable& t,
                                FrameSender sender)
   : _store(s), _table(t), _subs(su), _registry(r), _sender(sender) {
     _mutex = xSemaphoreCreateMutex();
+    if (_mutex == nullptr) {
+      // Allocation only fails on heap exhaustion at boot. Without the mutex
+      // every take/give silently no-ops and cross-task access is unprotected,
+      // so surface it loudly rather than running races undiagnosed.
+      ECB_LOGF("[ECB DATA] FATAL: mutex allocation failed\n");
+    }
 }
 
 bool DataBleTransport::sendEncodedFrame(FrameKind kind, uint8_t flags,

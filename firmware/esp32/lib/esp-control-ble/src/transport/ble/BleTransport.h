@@ -7,7 +7,6 @@
 
 #ifndef UNIT_TEST
 #include <NimBLEDevice.h>
-#include <Preferences.h>
 #endif
 
 #ifndef UNIT_TEST
@@ -35,9 +34,6 @@ private:
 
   static BleTransport* _instance;
   static void staticNotify(const uint8_t* data, uint16_t len);
-
-  char _serviceUuid[37];
-  void loadOrCreateUuid();
 
   void sendNotify(const uint8_t* data, uint16_t len);
   void sendManifestChunk(uint16_t offset, uint8_t requestedLen);

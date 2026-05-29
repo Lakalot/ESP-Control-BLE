@@ -20,8 +20,6 @@ void BleTransport::notifyRawData(const uint8_t* data, size_t len) {
   }
 }
 
-void BleTransport::loadOrCreateUuid() {}
-
 void BleTransport::begin(const char*, AuthHandler* auth,
                          CommandRegistry* registry,
                          const uint8_t* manifest, uint16_t manifestLen) {
@@ -226,32 +224,6 @@ static EcbServerCallbacks* s_serverCallbacks = nullptr;
 
 // ── BleTransport ───────────────────────────────────────────
 
-static void formatUuid(char* out, uint32_t a, uint16_t b, uint16_t c, uint16_t d, uint32_t e_hi, uint16_t e_lo) {
-  snprintf(out, 37, "%08lx-%04x-%04x-%04x-%08lx%04x",
-           (unsigned long)a, b, c, d, (unsigned long)e_hi, e_lo);
-}
-
-void BleTransport::loadOrCreateUuid() {
-  Preferences prefs;
-  prefs.begin("ecb", false);
-  String stored = prefs.getString("svc_uuid", "");
-  if (stored.length() == 36) {
-    memcpy(_serviceUuid, stored.c_str(), 37);
-    ECB_LOGF("[ECB] UUID loaded from NVS: %s\n", _serviceUuid);
-  } else {
-    uint32_t a    = esp_random();
-    uint16_t b    = (uint16_t)(esp_random() & 0xFFFF);
-    uint16_t c    = (uint16_t)((esp_random() & 0x0FFF) | 0x4000);
-    uint16_t d    = (uint16_t)((esp_random() & 0x3FFF) | 0x8000);
-    uint32_t e_hi = esp_random();
-    uint16_t e_lo = (uint16_t)(esp_random() & 0xFFFF);
-    formatUuid(_serviceUuid, a, b, c, d, e_hi, e_lo);
-    prefs.putString("svc_uuid", _serviceUuid);
-    ECB_LOGF("[ECB] UUID generated and saved: %s\n", _serviceUuid);
-  }
-  prefs.end();
-}
-
 void BleTransport::setDataTransport(ecb::DataBleTransport* t) {
   _dataTransport = t;
 }
@@ -266,8 +238,6 @@ void BleTransport::sendDataManifest() {
 void BleTransport::begin(const char* deviceName, AuthHandler* auth,
                           CommandRegistry* registry,
                           const uint8_t* manifest, uint16_t manifestLen) {
-  // loadOrCreateUuid();
-
   _auth      = auth;
   _registry  = registry;
   _instance  = this;
@@ -383,8 +353,8 @@ void BleTransport::handleSubscribe() {
 }
 
 void BleTransport::handleWrite(const uint8_t* data, uint16_t len) {
+  if (len == 0) return;  // zero-length GATT writes are legal; guard before reading data[0]
   ECB_LOGF("[ECB] handleWrite len=%d cmd=%02x\n", len, data[0]);
-  if (len == 0) return;
 
   // Auth response
   if (data[0] == ECB_AUTH_OK) {
