@@ -49,9 +49,9 @@ void EspControl::begin(const uint8_t* manifestData, uint16_t manifestLen) {
   _transport.begin(_deviceName, &_auth, &_registry, manifestData, manifestLen);
   
   static ecb::ManifestStore dataStore(manifestData, manifestLen); // Simplification: assume data manifest is passed here too
-  _dataTransport = new ecb::DataBleTransport(
+  _dataTransport = new ecb::ProtocolEngine(
     dataStore,
-    _resources, _subs, _actionRegistry,
+    _resources, _subs, _actionRegistry, _auth,
     ecb::FrameSender{this, &EspControl::sendDataFrame});
   _transport.setDataTransport(_dataTransport);
 }

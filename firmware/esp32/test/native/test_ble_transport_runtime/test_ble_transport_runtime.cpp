@@ -5,6 +5,7 @@
 #include <unity.h>
 
 #include "protocol/actions/ActionRegistry.h"
+#include "protocol/auth/AuthHandler.h"
 #include "protocol/manifest/ManifestStore.h"
 #include "protocol/resources/ResourceTable.h"
 #include "protocol/subscriptions/SubscriptionState.h"
@@ -73,11 +74,20 @@ static void test_data_write_rejects_truncated_frame_payloads() {
   ecb::ResourceTable table;
   ecb::SubscriptionState subs;
   ecb::ActionRegistry actions;
-  ecb::DataBleTransport dataTransport(store, table, subs, actions,
+  ecb::ProtocolEngine dataTransport(store, table, subs, actions, auth,
                                       ecb::FrameSender{&transport, [](void* context, const uint8_t* data, size_t len) {
                                         static_cast<BleTransport*>(context)->notifyRawData(data, len);
                                       }});
   transport.setDataTransport(&dataTransport);
+
+  // Authenticate so the truncated-frame rejection below is exercised on the
+  // authenticated path. The handshake itself notifies AuthChallenge/AuthResult
+  // through notifyRawData, so clear the capture before the truncated write.
+  dataTransport.handleFrame(ecb::FrameKind::AuthRequest, nullptr, 0);
+  uint8_t authResp[ECB_HASH_SIZE];
+  auth.computeHash(authResp);
+  dataTransport.handleFrame(ecb::FrameKind::AuthResponse, authResp, ECB_HASH_SIZE);
+  transport._lastRawDataLen = 0;
 
   const uint8_t truncatedPing[] = {
     static_cast<uint8_t>(ecb::FrameKind::Ping),
