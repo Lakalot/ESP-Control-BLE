@@ -15,6 +15,23 @@ function base64ToUint8Array(b64: string): Uint8Array {
 }
 
 /**
+ * The native EcbSpp module is a process-wide singleton with a single live RFCOMM
+ * socket. Its `onData`/`onDisconnected` emitters fan out to EVERY registered
+ * listener, so an orphaned SppDevice whose subscriptions are never removed keeps
+ * receiving chunks forever (unlike RealBleDevice, whose subs bind to a
+ * per-instance Device object that goes inert once orphaned).
+ *
+ * The reconnect flow (`reconnecting` → `connecting` → createSppDevice → new
+ * SppDevice) builds a fresh device WITHOUT disconnecting the previous one, so we
+ * enforce here that only the latest device is wired to the singleton: each new
+ * instance detaches the prior `activeDevice`'s native subscriptions before
+ * registering its own. We do NOT close the native socket on detach — the new
+ * connect() reuses/replaces that same singleton socket, so closing it would kill
+ * the live connection the new device depends on.
+ */
+let activeDevice: SppDevice | null = null;
+
+/**
  * SPP transport device. Implements the same interface as RealBleDevice so the
  * whole BleRuntime/connectionMachine engine is reused. The native EcbSpp module
  * delivers arbitrary byte chunks; BleRuntime's BleFrameStream reassembles frames
@@ -28,6 +45,12 @@ export class SppDevice implements FixtureBleDevice {
   private dropSub: { remove(): void };
 
   constructor() {
+    // Only one SppDevice may be wired to the native singleton at a time. Detach
+    // the previous one (remove its native subs) before we register ours, so a
+    // reconnect that builds a new device without disconnecting the old one does
+    // not leave stale subscriptions double-delivering native chunks.
+    if (activeDevice && activeDevice !== this) activeDevice.detach();
+    activeDevice = this;
     this.dataSub = EcbSpp.onData((b64) => {
       const chunk = base64ToUint8Array(b64);
       for (const l of this.notifyListeners) l(chunk);
@@ -35,6 +58,19 @@ export class SppDevice implements FixtureBleDevice {
     this.dropSub = EcbSpp.onDisconnected(() => {
       for (const l of [...this.disconnectListeners]) l();
     });
+  }
+
+  /**
+   * Remove this instance's native subscriptions and clear its local listeners,
+   * WITHOUT closing the native socket. Used both when a newer device supersedes
+   * this one (socket reused by the new connect) and by disconnect() (which then
+   * also closes the socket).
+   */
+  private detach(): void {
+    this.dataSub.remove();
+    this.dropSub.remove();
+    this.notifyListeners = [];
+    this.disconnectListeners = [];
   }
 
   async write(frame: Uint8Array): Promise<void> {
@@ -54,10 +90,8 @@ export class SppDevice implements FixtureBleDevice {
   queueIncoming(_chunk: Uint8Array): void {} // not used in production
 
   async disconnect(): Promise<void> {
-    this.dataSub.remove();
-    this.dropSub.remove();
-    this.notifyListeners = [];
-    this.disconnectListeners = [];
+    this.detach();
+    if (activeDevice === this) activeDevice = null;
     await EcbSpp.disconnect();
   }
 }

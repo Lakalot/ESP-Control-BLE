@@ -5,6 +5,7 @@ import { SppDevice, createSppDevice } from '../../src/manifest/runtime/SppDevice
 // through its test-control exports (_state/_emit*/_reset), imported from the mock
 // directly so tsc resolves them (the production facade has no such exports).
 import { _state, _emitData, _emitDisconnected, _reset } from '../../__mocks__/ecb-spp';
+// _emitData drives a native onData chunk through the shared mock singleton.
 
 // base64 helpers (Node)
 const toB64 = (bytes: number[]) => Buffer.from(bytes).toString('base64');
@@ -46,5 +47,22 @@ describe('SppDevice', () => {
     const dev = await createSppDevice('AA:BB:CC:DD:EE:FF');
     await dev.disconnect();
     expect(_state.connected).toBe(false);
+  });
+
+  it('a new SppDevice detaches the previous one from native events (no leak on reconnect)', async () => {
+    const first = await createSppDevice('AA:BB:CC:DD:EE:FF');
+    const firstChunks: number[][] = [];
+    first.onNotify((c) => firstChunks.push(Array.from(c)));
+
+    // Simulate reconnect: a second device is created without disconnecting the first.
+    const second = await createSppDevice('AA:BB:CC:DD:EE:FF');
+    const secondChunks: number[][] = [];
+    second.onNotify((c) => secondChunks.push(Array.from(c)));
+
+    // A native chunk must reach ONLY the second (current) device.
+    _emitData(Buffer.from([0x10, 0x20]).toString('base64'));
+
+    expect(secondChunks).toHaveLength(1);
+    expect(firstChunks).toHaveLength(0); // the old device was detached — no double-delivery
   });
 });
