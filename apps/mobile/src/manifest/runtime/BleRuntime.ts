@@ -2,12 +2,17 @@ import { Writer, Reader } from 'protobufjs/minimal';
 import type { ManifestRuntime, InvokeResult, SnapshotMap, SubscriptionListener, Unsubscribe, SubscriptionUpdate } from './ManifestRuntime';
 import { BleFrameStream } from './bleFrameStream';
 import { encodeFrame, FrameKind } from './frameCodec';
+import { computeAuthResponse } from './auth';
 import * as root from '../generated/manifest.pbjs';
 const manifest = (root as any).esp_control;
 import type { FixtureBleDevice } from './BleRuntime.fixture';
 import { RuntimeManifest } from '../model/runtime.types';
 import { decodeManifest } from '../decode/decodeManifest';
 import type { ResourceValue, ResourceState } from '../model/snapshot.types';
+
+export class AuthError extends Error {
+  constructor(message: string) { super(message); this.name = 'AuthError'; }
+}
 
 function decodeCommonValue(cv: any): ResourceValue {
   switch (cv.kind) {
@@ -38,13 +43,66 @@ export class BleRuntime implements ManifestRuntime {
   private manifestResolve: ((bytes: Uint8Array) => void) | null = null;
   private manifestReject: ((err: Error) => void) | null = null;
   private bufferedManifest: Uint8Array | null = null;
+  private pin: string | null = null;
+  private authResolve: (() => void) | null = null;
+  private authReject: ((err: Error) => void) | null = null;
+  private authTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private device: FixtureBleDevice) {
     device.onNotify((chunk) => this.stream.feed(chunk));
     this.stream.onFrame((frame) => this.dispatchFrame(frame.kind, frame.body));
   }
 
+  /**
+   * Run the in-band auth handshake: send AuthRequest, answer the AuthChallenge
+   * with SHA-256(pin||nonce)[:16], resolve on AuthResult OK / reject on FAIL.
+   */
+  authenticate(pin: string, timeoutMs = 5000): Promise<void> {
+    this.pin = pin;
+    return new Promise<void>((resolve, reject) => {
+      this.authResolve = resolve;
+      this.authReject = reject;
+      this.authTimer = setTimeout(() => {
+        this.clearAuthWaiters();
+        reject(new AuthError('auth timed out'));
+      }, timeoutMs);
+      // Empty-body AuthRequest kicks off the handshake.
+      this.device.write(encodeFrame(FrameKind.AuthRequest, 0, new Uint8Array(0)))
+        .catch((err) => { this.clearAuthWaiters(); reject(new AuthError(`auth send failed: ${err?.message ?? err}`)); });
+    });
+  }
+
+  private clearAuthWaiters() {
+    if (this.authTimer) { clearTimeout(this.authTimer); this.authTimer = null; }
+    this.authResolve = null;
+    this.authReject = null;
+  }
+
+  private async onAuthChallenge(nonce: Uint8Array) {
+    if (!this.pin || !this.authReject) return; // no handshake in progress
+    try {
+      const hash = await computeAuthResponse(this.pin, nonce);
+      await this.device.write(encodeFrame(FrameKind.AuthResponse, 0, hash));
+    } catch (err) {
+      const reject = this.authReject;
+      this.clearAuthWaiters();
+      reject?.(new AuthError(`auth response failed: ${(err as Error)?.message ?? err}`));
+    }
+  }
+
+  private onAuthResult(body: Uint8Array) {
+    const ok = body.length >= 1 && body[0] === 0x01;
+    const resolve = this.authResolve;
+    const reject = this.authReject;
+    this.clearAuthWaiters();
+    if (ok) resolve?.();
+    else reject?.(new AuthError('auth rejected (wrong PIN)'));
+  }
+
   private dispatchFrame(kind: FrameKind, body: Uint8Array) {
+    if (kind === FrameKind.AuthChallenge) { void this.onAuthChallenge(body); return; }
+    if (kind === FrameKind.AuthResult) { this.onAuthResult(body); return; }
+
     if (kind === FrameKind.ManifestChunk || kind === FrameKind.ManifestEof) {
       console.log('[BleRuntime] manifest frame kind=', kind, 'bodyLen=', body.length);
     }
