@@ -3,7 +3,6 @@
   "version": "0.5.0",
   "platforms": "espressif32, native",
   "dependencies": [
-    { "name": "NimBLE-Arduino", "version": "^1.4.2", "platforms": "espressif32" },
     { "name": "Nanopb", "version": "^0.4.9" },
     { "name": "Embedded Template Library", "version": "^20.40.0" }
   ],
