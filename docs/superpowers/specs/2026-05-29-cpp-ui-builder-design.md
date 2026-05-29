@@ -12,7 +12,7 @@ Aujourd'hui un utilisateur de la lib décrit son appareil en **deux endroits / d
 
 Frictions : (a) deux langages, (b) le `firmwareSymbol` à garder synchronisé à la main entre YAML et C++ (casse silencieuse au renommage), (c) le boilerplate des handlers.
 
-Objectif (choix produit assumé) : **décrire toute l'UI ET les handlers en C++ fluide, au même endroit**, avec un gros gain de simplicité, **sans coût runtime sur l'ESP** et **sans recompiler ni modifier l'app mobile**.
+Objectif (choix produit assumé) : **décrire toute l'UI ET les handlers en C++ fluide, au même endroit**, avec un gros gain de simplicité, **sans coût runtime sur l'ESP**, **sans recompiler ni modifier l'app mobile**, ET **sans dépendance Node/`pnpm` pour builder le firmware** (un clone + PlatformIO/g++ suffit). Ce dernier point — l'autonomie du build — est une motivation explicite : il oriente l'émetteur vers du 100 % C++ (voir ci-dessous).
 
 Point capital vérifié : l'app mobile est 100 % pilotée par le manifeste — elle décode des octets protobuf reçus de l'ESP et rend l'UI (`NodeRenderer`/`widgetRegistry`). Elle ignore d'où vient le protobuf. **Donc tant que le protobuf émis est identique au format actuel, l'app mobile ne change pas.**
 
@@ -23,10 +23,11 @@ Une **seule** fonction de description C++ (`buildUi(Ui&, AppRuntime&, DeviceStat
 ```
 ┌─ PC (build step, remplace embed_manifest.py dans extra_scripts) ──────────┐
 │  device_ui.cpp + EmitterUi (impl PC) compilés par g++ en un petit exe      │
-│  hôte → buildUi() est appelé → EmitterUi sérialise la structure visitée    │
-│  en JSON (forme de l'objet manifeste de tools/manifest) → on réutilise     │
-│  normalize()+encodeManifest() (TS existant) → manifest_data.h (protobuf).  │
-│  Les lambdas de handlers ne sont JAMAIS exécutées ici (forme seule).       │
+│  hôte → buildUi() est appelé → EmitterUi construit l'objet manifeste,       │
+│  applique la NORMALISATION (string table, ids, refs — portée depuis le TS) │
+│  et encode le protobuf via NANOPB (déjà présent) → manifest_data.h.        │
+│  100 % C++ : AUCUNE dépendance Node/pnpm au build. Les lambdas de handlers │
+│  ne sont JAMAIS exécutées ici (forme seule).                               │
 └────────────────────────────────────────────────────────────────────────────┘
 ┌─ ESP (runtime) ────────────────────────────────────────────────────────────┐
 │  device_ui.cpp + RuntimeUi (impl ESP) → buildUi() appelé au setup() →       │
@@ -38,7 +39,9 @@ Une **seule** fonction de description C++ (`buildUi(Ui&, AppRuntime&, DeviceStat
 
 Pourquoi A1 (émis à la compile) et pas A2 (construit au boot) : **perf**. L'ESP embarque le binaire pré-calculé (zéro construction/sérialisation au runtime), exactement comme aujourd'hui. Réutilise le slot `extra_scripts` existant.
 
-Pourquoi l'émetteur passe par **JSON → toolchain TS** (et ne réémet pas le protobuf en C++) : une **seule source de vérité** du format binaire que la tablette comprend. L'émetteur C++ ne fait que sérialiser la forme visitée ; `normalize()`+`encodeManifest()` (déjà testés) font le protobuf. Pas de duplication de l'encodeur → pas de risque de divergence avec la tablette.
+**Émetteur 100 % C++ (suppression de Node du build) — décision et son risque.** L'objectif d'autonomie du build impose que l'émetteur ne dépende pas du toolchain TS. Le travail réel n'est PAS de réécrire un encodeur protobuf à la main : **nanopb est déjà présent** (`manifest.pb.c/.h`, généré du même `.proto`) et fait l'encodage binaire, exactement comme protobufjs côté TS. Ce qu'il faut **porter du TS vers le C++**, c'est uniquement la logique de **normalisation déterministe** — ~320 lignes pures : `stringTable` (intern par ordre d'insertion, index 0 = `""`), `assignIds`, `resolveRefs`, `normalize`. 
+
+Le risque non négociable : le protobuf émis par le C++ doit être **byte-identique** à celui du TS (sinon la tablette reçoit un manifeste subtilement faux). Le point le plus sensible est **l'ordre d'insertion de la string table** (il détermine les indices, donc les octets). Le spike (première tâche) valide précisément cette égalité byte-à-byte ; si la normalisation s'avère trop délicate à reproduire à l'identique, on bascule en repli sur le toolchain TS (au prix de la dépendance Node). Le toolchain TS reste la **référence d'or** des tests, même s'il ne tourne plus au build.
 
 ## API (mécanisme 1b, fluente)
 
@@ -82,25 +85,25 @@ void buildUi(ecb::Ui& ui, app::AppRuntime& rt, app::DeviceState& state) {
 **Nouveau (lib) :**
 - `EspControlUi.h` : l'interface `Ui` + les types de builder (`ResourceRef`, `SectionBuilder`, `WidgetBuilder`, `ViewBuilder`, `NavBuilder`) — portable, sans Arduino.
 - `RuntimeUi` (ESP) : implémentation qui enregistre ressources + handlers dans `EspControl` (réutilise `ActionRegistry`/`ResourceTable`/le moteur existant).
-- `EmitterUi` (PC) : implémentation qui sérialise la structure en JSON (forme `tools/manifest`).
+- `EmitterUi` (PC) : implémentation qui construit l'objet manifeste, le **normalise** (voir module porté) et l'encode en protobuf via **nanopb**.
+- Module de **normalisation C++** portable (port de `tools/manifest/src/compiler`) : `StringTable`, `assignIds`, `resolveRefs`, `normalize` — logique déterministe partagée par l'émetteur. Vit dans la lib (réutilisable par d'autres émetteurs).
 
 **Nouveau (build/outillage) :**
-- `tools/emit_ui.py` (ou évolution de `embed_manifest.py`) : compile `device_ui.cpp` + `EmitterUi` + un `main()` hôte avec g++, l'exécute pour produire le JSON, le passe au CLI TS (`compile` étendu pour accepter ce JSON) → `manifest_data.h` + `manifest_symbols.h`.
-- Extension du CLI `tools/manifest` : accepter une **source JSON** (l'objet manifeste déjà formé) en plus du YAML — réutilise `normalize()`+`encodeManifest()`.
+- `tools/emit_ui.py` (remplace `embed_manifest.py`) : compile `device_ui.cpp` + `EmitterUi` + normalisation + nanopb + un `main()` hôte avec g++, l'exécute → **émet directement** `manifest_data.h` + `manifest_symbols.h`. **Aucun appel Node.**
 
 **Modifié (app exemple) :**
-- `manifest.yaml` → `device_ui.cpp` (migration, avec preuve d'égalité protobuf).
+- `manifest.yaml` → `device_ui.cpp` (migration, avec preuve d'égalité protobuf byte-à-byte).
 - `AppRuntime.h` rendu portable ; `DeviceActions` fusionné dans `buildUi` (les handlers y vivent).
-- `platformio.ini` : `extra_scripts` pointe vers le nouvel émetteur.
+- `platformio.ini` : `extra_scripts` pointe vers `emit_ui.py` (et n'invoque plus le CLI TS).
 
 **Inchangé :**
-- Tout `tools/manifest/src/compiler` (`normalize`, `encodeProto`, …) — réutilisé tel quel.
+- `tools/manifest` (TS) — **conservé comme référence d'or des tests** (oracle byte-à-byte), mais **plus invoqué au build**. Sa logique de normalisation est portée (pas supprimée) en C++.
 - L'app mobile — **zéro changement** (protobuf identique).
-- Le firmware lib (transports, ProtocolEngine, auth) — inchangé.
+- Le firmware lib (transports, ProtocolEngine, auth) — inchangé. nanopb (`manifest.pb.c/.h`) — réutilisé pour l'encodage côté émetteur ET côté ESP.
 
 ## Stratégie de test
 
-- **Spike (Go/No-Go, première tâche du plan)** : un `EmitterUi` minimal sur 2-3 widgets → JSON → protobuf, et **comparaison byte-à-byte avec le protobuf produit par le YAML équivalent**. Prouve (i) que le mécanisme PC compile/exécute, (ii) que le format binaire est identique (tablette inchangée). Si l'égalité n'est pas atteignable proprement, STOP et réviser.
+- **Spike (Go/No-Go, première tâche du plan)** : un `EmitterUi` minimal + la normalisation portée + nanopb, compilé hôte par g++, sur 2-3 widgets → protobuf, et **comparaison byte-à-byte avec le protobuf produit par le YAML équivalent via le toolchain TS** (l'oracle). Prouve (i) que le mécanisme PC compile/exécute **sans Node**, (ii) que le format binaire est identique (tablette inchangée), (iii) que la string table/ids sont reproduits à l'identique. Si l'égalité n'est pas atteignable proprement, STOP — repli sur le TS au build.
 - **Émetteur** : tests sur PC — décrire une UI, émettre le JSON, comparer à un golden ; puis protobuf == golden YAML.
 - **RuntimeUi** : tests natifs (Unity) — `buildUi` avec un `EspControl`/transport factice enregistre les bonnes ressources/handlers ; un handler typé reçoit la bonne valeur ; l'affectation d'une ressource publie un delta.
 - **Migration** : le `device_ui.cpp` portant l'appareil actuel doit émettre un protobuf **byte-identique** à `manifest.yaml` (test de non-régression ; garantit la tablette inchangée).
@@ -108,20 +111,22 @@ void buildUi(ecb::Ui& ui, app::AppRuntime& rt, app::DeviceState& state) {
 
 ## Découpage d'implémentation (le plan détaillera)
 
-1. **Spike émetteur** (Go/No-Go) : `EmitterUi` minimal + chemin JSON→TS→protobuf + égalité byte-à-byte sur un sous-ensemble. Décision avant d'investir.
-2. **CLI TS** : accepter une source JSON (objet manifeste) en plus du YAML.
+1. **Spike émetteur** (Go/No-Go) : port minimal de `normalize`+`StringTable` en C++ + `EmitterUi` minimal + nanopb, compilé hôte par g++ (sans Node), sur 2-3 widgets → protobuf comparé **byte-à-byte** à l'oracle TS. Décision avant d'investir.
+2. **Port complet de la normalisation** C++ (`StringTable`, `assignIds`, `resolveRefs`, `normalize`) + tests unitaires natifs vs vecteurs dérivés du TS.
 3. **`EspControlUi.h`** : l'interface `Ui` + builders, portable, typage des handlers. Tests de forme.
-4. **`EmitterUi`** complet (tous les widgets/ressources/vues/navBar) + golden tests.
+4. **`EmitterUi`** complet (tous les widgets/ressources/vues/navBar) → normalise → nanopb ; golden tests byte-à-byte vs l'oracle TS sur des manifestes variés (les fixtures de `tools/manifest/tests`).
 5. **`RuntimeUi`** : enregistrement ressources (live/auto-publish) + handlers typés dans `EspControl`. Tests natifs.
 6. **Portabiliser `AppRuntime.h`** (sortir Arduino de l'en-tête) + stubs PC.
-7. **Build** : `tools/emit_ui.py` dans `extra_scripts` (compile+exécute l'émetteur, passe au CLI).
+7. **Build** : `tools/emit_ui.py` dans `extra_scripts` (compile+exécute l'émetteur C++, émet `manifest_data.h`/`manifest_symbols.h`) ; retirer l'appel Node. Vérifier qu'un build firmware **sans `pnpm install`** réussit.
 8. **Migration** de `manifest.yaml` → `device_ui.cpp` + preuve protobuf byte-identique + build esp32dev.
-9. **Vérif finale** : natif vert, esp32dev build, tablette non impactée (protobuf identique).
+9. **Vérif finale** : natif vert, esp32dev build SANS Node, tablette non impactée (protobuf identique).
 
 ## Risques / points durs (assumés)
 
 - **Le double build** (compiler une partie du firmware pour PC) est le gros morceau d'ingénierie ; isolé derrière le spike.
+- **L'égalité byte-à-byte** entre la normalisation C++ portée et le TS (surtout l'ordre de la string table) est la condition de "Node hors build". Le spike la prouve ; sinon repli sur le TS (Node reste requis au build, mais l'API C++ fluente est conservée).
 - **La portabilité d'`AppRuntime.h`** : si la logique métier est trop intriquée avec Arduino, la sortir peut demander un refactor. À mesurer tôt.
+- **Maintenance de deux normalisations** (C++ au build + TS comme oracle de test) : divergence possible à long terme ; les golden tests byte-à-byte sur les fixtures la détectent.
 - **Coexistence temporaire** : pendant la migration, garder `embed_manifest.py`/YAML opérationnel jusqu'à ce que `device_ui.cpp` prouve l'égalité, puis bascule.
 
 ## Hors périmètre (YAGNI)
@@ -129,7 +134,8 @@ void buildUi(ecb::Ui& ui, app::AppRuntime& rt, app::DeviceState& state) {
 - Changer le format protobuf ou l'app mobile.
 - A2 (construire le manifeste au boot) — écarté pour la perf.
 - constexpr-pur (1a) — écarté pour l'ergonomie.
-- Réémettre l'encodeur protobuf en C++ — on réutilise le toolchain TS.
+- Réécrire un encodeur protobuf à la main — non : on réutilise **nanopb** (déjà présent) ; seule la normalisation est portée en C++.
+- Supprimer le toolchain TS — non : il est conservé comme oracle de test (juste plus invoqué au build).
 - Un éditeur visuel d'UI.
 
 ## Contrat préservé
