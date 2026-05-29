@@ -59,6 +59,10 @@ public:
                  FrameSender sender);
 
   void handleFrame(FrameKind kind, const uint8_t* body, size_t len);
+
+  // Route subsequent outbound frames to this sender (the active transport).
+  void setSender(FrameSender sender);
+
   void sendManifest();
   void sendSnapshot();
   void sendDelta(uint32_t resourceId);

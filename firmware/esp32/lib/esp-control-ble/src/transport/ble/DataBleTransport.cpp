@@ -57,6 +57,12 @@ void ProtocolEngine::endSession(Session who) {
   reset();  // clears subscriptions/pending state
 }
 
+void ProtocolEngine::setSender(FrameSender sender) {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
+  _sender = sender;
+  xSemaphoreGive(_mutex);
+}
+
 void ProtocolEngine::handleAuthRequest() {
   uint8_t nonce[ECB_NONCE_SIZE];
   _auth.generateChallenge(nonce);

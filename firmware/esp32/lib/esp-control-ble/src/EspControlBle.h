@@ -7,6 +7,7 @@
 #include "protocol/manifest/ManifestStore.h"
 #include "transport/ble/DataBleTransport.h"   // ProtocolEngine
 #include "transport/ble/BleTransport.h"
+#include "transport/spp/SppTransport.h"
 
 class EspControl {
 public:
@@ -31,4 +32,5 @@ private:
   ecb::SubscriptionState  _subs;
   ecb::ProtocolEngine*    _engine = nullptr;
   BleTransport            _bleTransport;
+  ecb::SppTransport       _sppTransport;
 };

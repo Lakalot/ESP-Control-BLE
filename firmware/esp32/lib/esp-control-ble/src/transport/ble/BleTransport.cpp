@@ -81,6 +81,9 @@ void BleTransport::send(const uint8_t* data, size_t len) {
 void BleTransport::onData(const uint8_t* data, size_t len) {
   if (!_engine || len < 4) return;
   if (!_engine->beginSession(ecb::ProtocolEngine::Session::Ble)) return;  // another session active
+  _engine->setSender(ecb::FrameSender{this, [](void* c, const uint8_t* d, size_t n) {
+    static_cast<BleTransport*>(c)->send(d, n);
+  }});
   const ecb::FrameKind kind = (ecb::FrameKind)data[0];
   const uint16_t bodyLen = (uint16_t)((data[2] << 8) | data[3]);
   if ((size_t)(4 + bodyLen) > len) return;
@@ -88,7 +91,11 @@ void BleTransport::onData(const uint8_t* data, size_t len) {
 }
 
 void BleTransport::onConnect() {
-  if (_engine) _engine->beginSession(ecb::ProtocolEngine::Session::Ble);
+  if (_engine && _engine->beginSession(ecb::ProtocolEngine::Session::Ble)) {
+    _engine->setSender(ecb::FrameSender{this, [](void* c, const uint8_t* d, size_t n) {
+      static_cast<BleTransport*>(c)->send(d, n);
+    }});
+  }
 }
 
 void BleTransport::onDisconnect() {

@@ -44,6 +44,7 @@ void EspControl::publishDelta(uint32_t resourceId) {
 }
 
 void EspControl::tick() {
+  _sppTransport.poll();
   if (_engine) _engine->tick();
 }
 
@@ -60,5 +61,8 @@ void EspControl::begin(const uint8_t* manifestData, uint16_t manifestLen) {
   _bleTransport.attach(_engine, manifestData, manifestLen);
   _bleTransport.begin(_deviceName);
 
-  ECB_LOGF("[ECB] started (BLE) %s\n", _deviceName);
+  _sppTransport.attach(_engine);
+  _sppTransport.begin(_deviceName);
+
+  ECB_LOGF("[ECB] started (BLE+SPP) %s\n", _deviceName);
 }
