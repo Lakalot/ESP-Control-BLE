@@ -6,9 +6,21 @@
 
 namespace ecb {
 
+// nanopb does NOT set CommonValue.which_kind for oneof members that are
+// CALLBACK fields (string_value / enum_value): the decoded data is delivered
+// to this callback instead of being stored in the union, so the discriminator
+// stays at its zero-init value. We therefore record here that a string/enum
+// value actually arrived, and dispatch() relies on this flag rather than on
+// which_kind for those two cases.
+struct StringDecodeCtx {
+  char* out;
+  bool  received;
+};
+
 static bool decodeStringValue(pb_istream_t* stream, const pb_field_t* /*field*/, void** arg) {
-  char* out = static_cast<char*>(*arg);
-  if (!out) return false;
+  StringDecodeCtx* ctx = static_cast<StringDecodeCtx*>(*arg);
+  if (!ctx || !ctx->out) return false;
+  char* out = ctx->out;
   const size_t n = stream->bytes_left < 64 ? stream->bytes_left : 64;
   if (!pb_read(stream, reinterpret_cast<pb_byte_t*>(out), n)) return false;
   out[n] = '\0';
@@ -19,6 +31,7 @@ static bool decodeStringValue(pb_istream_t* stream, const pb_field_t* /*field*/,
       if (!pb_read(stream, scratch, chunk)) return false;
     }
   }
+  ctx->received = true;
   return true;
 }
 
@@ -38,10 +51,13 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
                              uint8_t* out, size_t outCap, size_t& outLen) {
   esp_control_InvokeAction req = esp_control_InvokeAction_init_zero;
   char decodedString[65] = {0};
+  StringDecodeCtx strCtx{decodedString, false};
+  // string_value and enum_value share the same oneof union; the callback/arg
+  // assignment targets the same memory, so a single context covers both.
   req.payload.kind.string_value.funcs.decode = decodeStringValue;
-  req.payload.kind.string_value.arg = decodedString;
+  req.payload.kind.string_value.arg = &strCtx;
   req.payload.kind.enum_value.funcs.decode = decodeStringValue;
-  req.payload.kind.enum_value.arg = decodedString;
+  req.payload.kind.enum_value.arg = &strCtx;
   pb_istream_t is = pb_istream_from_buffer(in, inLen);
   if (!pb_decode(&is, esp_control_InvokeAction_fields, &req)) {
     return encodeReply(0, ActionStatus::BadPayload, nullptr, 0, out, outCap, outLen);
@@ -64,30 +80,32 @@ bool ActionDecoder::dispatch(const ActionRegistry& reg,
   char     strVal[65] = {0};
 
   if (req.has_payload) {
-    switch (req.payload.which_kind) {
-      case esp_control_CommonValue_bool_value_tag:
-        valueKind = ActionValueKind::Bool;
-        boolVal   = req.payload.kind.bool_value;
-        break;
-      case esp_control_CommonValue_int_value_tag:
-        valueKind = ActionValueKind::Int;
-        intVal    = req.payload.kind.int_value;
-        break;
-      case esp_control_CommonValue_uint_value_tag:
-        valueKind = ActionValueKind::Uint;
-        uintVal   = req.payload.kind.uint_value;
-        break;
-      case esp_control_CommonValue_float_value_tag:
-        valueKind = ActionValueKind::Float;
-        floatVal  = req.payload.kind.float_value;
-        break;
-      case esp_control_CommonValue_string_value_tag:
-      case esp_control_CommonValue_enum_value_tag:
-        valueKind = ActionValueKind::String;
-        strncpy(strVal, decodedString, sizeof(strVal) - 1);
-        strVal[sizeof(strVal) - 1] = '\0';
-        break;
-      default: break;
+    // String/enum oneof members are CALLBACK fields: nanopb leaves which_kind
+    // unset for them, so detect them via the callback's received flag first.
+    if (strCtx.received) {
+      valueKind = ActionValueKind::String;
+      strncpy(strVal, decodedString, sizeof(strVal) - 1);
+      strVal[sizeof(strVal) - 1] = '\0';
+    } else {
+      switch (req.payload.which_kind) {
+        case esp_control_CommonValue_bool_value_tag:
+          valueKind = ActionValueKind::Bool;
+          boolVal   = req.payload.kind.bool_value;
+          break;
+        case esp_control_CommonValue_int_value_tag:
+          valueKind = ActionValueKind::Int;
+          intVal    = req.payload.kind.int_value;
+          break;
+        case esp_control_CommonValue_uint_value_tag:
+          valueKind = ActionValueKind::Uint;
+          uintVal   = req.payload.kind.uint_value;
+          break;
+        case esp_control_CommonValue_float_value_tag:
+          valueKind = ActionValueKind::Float;
+          floatVal  = req.payload.kind.float_value;
+          break;
+        default: break;
+      }
     }
   }
 

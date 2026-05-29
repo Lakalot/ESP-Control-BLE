@@ -2,12 +2,17 @@ import { Writer, Reader } from 'protobufjs/minimal';
 import type { ManifestRuntime, InvokeResult, SnapshotMap, SubscriptionListener, Unsubscribe, SubscriptionUpdate } from './ManifestRuntime';
 import { BleFrameStream } from './bleFrameStream';
 import { encodeFrame, FrameKind } from './frameCodec';
+import { computeAuthResponse } from './auth';
 import * as root from '../generated/manifest.pbjs';
 const manifest = (root as any).esp_control;
 import type { FixtureBleDevice } from './BleRuntime.fixture';
 import { RuntimeManifest } from '../model/runtime.types';
 import { decodeManifest } from '../decode/decodeManifest';
 import type { ResourceValue, ResourceState } from '../model/snapshot.types';
+
+export class AuthError extends Error {
+  constructor(message: string) { super(message); this.name = 'AuthError'; }
+}
 
 function decodeCommonValue(cv: any): ResourceValue {
   switch (cv.kind) {
@@ -37,14 +42,119 @@ export class BleRuntime implements ManifestRuntime {
   private manifestTotalLen = 0;
   private manifestResolve: ((bytes: Uint8Array) => void) | null = null;
   private manifestReject: ((err: Error) => void) | null = null;
+  private manifestTimer: ReturnType<typeof setTimeout> | null = null;
   private bufferedManifest: Uint8Array | null = null;
+  private pin: string | null = null;
+  private authResolve: (() => void) | null = null;
+  private authReject: ((err: Error) => void) | null = null;
+  private authTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private device: FixtureBleDevice) {
     device.onNotify((chunk) => this.stream.feed(chunk));
     this.stream.onFrame((frame) => this.dispatchFrame(frame.kind, frame.body));
+    // A transport drop must clear any partial manifest transfer so a later
+    // reconnect starts from a clean slate (no stale chunks corrupting the next
+    // assembly).
+    device.onDisconnected(() => this.reset());
+  }
+
+  /**
+   * Subscribe to UNINTENTIONAL transport drops. Thin passthrough to the device
+   * so the owning screen can forward drops to the connection machine without
+   * reaching into the underlying RealBleDevice.
+   */
+  onDisconnected(cb: () => void): () => void {
+    return this.device.onDisconnected(cb);
+  }
+
+  /**
+   * Tear down the GATT connection. Thin passthrough so the screen can free the
+   * firmware's exclusive session on unmount. The fixture device has no real
+   * transport (disconnect is optional on the interface), so the `?.()` guard
+   * resolves to a no-op there; RealBleDevice closes the link.
+   */
+  disconnect(): Promise<void> {
+    return this.device.disconnect?.() ?? Promise.resolve();
+  }
+
+  /**
+   * Clears in-flight manifest-transfer state. Called on disconnect so a partial
+   * (un-EOF'd) transfer is discarded and any pending loadManifest() rejects
+   * rather than hanging forever.
+   */
+  reset(): void {
+    this.manifestChunks = [];
+    this.manifestTotalLen = 0;
+    const reject = this.manifestReject;
+    this.clearManifestWaiters();
+    reject?.(new Error('disconnected'));
+  }
+
+  /** Clears the manifest-transfer resolvers and any pending timeout timer. */
+  private clearManifestWaiters() {
+    if (this.manifestTimer) { clearTimeout(this.manifestTimer); this.manifestTimer = null; }
+    this.manifestResolve = null;
+    this.manifestReject = null;
+  }
+
+  /**
+   * Run the in-band auth handshake: send AuthRequest, answer the AuthChallenge
+   * with SHA-256(pin||nonce)[:16], resolve on AuthResult OK / reject on FAIL.
+   */
+  authenticate(pin: string, timeoutMs = 5000): Promise<void> {
+    // Abort any handshake still in flight before starting a new one, so an
+    // earlier timer can never clobber this call's resolvers.
+    if (this.authReject) {
+      const prevReject = this.authReject;
+      this.clearAuthWaiters();
+      prevReject(new AuthError('auth superseded by a new attempt'));
+    }
+    this.pin = pin;
+    return new Promise<void>((resolve, reject) => {
+      this.authResolve = resolve;
+      this.authReject = reject;
+      this.authTimer = setTimeout(() => {
+        this.clearAuthWaiters();
+        reject(new AuthError('auth timed out'));
+      }, timeoutMs);
+      // Empty-body AuthRequest kicks off the handshake.
+      this.device.write(encodeFrame(FrameKind.AuthRequest, 0, new Uint8Array(0)))
+        .catch((err) => { this.clearAuthWaiters(); reject(new AuthError(`auth send failed: ${err?.message ?? err}`)); });
+    });
+  }
+
+  private clearAuthWaiters() {
+    if (this.authTimer) { clearTimeout(this.authTimer); this.authTimer = null; }
+    this.authResolve = null;
+    this.authReject = null;
+    this.pin = null;
+  }
+
+  private async onAuthChallenge(nonce: Uint8Array) {
+    if (!this.pin || !this.authReject) return; // no handshake in progress
+    try {
+      const hash = await computeAuthResponse(this.pin, nonce);
+      await this.device.write(encodeFrame(FrameKind.AuthResponse, 0, hash));
+    } catch (err) {
+      const reject = this.authReject;
+      this.clearAuthWaiters();
+      reject?.(new AuthError(`auth response failed: ${(err as Error)?.message ?? err}`));
+    }
+  }
+
+  private onAuthResult(body: Uint8Array) {
+    const ok = body.length >= 1 && body[0] === 0x01;
+    const resolve = this.authResolve;
+    const reject = this.authReject;
+    this.clearAuthWaiters();
+    if (ok) resolve?.();
+    else reject?.(new AuthError('auth rejected (wrong PIN)'));
   }
 
   private dispatchFrame(kind: FrameKind, body: Uint8Array) {
+    if (kind === FrameKind.AuthChallenge) { void this.onAuthChallenge(body); return; }
+    if (kind === FrameKind.AuthResult) { this.onAuthResult(body); return; }
+
     if (kind === FrameKind.ManifestChunk || kind === FrameKind.ManifestEof) {
       console.log('[BleRuntime] manifest frame kind=', kind, 'bodyLen=', body.length);
     }
@@ -109,9 +219,9 @@ export class BleRuntime implements ManifestRuntime {
       this.manifestTotalLen = 0;
 
       if (body.length < 8) {
-        this.manifestReject?.(new Error('Manifest EOF frame too small'));
-        this.manifestResolve = null;
-        this.manifestReject = null;
+        const reject = this.manifestReject;
+        this.clearManifestWaiters();
+        reject?.(new Error('Manifest EOF frame too small'));
         return;
       }
       const view = new DataView(body.buffer, body.byteOffset, body.byteLength);
@@ -119,21 +229,21 @@ export class BleRuntime implements ManifestRuntime {
       const expectedCrc = view.getUint32(4, false);
 
       if (fullManifest.length !== expectedSize) {
-        this.manifestReject?.(new Error(`Manifest size mismatch: ${fullManifest.length} vs ${expectedSize}`));
-        this.manifestResolve = null;
-        this.manifestReject = null;
+        const reject = this.manifestReject;
+        this.clearManifestWaiters();
+        reject?.(new Error(`Manifest size mismatch: ${fullManifest.length} vs ${expectedSize}`));
         return;
       }
       if (this.crc32(fullManifest) !== expectedCrc) {
-        this.manifestReject?.(new Error('Manifest CRC mismatch'));
-        this.manifestResolve = null;
-        this.manifestReject = null;
+        const reject = this.manifestReject;
+        this.clearManifestWaiters();
+        reject?.(new Error('Manifest CRC mismatch'));
         return;
       }
       if (this.manifestResolve) {
-        this.manifestResolve(fullManifest);
-        this.manifestResolve = null;
-        this.manifestReject = null;
+        const resolve = this.manifestResolve;
+        this.clearManifestWaiters();
+        resolve(fullManifest);
       } else {
         this.bufferedManifest = fullManifest;
       }
@@ -148,10 +258,10 @@ export class BleRuntime implements ManifestRuntime {
     this.listeners.get(slug)?.forEach((l) => l(update));
   }
 
-  async loadManifest(): Promise<RuntimeManifest> {
+  async loadManifest(timeoutMs = 10000): Promise<RuntimeManifest> {
     if (this.manifest) return this.manifest;
     console.log('[BleRuntime] loadManifest: waiting for manifest transfer');
-    const bytes = await this.readManifestTransfer();
+    const bytes = await this.readManifestTransfer(timeoutMs);
     console.log('[BleRuntime] loadManifest: got', bytes.length, 'bytes, decoding...');
     this.manifest = decodeManifest(bytes);
     console.log('[BleRuntime] loadManifest: decoded OK, resources=', this.manifest.resources.size, 'actions=', this.manifest.actions.size);
@@ -184,7 +294,7 @@ export class BleRuntime implements ManifestRuntime {
     });
   }
 
-  private async readManifestTransfer(): Promise<Uint8Array> {
+  private async readManifestTransfer(timeoutMs = 10000): Promise<Uint8Array> {
     if (this.bufferedManifest) {
       console.log('[BleRuntime] readManifestTransfer: using buffered manifest', this.bufferedManifest.length);
       const cached = this.bufferedManifest;
@@ -200,6 +310,13 @@ export class BleRuntime implements ManifestRuntime {
       console.log('[BleRuntime] readManifestTransfer: awaiting live manifest frames');
       this.manifestResolve = resolve;
       this.manifestReject = reject;
+      // Guard against a transfer that never completes (no EOF / silent peer).
+      // The timer is cleared on any settle path via clearManifestWaiters().
+      this.manifestTimer = setTimeout(() => {
+        const rej = this.manifestReject;
+        this.clearManifestWaiters();
+        rej?.(new Error('manifest transfer timed out'));
+      }, timeoutMs);
     });
   }
 

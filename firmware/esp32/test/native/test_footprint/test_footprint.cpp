@@ -21,10 +21,10 @@ static void test_runtime_state_fits_in_budget() {
 
 static void test_transport_sender_and_instance_stay_bounded() {
   TEST_ASSERT_LESS_OR_EQUAL(sizeof(void*) * 2u, sizeof(FrameSender));
-  TEST_ASSERT_LESS_OR_EQUAL(96u, sizeof(DataBleTransport));
-  TEST_ASSERT_EQUAL_UINT32(DataFrameCodec::kHeaderSize + kMaxFrameBody, DataBleTransport::kFrameBufferSize);
-  TEST_ASSERT_LESS_OR_EQUAL(4u + 256u, DataBleTransport::kInvokeResultBufferSize);
-  TEST_ASSERT_LESS_OR_EQUAL(4u + 128u, DataBleTransport::kDeltaFrameBufferSize);
+  TEST_ASSERT_LESS_OR_EQUAL(96u, sizeof(ProtocolEngine));
+  TEST_ASSERT_EQUAL_UINT32(DataFrameCodec::kHeaderSize + kMaxFrameBody, ProtocolEngine::kFrameBufferSize);
+  TEST_ASSERT_LESS_OR_EQUAL(4u + 256u, ProtocolEngine::kInvokeResultBufferSize);
+  TEST_ASSERT_LESS_OR_EQUAL(4u + 128u, ProtocolEngine::kDeltaFrameBufferSize);
 }
 
 int main(int, char**) {

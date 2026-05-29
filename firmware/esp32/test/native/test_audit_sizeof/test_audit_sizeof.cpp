@@ -20,7 +20,6 @@
 #include "protocol/subscriptions/SubscriptionState.h"
 #include "protocol/manifest/ManifestStore.h"
 #include "protocol/auth/AuthHandler.h"
-#include "protocol/commands/CommandRegistry.h"
 #include "transport/frame/FrameCodec.h"
 #include "transport/frame/DataFrameCodec.h"
 
@@ -40,8 +39,6 @@ static void test_audit_sizeof_dump(void) {
     print_size("ParsedFrame (global)",     sizeof(ParsedFrame));
     print_size("ecb::DataFrameCodec",      sizeof(ecb::DataFrameCodec));
     print_size("AuthHandler",              sizeof(AuthHandler));
-    print_size("CmdContext",               sizeof(CmdContext));
-    print_size("CommandRegistry",          sizeof(CommandRegistry));
     print_size("ecb::ResourceValue",       sizeof(ecb::ResourceValue));
     print_size("ecb::ResourceEntry",       sizeof(ecb::ResourceEntry));
     print_size("ecb::ResourceTable",       sizeof(ecb::ResourceTable));
@@ -127,18 +124,6 @@ static void test_locked_ActionRegistry_dominates_ram(void) {
         "ActionRegistry grew above 2200 bytes - audit headline needs refresh");
 }
 
-static void test_locked_CommandRegistry(void) {
-    // 32 × Entry, Entry = uint8_t + fn-pointer + bool with padding.
-    // On 64-bit host: 8-byte fn-pointer => Entry = 16, total = 512.
-    // On 32-bit ESP32: 4-byte fn-pointer => Entry = 12, total = 384.
-    const std::size_t observed = sizeof(CommandRegistry);
-    print_size("(footprint) CommandRegistry", observed);
-    TEST_ASSERT_GREATER_THAN_size_t_MESSAGE(300, observed,
-        "CommandRegistry shrank unexpectedly");
-    TEST_ASSERT_LESS_THAN_size_t_MESSAGE(700, observed,
-        "CommandRegistry grew unexpectedly");
-}
-
 static void test_locked_ActionContext_has_stringValue_buffer(void) {
     // ActionContext is the H1 finding: contains char stringValue[65].
     // Sanity-check: at least 65 + a few pointers + correlationId.
@@ -167,12 +152,12 @@ static void test_locked_ManifestStore_is_a_borrow(void) {
 }
 
 static void test_locked_AuthHandler(void) {
-    // uint8_t nonce[4] + const char* pin + bool authenticated
-    // On 64-bit host: 4 + 8 + 1 + padding = 16.
-    // On 32-bit ESP32: 4 + 4 + 1 + padding = 12.
+    // uint8_t nonce[ECB_NONCE_SIZE=16] + const char* pin + bool authenticated
+    // On 64-bit host: 16 + 8 + 1 + padding = 32 (so the bound below is 40).
+    // On 32-bit ESP32: 16 + 4 + 1 + padding = 24.
     const std::size_t observed = sizeof(AuthHandler);
     print_size("AuthHandler", observed);
-    TEST_ASSERT_LESS_THAN_size_t_MESSAGE(32, observed,
+    TEST_ASSERT_LESS_THAN_size_t_MESSAGE(48, observed,
         "AuthHandler grew - did mbedtls context become persistent?");
 }
 
@@ -186,7 +171,6 @@ int main(int /*argc*/, char** /*argv*/) {
     RUN_TEST(test_locked_SubscriptionState);
     RUN_TEST(test_locked_ResourceTable_dominates_ram);
     RUN_TEST(test_locked_ActionRegistry_dominates_ram);
-    RUN_TEST(test_locked_CommandRegistry);
     RUN_TEST(test_locked_ActionContext_has_stringValue_buffer);
     RUN_TEST(test_locked_ResourceValue_has_string_and_bytes_buffers);
     RUN_TEST(test_locked_ManifestStore_is_a_borrow);

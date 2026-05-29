@@ -29,14 +29,29 @@ export class RealBleDevice implements FixtureBleDevice {
   private device: Device | null = null;
   private notifyListeners: Array<(chunk: Uint8Array) => void> = [];
   private notifySubscription: { remove(): void } | null = null;
+  private disconnectListeners: Array<() => void> = [];
+  private disconnectSubscription: { remove(): void } | null = null;
+  /**
+   * True only while an intentional disconnect() is in progress.
+   * cancelConnection() also fires onDisconnected, so this flag lets the handler
+   * suppress the self-triggered notification (which would otherwise spuriously
+   * kick off an auto-reconnect).
+   */
+  private intentional = false;
 
   constructor(private readonly deviceId: string) {}
 
   async connect(): Promise<void> {
+    this.intentional = false;
     const manager = bleManagerService.getPlxManager();
     const device = await manager.connectToDevice(this.deviceId, { requestMTU: 512 });
     await device.discoverAllServicesAndCharacteristics();
     this.device = device;
+
+    this.disconnectSubscription = device.onDisconnected(() => {
+      if (this.intentional) return;
+      for (const l of this.disconnectListeners) l();
+    });
 
     this.notifySubscription = device.monitorCharacteristicForService(
       ECB_DATA_SERVICE_UUID,
@@ -66,13 +81,26 @@ export class RealBleDevice implements FixtureBleDevice {
     };
   }
 
+  onDisconnected(cb: () => void): () => void {
+    this.disconnectListeners.push(cb);
+    return () => {
+      this.disconnectListeners = this.disconnectListeners.filter((l) => l !== cb);
+    };
+  }
+
   /** Not used in production — present to satisfy FixtureBleDevice interface. */
   queueIncoming(_chunk: Uint8Array): void {}
 
   async disconnect(): Promise<void> {
+    // Mark before cancelConnection so the onDisconnected handler treats the
+    // resulting event as intentional and does not notify listeners.
+    this.intentional = true;
     this.notifySubscription?.remove();
     this.notifySubscription = null;
     this.notifyListeners = [];
+    this.disconnectSubscription?.remove();
+    this.disconnectSubscription = null;
+    this.disconnectListeners = [];
     if (this.device) {
       try {
         await this.device.cancelConnection();

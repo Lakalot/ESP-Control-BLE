@@ -4,13 +4,11 @@
 
 #define ECB_SERVICE_UUID       "feccc3c2-7a95-4c26-91e6-f86158095207"
 #define ECB_MANIFEST_CHAR_UUID "f99e14e3-b299-4545-8caa-6bc5adf3fe95"
-#define ECB_CMD_CHAR_UUID      "8bf0baf5-fdba-4b82-99c6-6ae9e9c83952"
 
-// Data transport still uses distinct command and data characteristics on the
-// shared service UUID, but the protocol constants now live in one header.
+// The transport exposes two characteristics on the service UUID: a read-only
+// manifest characteristic (discovery) and a write/notify data characteristic
+// that carries the auth handshake and all protocol frames.
 #define ECB_DATA_SERVICE_UUID ECB_SERVICE_UUID
-#define ECB_DATA_CMD_CHAR_UUID ECB_CMD_CHAR_UUID
-#define ECB_DATA_NOTIFY_CHAR_UUID ECB_MANIFEST_CHAR_UUID
 #define ECB_DATA_DATA_CHAR_UUID "fac1a3ac-23e4-4dc0-b78a-0722bea726e5"
 
 #define ECB_AUTH_CHALLENGE  0xF0
@@ -91,8 +89,8 @@
 #define ECB_MAX_OPTIONS     16
 #define ECB_MAX_NODE_OPTIONS 8
 #define ECB_MAX_PAYLOAD     64
-#define ECB_NONCE_SIZE       4
-#define ECB_HASH_SIZE        4
+#define ECB_NONCE_SIZE      16
+#define ECB_HASH_SIZE       16
 
 namespace ecb {
 
@@ -111,6 +109,10 @@ enum class FrameKind : uint8_t {
   Unsubscribe   = 0x31,
   Ping          = 0x32,
   Pong          = 0x33,
+  AuthRequest   = 0x40,
+  AuthChallenge = 0x41,
+  AuthResponse  = 0x42,
+  AuthResult    = 0x43,
 };
 
 struct FrameHeader {

@@ -26,14 +26,63 @@
 
 namespace ecb {
 
-DataBleTransport::DataBleTransport(const ManifestStore& s, ResourceTable& t,
+ProtocolEngine::ProtocolEngine(const ManifestStore& s, ResourceTable& t,
                                SubscriptionState& su, const ActionRegistry& r,
-                               FrameSender sender)
-  : _store(s), _table(t), _subs(su), _registry(r), _sender(sender) {
+                               AuthHandler& auth, FrameSender sender)
+  : _store(s), _table(t), _subs(su), _registry(r), _auth(auth), _sender(sender) {
     _mutex = xSemaphoreCreateMutex();
+    if (_mutex == nullptr) {
+      // Allocation only fails on heap exhaustion at boot. Without the mutex
+      // every take/give silently no-ops and cross-task access is unprotected,
+      // so surface it loudly rather than running races undiagnosed.
+      ECB_LOGF("[ECB DATA] FATAL: mutex allocation failed\n");
+    }
 }
 
-bool DataBleTransport::sendEncodedFrame(FrameKind kind, uint8_t flags,
+bool ProtocolEngine::beginSession(Session who) {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
+  bool ok = (_activeSession == Session::None || _activeSession == who);
+  if (ok) _activeSession = who;
+  xSemaphoreGive(_mutex);
+  return ok;
+}
+
+void ProtocolEngine::endSession(Session who) {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
+  if (_activeSession == who) {
+    _activeSession = Session::None;
+    _auth.reset();
+  }
+  xSemaphoreGive(_mutex);
+  reset();  // clears subscriptions/pending state
+}
+
+void ProtocolEngine::setSender(FrameSender sender) {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
+  _sender = sender;
+  xSemaphoreGive(_mutex);
+}
+
+void ProtocolEngine::handleAuthRequest() {
+  uint8_t nonce[ECB_NONCE_SIZE];
+  _auth.generateChallenge(nonce);
+  sendFrame(FrameKind::AuthChallenge, 0, nonce, ECB_NONCE_SIZE);
+}
+
+void ProtocolEngine::handleAuthResponse(const uint8_t* body, size_t len) {
+  bool ok = (len >= ECB_HASH_SIZE) && _auth.verifyHash(body);
+  uint8_t result = ok ? 0x01 : 0x00;
+  sendFrame(FrameKind::AuthResult, 0, &result, 1);
+  if (ok) {
+    // Queue the manifest transfer directly (we already hold the mutex here;
+    // sendManifest() would re-take it and FreeRTOS mutexes are non-recursive).
+    // Replaces the old NimBLE send-on-subscribe trigger, lost in the Bluedroid rewrite.
+    _manifestOffset = 0;
+    _manifestPending = true;
+  }
+}
+
+bool ProtocolEngine::sendEncodedFrame(FrameKind kind, uint8_t flags,
                                       uint8_t* frame, size_t cap, size_t bodyLen) {
   if (!_sender || bodyLen > kMaxFrameBody) return false;
   if (cap < DataFrameCodec::kHeaderSize + bodyLen) return false;
@@ -46,7 +95,7 @@ bool DataBleTransport::sendEncodedFrame(FrameKind kind, uint8_t flags,
   return true;
 }
 
-void DataBleTransport::sendFrame(FrameKind kind, uint8_t flags, const uint8_t* body, size_t len) {
+void ProtocolEngine::sendFrame(FrameKind kind, uint8_t flags, const uint8_t* body, size_t len) {
   if (!_sender) return;
   uint8_t buf[kFrameBufferSize];
   if (len > kMaxFrameBody) return;
@@ -64,7 +113,26 @@ static bool decodeResourceIds(pb_istream_t* stream, const pb_field_t* /*field*/,
   return true;
 }
 
-void DataBleTransport::handleFrame(FrameKind kind, const uint8_t* body, size_t len) {
+void ProtocolEngine::handleFrame(FrameKind kind, const uint8_t* body, size_t len) {
+  // Auth handshake frames are always processed.
+  if (kind == FrameKind::AuthRequest) {
+    xSemaphoreTake(_mutex, portMAX_DELAY);
+    handleAuthRequest();
+    xSemaphoreGive(_mutex);
+    return;
+  }
+  if (kind == FrameKind::AuthResponse) {
+    xSemaphoreTake(_mutex, portMAX_DELAY);
+    handleAuthResponse(body, len);
+    xSemaphoreGive(_mutex);
+    return;
+  }
+
+  // Everything else requires authentication.
+  if (!_auth.isAuthenticated()) {
+    return;
+  }
+
   xSemaphoreTake(_mutex, portMAX_DELAY);
   switch (kind) {
     case FrameKind::Ping:
@@ -111,14 +179,14 @@ void DataBleTransport::handleFrame(FrameKind kind, const uint8_t* body, size_t l
   xSemaphoreGive(_mutex);
 }
 
-void DataBleTransport::sendManifest() {
+void ProtocolEngine::sendManifest() {
   xSemaphoreTake(_mutex, portMAX_DELAY);
   _manifestOffset = 0;
   _manifestPending = true;
   xSemaphoreGive(_mutex);
 }
 
-void DataBleTransport::sendSnapshot() {
+void ProtocolEngine::sendSnapshot() {
   uint8_t buf[kFrameBufferSize];
   size_t written = 0;
   if (SnapshotEncoder::encode(_table,
@@ -129,7 +197,7 @@ void DataBleTransport::sendSnapshot() {
   }
 }
 
-void DataBleTransport::sendDelta(uint32_t resourceId) {
+void ProtocolEngine::sendDelta(uint32_t resourceId) {
   xSemaphoreTake(_mutex, portMAX_DELAY);
   const int watchingIndex = _subs.indexOf(resourceId);
   ECB_DATA_DEBUGF("[DATA] sendDelta id=%u watching=%d subsCount=%u\n",
@@ -141,7 +209,7 @@ void DataBleTransport::sendDelta(uint32_t resourceId) {
   xSemaphoreGive(_mutex);
 }
 
-void DataBleTransport::sendDeltaInternal(uint32_t resourceId) {
+void ProtocolEngine::sendDeltaInternal(uint32_t resourceId) {
   ResourceValue v{};
   if (!_table.get(resourceId, v)) {
     ECB_DATA_DEBUGF("[DATA] sendDeltaInternal id=%u: not found in table\n", resourceId);
@@ -161,7 +229,7 @@ void DataBleTransport::sendDeltaInternal(uint32_t resourceId) {
   }
 }
 
-void DataBleTransport::reset() {
+void ProtocolEngine::reset() {
   xSemaphoreTake(_mutex, portMAX_DELAY);
   _subs.clear();
   _snapshotPending = false;
@@ -171,7 +239,7 @@ void DataBleTransport::reset() {
   xSemaphoreGive(_mutex);
 }
 
-void DataBleTransport::tick() {
+void ProtocolEngine::tick() {
   xSemaphoreTake(_mutex, portMAX_DELAY);
   if (_manifestPending) {
     const uint8_t* data = _store.bytes();

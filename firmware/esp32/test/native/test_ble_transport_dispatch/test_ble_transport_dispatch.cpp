@@ -8,6 +8,7 @@
 #include "protocol/subscriptions/SubscriptionState.h"
 #include "protocol/resources/ResourceTable.h"
 #include "protocol/manifest/ManifestStore.h"
+#include "protocol/auth/AuthHandler.h"
 #include "nanopb/manifest.pb.h"
 
 using namespace ecb;
@@ -25,6 +26,27 @@ static void fakeSender(void*, const uint8_t* frame, size_t len) {
   g_lastFrameLen = len > sizeof(g_lastFrame) ? sizeof(g_lastFrame) : len;
   if (g_lastFrameLen > 0) memcpy(g_lastFrame, frame, g_lastFrameLen);
   if (len > 0) g_lastFrameKind = frame[0];
+}
+
+// Drives the in-band auth handshake so subsequent protocol frames are honored.
+// Drains the manifest that is automatically queued on successful auth (new
+// behavior: firmware pushes the manifest immediately after AuthResult OK), then
+// clears the capture counters so tests assert on frames produced AFTER auth only.
+static void authenticate(ProtocolEngine& transport, AuthHandler& auth) {
+  transport.handleFrame(FrameKind::AuthRequest, nullptr, 0);
+  uint8_t resp[ECB_HASH_SIZE];
+  auth.computeHash(resp);
+  transport.handleFrame(FrameKind::AuthResponse, resp, ECB_HASH_SIZE);
+  // Drain all automatically-queued manifest chunks and the EOF frame.
+  while (true) {
+    size_t before = g_sentFrames;
+    transport.tick();
+    if (g_sentFrames == before) break; // nothing more pending
+    if (g_lastFrameKind == static_cast<uint8_t>(FrameKind::ManifestEof)) break;
+  }
+  g_sentFrames = 0;
+  g_lastFrameKind = 0;
+  g_lastFrameLen = 0;
 }
 
 static uint32_t decodeDeltaResourceId(const uint8_t* frame, size_t len) {
@@ -46,7 +68,10 @@ static void test_dispatch_subscribe_marks_subscription() {
   ResourceTable table;
   SubscriptionState subs;
   ActionRegistry reg;
-  DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});
+  AuthHandler auth;
+  auth.setPin("1234");
+  ProtocolEngine transport(store, table, subs, reg, auth, FrameSender{nullptr, fakeSender});
+  authenticate(transport, auth);
   uint8_t body[8] = {0x08, 0x0A};  // varint field 1 (resource_ids) value 10
   transport.handleFrame(FrameKind::Subscribe, body, sizeof(body));
   TEST_ASSERT_TRUE(subs.isWatching(10));
@@ -61,7 +86,10 @@ static void test_dispatch_ping_emits_pong() {
   ResourceTable table;
   SubscriptionState subs;
   ActionRegistry reg;
-  DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});
+  AuthHandler auth;
+  auth.setPin("1234");
+  ProtocolEngine transport(store, table, subs, reg, auth, FrameSender{nullptr, fakeSender});
+  authenticate(transport, auth);
   transport.handleFrame(FrameKind::Ping, nullptr, 0);
   TEST_ASSERT_EQUAL(1u, g_sentFrames);
   TEST_ASSERT_EQUAL(static_cast<uint8_t>(FrameKind::Pong), g_lastFrameKind);
@@ -80,7 +108,10 @@ static void test_send_delta_preserves_full_resource_id() {
   SubscriptionState subs;
   subs.add(65);
   ActionRegistry reg;
-  DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});
+  AuthHandler auth;
+  auth.setPin("1234");
+  ProtocolEngine transport(store, table, subs, reg, auth, FrameSender{nullptr, fakeSender});
+  authenticate(transport, auth);
 
   transport.sendDelta(65);
   transport.tick();
@@ -102,7 +133,10 @@ static void test_send_manifest_is_chunked_across_ticks_and_finishes_with_eof() {
   ResourceTable table;
   SubscriptionState subs;
   ActionRegistry reg;
-  DataBleTransport transport(store, table, subs, reg, FrameSender{nullptr, fakeSender});
+  AuthHandler auth;
+  auth.setPin("1234");
+  ProtocolEngine transport(store, table, subs, reg, auth, FrameSender{nullptr, fakeSender});
+  authenticate(transport, auth);
 
   transport.sendManifest();
   TEST_ASSERT_EQUAL_UINT32(0u, g_sentFrames);

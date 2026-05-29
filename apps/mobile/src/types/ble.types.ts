@@ -1,4 +1,4 @@
-export type BleStateType = 'unknown' | 'on' | 'off' | 'unauthorized';
+export type BleStateType = 'unknown' | 'on' | 'off' | 'unauthorized' | 'unsupported';
 
 export type ConnectionState =
   | 'idle'
