@@ -18,3 +18,32 @@ describe('frameCodec', () => {
     expect(leftover.length).toBe(3);
   });
 });
+
+describe('frameCodec auth frames', () => {
+  it('exposes the four auth frame kinds', () => {
+    expect(FrameKind.AuthRequest).toBe(0x40);
+    expect(FrameKind.AuthChallenge).toBe(0x41);
+    expect(FrameKind.AuthResponse).toBe(0x42);
+    expect(FrameKind.AuthResult).toBe(0x43);
+  });
+
+  it('round-trips an AuthResponse frame with a 16-byte body', () => {
+    const body = new Uint8Array(16).map((_, i) => i + 1);
+    const wire = encodeFrame(FrameKind.AuthResponse, 0, body);
+    // header [0x42][0x00][0x00][0x10] then 16 bytes
+    expect(wire[0]).toBe(0x42);
+    expect(wire[3]).toBe(16);
+    const { frames, leftover } = decodeFrames(wire);
+    expect(leftover.length).toBe(0);
+    expect(frames).toHaveLength(1);
+    expect(frames[0].kind).toBe(FrameKind.AuthResponse);
+    expect(Array.from(frames[0].body)).toEqual(Array.from(body));
+  });
+
+  it('decodes an AuthResult OK frame', () => {
+    const wire = encodeFrame(FrameKind.AuthResult, 0, new Uint8Array([0x01]));
+    const { frames } = decodeFrames(wire);
+    expect(frames[0].kind).toBe(FrameKind.AuthResult);
+    expect(frames[0].body[0]).toBe(0x01);
+  });
+});
