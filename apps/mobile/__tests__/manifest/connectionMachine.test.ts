@@ -4,8 +4,10 @@ import { createConnectionMachine } from '../../src/manifest/runtime/connectionMa
 
 function waitFor(actor: any, predicate: (s: any) => boolean, timeoutMs = 2000): Promise<any> {
   return new Promise((resolve, reject) => {
-    const sub = actor.subscribe((s: any) => { if (predicate(s)) { sub.unsubscribe(); resolve(s); } });
-    setTimeout(() => { sub.unsubscribe(); reject(new Error('timeout')); }, timeoutMs);
+    const timer = setTimeout(() => { sub.unsubscribe(); reject(new Error('timeout')); }, timeoutMs);
+    const sub = actor.subscribe((s: any) => {
+      if (predicate(s)) { clearTimeout(timer); sub.unsubscribe(); resolve(s); }
+    });
   });
 }
 
