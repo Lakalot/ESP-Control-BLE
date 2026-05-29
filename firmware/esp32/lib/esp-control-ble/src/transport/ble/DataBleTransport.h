@@ -93,6 +93,4 @@ private:
   void handleAuthResponse(const uint8_t* body, size_t len);
 };
 
-using DataBleTransport = ProtocolEngine;
-
 } // namespace
