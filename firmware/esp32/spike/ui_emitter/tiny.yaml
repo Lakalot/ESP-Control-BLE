@@ -1,0 +1,29 @@
+version: 5
+schemaVersion: 1
+minAppVersion: 1.0.0
+capabilities: { required: [layout.sections], optional: [] }
+resources:
+  - id: light.brightness
+    firmwareSymbol: light_brightness
+    label: Brightness
+    valueType: uint
+    unit: '%'
+    readMode: subscribe
+    staleAfterMs: 5000
+actions:
+  - id: light.set_brightness
+    firmwareSymbol: light_set_brightness
+    label: Set Brightness
+    dangerLevel: normal
+    inputSchema: { type: object, additionalProperties: false, required: [value], properties: { value: { type: integer, minimum: 0, maximum: 100 }}}
+views:
+  - id: home
+    firmwareSymbol: home
+    title: Home
+    content:
+      - kind: slider
+        id: home.slider
+        title: Brightness
+        resource: light.brightness
+        action: light.set_brightness
+        formatHint: percent
