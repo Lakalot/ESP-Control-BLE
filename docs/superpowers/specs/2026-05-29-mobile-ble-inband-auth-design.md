@@ -88,8 +88,17 @@ préférence : refactoring propre plutôt que patch minimal.)
   ré-auth. Annulable (si l'utilisateur quitte l'écran). Remplace la logique éparpillée des hooks
   legacy.
 - **Orchestration UI** — `PilotRenderer` / `useDeviceUi` câblés sur le `ConnectionController` ; le
-  PIN provient déjà des params de route. Suppression du flag `manifestRuntimeFlag` (un seul
-  chemin en prod ; le `FixtureRuntime` reste accessible aux tests par injection directe).
+  PIN provient déjà des params de route.
+- **Flag de runtime REDÉFINI (debug conservé)** — `settings/manifestRuntimeFlag.ts` est conservé
+  mais ses valeurs changent de sens. Aujourd'hui `'manifest' | 'fixture'` où `'manifest'`
+  désignait l'ancien chemin legacy ; il devient **`'device' | 'fixture'`** :
+  - `'device'` (défaut prod) → `BleRuntime` sur BLE réel (via le `ConnectionController`).
+  - `'fixture'` → `FixtureRuntime` (mock embarqué via `bundledFixtureRuntime`, sans matériel) —
+    le **mode debug**, qui permet de piloter l'UI complète sans ESP32. Précieux tant que la
+    validation device n'est pas faite.
+  Le bug actuel de `setManifestRuntime` (qui ne peut jamais sélectionner `'fixture'`) est corrigé
+  au passage. `PilotRenderer` choisit l'implémentation `ManifestRuntime` selon le flag ; les deux
+  partagent la même interface, donc l'UI en aval est identique.
 
 ### Conservés
 
@@ -102,9 +111,9 @@ change pas.
 `protocol/auth/ChallengeResponse.ts`, `protocol/frame/CommandEncoder.ts` +
 `protocol/frame/CommandDecoder.ts` (+ leurs `__tests__`), `hooks/useBle.ts`,
 `hooks/useBleConnection.ts`, `hooks/useBleAuth.ts`, `hooks/useBleManifest.ts`,
-`hooks/useBleCommands.ts`, `types/protocol.types.ts` (constantes 0xF0/0xF1/0xF2),
-`settings/manifestRuntimeFlag.ts`. Toute référence résiduelle doit être supprimée (vérif au
-typecheck).
+`hooks/useBleCommands.ts`, `types/protocol.types.ts` (constantes 0xF0/0xF1/0xF2). Toute référence
+résiduelle doit être supprimée (vérif au typecheck). `settings/manifestRuntimeFlag.ts` est
+**conservé mais redéfini** (voir Orchestration UI), pas supprimé.
 
 ## Gestion d'erreurs et cas limites
 
@@ -146,8 +155,10 @@ du sous-projet 1.
 3. **Module auth mobile** : `auth.ts` `computeAuthResponse` 16 o + test (vecteur partagé).
 4. **`BleRuntime.authenticate()`** + trames Auth dans `dispatchFrame` + timeout + tests fixture.
 5. **`ConnectionController`** (machine à états : connect/auth/load/subscribe/reconnect) + tests.
-6. **Orchestration UI** : câbler `PilotRenderer`/`useDeviceUi` sur le contrôleur ; supprimer le
-   flag runtime.
+6. **Orchestration UI** : câbler `PilotRenderer`/`useDeviceUi` sur le contrôleur ; **redéfinir** le
+   flag `manifestRuntimeFlag` en `'device' | 'fixture'` (corriger le bug de `setManifestRuntime`),
+   `PilotRenderer` construit `BleRuntime` (device) ou `FixtureRuntime` (debug) selon le flag. Si un
+   toggle debug n'existe pas encore dans l'UI, en ajouter un minimal (dev-only) pour basculer.
 7. **Suppression legacy** : retirer les modules listés + leurs tests ; vérifier zéro référence
    résiduelle.
 8. **Vérif finale** : `jest` vert, `tsc` (typecheck) propre, lint ; revue des références mortes.
@@ -166,5 +177,6 @@ du sous-projet 1.
 
 - Le client SPP de la tablette (sous-projet 3).
 - Tout changement à la découverte/scan BLE (UUID de service inchangé).
-- Persistance du flag de runtime (le flag est supprimé, pas migré).
+- Persistance du flag de runtime en stockage durable (il reste en mémoire ; le mode `'device'`
+  est le défaut au démarrage, comme aujourd'hui).
 - Re-fetch du manifeste à la demande (le manifeste arrive après auth ; pas de ManifestRequest).
