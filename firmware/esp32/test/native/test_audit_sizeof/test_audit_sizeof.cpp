@@ -167,12 +167,12 @@ static void test_locked_ManifestStore_is_a_borrow(void) {
 }
 
 static void test_locked_AuthHandler(void) {
-    // uint8_t nonce[4] + const char* pin + bool authenticated
-    // On 64-bit host: 4 + 8 + 1 + padding = 16.
-    // On 32-bit ESP32: 4 + 4 + 1 + padding = 12.
+    // uint8_t nonce[ECB_NONCE_SIZE=16] + const char* pin + bool authenticated
+    // On 64-bit host: 16 + 8 + 1 + padding = 32 (so the bound below is 40).
+    // On 32-bit ESP32: 16 + 4 + 1 + padding = 24.
     const std::size_t observed = sizeof(AuthHandler);
     print_size("AuthHandler", observed);
-    TEST_ASSERT_LESS_THAN_size_t_MESSAGE(32, observed,
+    TEST_ASSERT_LESS_THAN_size_t_MESSAGE(48, observed,
         "AuthHandler grew - did mbedtls context become persistent?");
 }
 
