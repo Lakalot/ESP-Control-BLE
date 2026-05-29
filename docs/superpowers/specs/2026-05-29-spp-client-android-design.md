@@ -53,19 +53,32 @@ demande runtime, plus simple que sur Android moderne.
    sous `apps/mobile/modules/ecb-spp/`. Utilise l'**Expo Modules API** (`Module`/`ModuleDefinition`,
    `Function`/`AsyncFunction`, `Events`, `sendEvent`). API exposée :
    - `AsyncFunction("isAvailable")` → `Boolean` (Bluetooth Classic présent + activé).
-   - `AsyncFunction("listBondedDevices")` → `[{ name: String, address: String }]`
-     (`BluetoothAdapter.bondedDevices`).
+   - `AsyncFunction("listBondedDevices")` → `[{ name, address, bonded: true }]`
+     (`BluetoothAdapter.bondedDevices`) — affichés en tête de liste.
+   - `AsyncFunction("startDiscovery")()` / `AsyncFunction("stopDiscovery")()` → **découverte
+     active in-app** : `BluetoothAdapter.startDiscovery()` + un `BroadcastReceiver` sur
+     `ACTION_FOUND` (et `ACTION_DISCOVERY_FINISHED`). Chaque appareil trouvé est émis en événement.
+     Permet de trouver l'ESP **sans passer par les réglages Android**.
    - `AsyncFunction("connect")(address: String)` → ouvre un `BluetoothSocket` RFCOMM vers
-     l'UUID SPP standard, lance une boucle de lecture sur un thread dédié. Résout à la connexion,
-     rejette sur échec (non appairé / hors portée / occupé).
+     l'UUID SPP standard et lance la boucle de lecture. **Connexion directe : si l'appareil n'est
+     pas encore appairé, `connect()` déclenche l'appairage à la volée** (Android peut afficher sa
+     popup système native — confirmation/PIN — sans quitter l'app ; on l'accepte telle quelle).
+     Annule toute découverte en cours avant de connecter (la découverte ralentit/perturbe RFCOMM).
+     Résout à la connexion, rejette sur échec (hors portée / refus / occupé).
    - `AsyncFunction("write")(base64: String)` → écrit les octets sur l'`OutputStream`.
    - `AsyncFunction("disconnect")()` → ferme le socket et interrompt le thread proprement
      (flag intentionnel pour ne pas émettre `onDisconnected` sur une fermeture volontaire).
-   - `Events("onData", "onDisconnected")` — `onData` émet les chunks reçus (base64) ;
-     `onDisconnected` émet quand le read-loop détecte une fin de flux non sollicitée
-     (`read() == -1` / `IOException`).
+   - `Events("onData", "onDisconnected", "onDeviceFound")` — `onData` émet les chunks reçus
+     (base64) ; `onDisconnected` émet quand le read-loop détecte une fin de flux non sollicitée
+     (`read() == -1` / `IOException`) ; `onDeviceFound` émet `{ name, address, bonded }` pendant la
+     découverte.
    - Mono-connexion (la tablette pilote un ESP à la fois), cohérent avec la session exclusive
      côté firmware.
+
+   Sécurité d'appairage : on s'appuie sur le comportement par défaut. Si le SPP du firmware exige un
+   appairage sécurisé, Android montre sa popup native au 1er `connect()` (souvent « Just Works » =
+   simple tap, parfois rien) ; **on ne quitte pas l'app**. Aucun appairage explicite (`createBond`)
+   n'est implémenté — la connexion directe suffit. (Hors périmètre : forcer un mode d'appairage.)
 
 2. **`SppDevice` (TS)** — `apps/mobile/src/manifest/runtime/SppDevice.ts`. Implémente la **même
    interface** que `RealBleDevice` (`write`/`onNotify`/`onDisconnected`/`disconnect`,
@@ -86,15 +99,22 @@ demande runtime, plus simple que sur Android moderne.
    reste possible (réutilise un flag de transport, voir ci-dessous) pour forcer/debug. Sur la
    tablette cible (BLE cassé) → SPP automatiquement, sans config.
 
-### Découverte des appareils (SPP ≠ BLE)
+### Découverte des appareils (SPP ≠ BLE) — tout dans l'app, sans réglages
 
-SPP ne se scanne pas par UUID de service. Flux Android standard :
-1. L'utilisateur **appaire** l'ESP une fois dans les Réglages Bluetooth Android.
-2. L'app liste les **appareils appairés** via `EcbSpp.listBondedDevices()` et l'utilisateur choisit.
+SPP ne se scanne pas par UUID de service comme le BLE, mais on évite le détour par les réglages
+Android. En mode SPP, l'écran de scan (`app/index.tsx`) :
+1. affiche d'abord les **appareils déjà appairés** (`EcbSpp.listBondedDevices()`), en tête ;
+2. lance la **découverte active** (`EcbSpp.startDiscovery()`) et ajoute les appareils trouvés
+   (`onDeviceFound`) à la liste, en direct — appairés ou non ;
+3. au tap sur un appareil, `connectionMachine` reçoit un `connect` SPP :
+   `new BleRuntime(await createSppDevice(address))`. `createSppDevice` arrête la découverte puis
+   appelle `EcbSpp.connect(address)`, qui **se connecte directement et appaire à la volée** si
+   nécessaire (popup système native acceptée telle quelle, sans quitter l'app).
 
-L'écran de scan (`app/index.tsx`), en mode SPP, affiche les appareils appairés au lieu de lancer un
-scan BLE. À la sélection, `connectionMachine` reçoit un `connect` SPP :
-`new BleRuntime(await createSppDevice(address))`.
+Permissions : la découverte Bluetooth Classic sur API 27 exige `ACCESS_FINE_LOCATION` au runtime
+(comme le scan BLE) en plus de `BLUETOOTH`/`BLUETOOTH_ADMIN` (accordées à l'installation). L'app
+demande la localisation au runtime avant `startDiscovery()` (le helper de permissions existe déjà
+pour le scan BLE — le réutiliser/l'étendre).
 
 ### Réutilisé sans modification
 
@@ -140,8 +160,10 @@ Commande : `cd apps/mobile && npm test`.
 ## Découpage d'implémentation
 
 1. **Module natif `EcbSpp`** : scaffolder le module local Expo (Kotlin) ; implémenter
-   `isAvailable`/`listBondedDevices`/`connect`/`write`/`disconnect` + events `onData`/`onDisconnected`
-   avec le read-loop et le flag intentionnel. Build du dev client (vérif compilation).
+   `isAvailable`/`listBondedDevices`/`startDiscovery`/`stopDiscovery`/`connect`/`write`/`disconnect`
+   + events `onData`/`onDisconnected`/`onDeviceFound`, avec le read-loop, le `BroadcastReceiver` de
+   découverte, la connexion directe (appairage à la volée), et le flag intentionnel. Build du dev
+   client (vérif compilation).
 2. **Typings + wrapper JS du module** : interface TS du module natif (`EcbSpp` typé) + un mock Jest.
 3. **`SppDevice`** (implémente `FixtureBleDevice`) + `createSppDevice(address)` + tests (mock natif).
 4. **Logique d'auto-détection de transport** + extension du flag `'ble' | 'spp' | 'fixture'` + tests.
@@ -163,7 +185,9 @@ Commande : `cd apps/mobile && npm test`.
 ## Hors périmètre (YAGNI)
 
 - iOS (iOS ne fait pas SPP hors MFi ; non concerné).
-- Découverte active SPP (on s'appuie sur les appareils appairés).
+- Appairage explicite programmatique (`createBond`) : non implémenté ; la connexion directe appaire
+  à la volée et on accepte la popup système native si le firmware l'exige. Forcer un mode
+  d'appairage (« Just Works » imposé, retrait du PIN) est hors périmètre.
 - Multi-connexion (un ESP à la fois).
 - Re-design de l'écran de scan au-delà de l'affichage des appareils appairés en mode SPP.
 - Minors mobiles différés du sous-projet 2 (docstrings, console.log) — hors de ce sous-projet.
