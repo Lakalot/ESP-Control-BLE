@@ -185,7 +185,7 @@ export function DeviceListView({ scan, transport }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID={`scan-screen-${transport}`}>
       <View style={styles.orbA} />
       <View style={styles.orbB} />
 

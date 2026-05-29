@@ -5,7 +5,7 @@ import { useMachine } from '@xstate/react';
 
 import { useAuthStore } from '../../src/store/authStore';
 import type { BleDevice } from '../../src/types/ble.types';
-import { getTransport } from '../../src/settings/manifestRuntimeFlag';
+import { useTransport } from '../../src/settings/manifestRuntimeFlag';
 import { BleRuntime } from '../../src/manifest/runtime/BleRuntime';
 import { createRealBleDevice } from '../../src/manifest/runtime/RealBleDevice';
 import { createSppDevice } from '../../src/manifest/runtime/SppDevice';
@@ -22,7 +22,7 @@ type RouteParams = {
 
 function DeviceRenderer({ device, pin }: RouteParams) {
   const savePin = useAuthStore((state) => state.savePin);
-  const transport = getTransport();
+  const transport = useTransport();
   const machine = useMemo(
     () =>
       createConnectionMachine({
@@ -122,7 +122,8 @@ function FixtureRenderer() {
 export default function ControlScreen() {
   const route = useRoute();
   const { device, pin } = route.params as RouteParams;
-  return getTransport() === 'fixture' ? (
+  const transport = useTransport();
+  return transport === 'fixture' ? (
     <FixtureRenderer />
   ) : (
     <DeviceRenderer device={device} pin={pin} />

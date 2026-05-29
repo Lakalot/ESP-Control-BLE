@@ -2,7 +2,7 @@ import React from 'react';
 
 import { useBleScan } from '../src/hooks/useBleScan';
 import { useSppScan } from '../src/hooks/useSppScan';
-import { getTransport } from '../src/settings/manifestRuntimeFlag';
+import { useTransport } from '../src/settings/manifestRuntimeFlag';
 import { DeviceListView } from '../src/ui/components/DeviceListView';
 
 // Each scan screen calls exactly one scan hook unconditionally (hooks can't be
@@ -21,5 +21,8 @@ function SppScanScreen() {
 }
 
 export default function ScanScreen() {
-  return getTransport() === 'spp' ? <SppScanScreen /> : <BleScanScreen />;
+  // Reactive: re-renders when the startup auto-detection resolves to 'spp', so a
+  // broken-BLE tablet swaps to SppScanScreen instead of being stuck on BLE.
+  const transport = useTransport();
+  return transport === 'spp' ? <SppScanScreen /> : <BleScanScreen />;
 }
