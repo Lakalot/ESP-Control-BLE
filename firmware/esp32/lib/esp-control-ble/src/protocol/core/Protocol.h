@@ -111,6 +111,10 @@ enum class FrameKind : uint8_t {
   Unsubscribe   = 0x31,
   Ping          = 0x32,
   Pong          = 0x33,
+  AuthRequest   = 0x40,
+  AuthChallenge = 0x41,
+  AuthResponse  = 0x42,
+  AuthResult    = 0x43,
 };
 
 struct FrameHeader {
