@@ -87,7 +87,7 @@ void BleTransport::handleWrite(const uint8_t* data, uint16_t len) {
   if (len == 0) return;
 
   if (data[0] == ECB_AUTH_OK) {
-    const bool ok = _auth->verifyResponse(data, static_cast<uint8_t>(len));
+    const bool ok = (len >= 1 + ECB_HASH_SIZE) && _auth->verifyHash(data + 1);
     const uint8_t resp[1] = {ok ? static_cast<uint8_t>(ECB_AUTH_OK) : static_cast<uint8_t>(ECB_AUTH_FAIL)};
     sendNotify(resp, 1);
     return;
@@ -358,7 +358,7 @@ void BleTransport::handleWrite(const uint8_t* data, uint16_t len) {
 
   // Auth response
   if (data[0] == ECB_AUTH_OK) {
-    bool ok = _auth->verifyResponse(data, (uint8_t)len);
+    bool ok = (len >= 1 + ECB_HASH_SIZE) && _auth->verifyHash(data + 1);
     uint8_t resp[1] = { ok ? (uint8_t)ECB_AUTH_OK : (uint8_t)ECB_AUTH_FAIL };
     sendNotify(resp, 1);
     ECB_LOGF("[ECB] Auth %s\n", ok ? "OK" : "FAIL");

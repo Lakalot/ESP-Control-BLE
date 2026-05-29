@@ -91,8 +91,8 @@
 #define ECB_MAX_OPTIONS     16
 #define ECB_MAX_NODE_OPTIONS 8
 #define ECB_MAX_PAYLOAD     64
-#define ECB_NONCE_SIZE       4
-#define ECB_HASH_SIZE        4
+#define ECB_NONCE_SIZE      16
+#define ECB_HASH_SIZE       16
 
 namespace ecb {
 

@@ -42,13 +42,15 @@ static void test_subscribe_auth_and_command_dispatch_use_shared_transport_path()
   TEST_ASSERT_EQUAL_UINT8_ARRAY(auth._nonce, transport._lastNotify + 1, ECB_NONCE_SIZE);
 
   uint8_t authResponse[1 + ECB_HASH_SIZE] = {ECB_AUTH_OK};
-  auth.computeExpectedHash(authResponse + 1);
+  auth.computeHash(authResponse + 1);
   transport.handleWrite(authResponse, sizeof(authResponse));
   TEST_ASSERT_EQUAL_UINT32(1u, transport._lastNotifyLen);
   TEST_ASSERT_EQUAL_UINT8(ECB_AUTH_OK, transport._lastNotify[0]);
 
-  uint8_t commandFrame[] = {0x42, 0x01, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00};
-  commandFrame[7] = checksumFor(commandFrame, 7);
+  // Frame format: cmdId(1) + payloadLen(1) + payload[payloadLen] + hmac[ECB_HASH_SIZE] + checksum(1)
+  uint8_t commandFrame[2 + 1 + ECB_HASH_SIZE + 1] = {0x42, 0x01, 0x11};
+  // hmac bytes [3..3+ECB_HASH_SIZE-1] left as 0x00
+  commandFrame[sizeof(commandFrame) - 1] = checksumFor(commandFrame, sizeof(commandFrame) - 1);
   transport.handleWrite(commandFrame, sizeof(commandFrame));
 
   TEST_ASSERT_EQUAL_UINT32(4u, transport._lastNotifyLen);
