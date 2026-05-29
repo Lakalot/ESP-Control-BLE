@@ -9,5 +9,6 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^expo-crypto$': '<rootDir>/__mocks__/expo-crypto.ts',
+    '^.*/modules/ecb-spp$': '<rootDir>/__mocks__/ecb-spp.ts',
   },
 };
