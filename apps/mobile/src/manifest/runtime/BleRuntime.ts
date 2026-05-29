@@ -58,6 +58,13 @@ export class BleRuntime implements ManifestRuntime {
    * with SHA-256(pin||nonce)[:16], resolve on AuthResult OK / reject on FAIL.
    */
   authenticate(pin: string, timeoutMs = 5000): Promise<void> {
+    // Abort any handshake still in flight before starting a new one, so an
+    // earlier timer can never clobber this call's resolvers.
+    if (this.authReject) {
+      const prevReject = this.authReject;
+      this.clearAuthWaiters();
+      prevReject(new AuthError('auth superseded by a new attempt'));
+    }
     this.pin = pin;
     return new Promise<void>((resolve, reject) => {
       this.authResolve = resolve;
@@ -76,6 +83,7 @@ export class BleRuntime implements ManifestRuntime {
     if (this.authTimer) { clearTimeout(this.authTimer); this.authTimer = null; }
     this.authResolve = null;
     this.authReject = null;
+    this.pin = null;
   }
 
   private async onAuthChallenge(nonce: Uint8Array) {

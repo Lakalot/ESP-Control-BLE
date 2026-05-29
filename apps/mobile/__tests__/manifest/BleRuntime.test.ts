@@ -151,4 +151,25 @@ describe('BleRuntime', () => {
 
     await expect(authPromise).rejects.toThrow(/auth/i);
   }, 10000);
+
+  it('authenticate: a second call supersedes a pending first without hanging', async () => {
+    const device = createFixtureBleDevice();
+    const rt = new BleRuntime(device);
+
+    const first = rt.authenticate('1111', 10000);
+    await flush(); // first AuthRequest written
+    // Start a second handshake before the first settles.
+    const second = rt.authenticate('2222', 10000);
+
+    // The first promise must settle (reject), not hang.
+    await expect(first).rejects.toThrow(/supersede|auth/i);
+
+    // The second completes normally.
+    await flush();
+    const nonce = new Uint8Array(16).fill(0x07);
+    device.queueIncoming(encodeFrame(FrameKind.AuthChallenge, 0, nonce));
+    await flush();
+    device.queueIncoming(encodeFrame(FrameKind.AuthResult, 0, new Uint8Array([0x01])));
+    await expect(second).resolves.toBeUndefined();
+  }, 10000);
 });
