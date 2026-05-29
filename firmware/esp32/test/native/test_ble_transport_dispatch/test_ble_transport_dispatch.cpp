@@ -28,14 +28,22 @@ static void fakeSender(void*, const uint8_t* frame, size_t len) {
   if (len > 0) g_lastFrameKind = frame[0];
 }
 
-// Drives the in-band auth handshake so subsequent protocol frames are honored,
-// then clears the capture counters the handshake polluted (AuthChallenge +
-// AuthResult). Tests assert on frames produced AFTER authentication only.
+// Drives the in-band auth handshake so subsequent protocol frames are honored.
+// Drains the manifest that is automatically queued on successful auth (new
+// behavior: firmware pushes the manifest immediately after AuthResult OK), then
+// clears the capture counters so tests assert on frames produced AFTER auth only.
 static void authenticate(ProtocolEngine& transport, AuthHandler& auth) {
   transport.handleFrame(FrameKind::AuthRequest, nullptr, 0);
   uint8_t resp[ECB_HASH_SIZE];
   auth.computeHash(resp);
   transport.handleFrame(FrameKind::AuthResponse, resp, ECB_HASH_SIZE);
+  // Drain all automatically-queued manifest chunks and the EOF frame.
+  while (true) {
+    size_t before = g_sentFrames;
+    transport.tick();
+    if (g_sentFrames == before) break; // nothing more pending
+    if (g_lastFrameKind == static_cast<uint8_t>(FrameKind::ManifestEof)) break;
+  }
   g_sentFrames = 0;
   g_lastFrameKind = 0;
   g_lastFrameLen = 0;

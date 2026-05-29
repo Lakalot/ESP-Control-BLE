@@ -70,6 +70,24 @@ static void test_auth_handshake_succeeds() {
   TEST_ASSERT_TRUE(subs.isWatching(10));
 }
 
+static void test_manifest_sent_after_successful_auth() {
+  g_count = 0;
+  uint8_t man[8] = {1,2,3,4,5,6,7,8}; ManifestStore store(man, 8);
+  ResourceTable table; SubscriptionState subs; ActionRegistry reg; AuthHandler auth;
+  ProtocolEngine* e = makeEngine(auth, table, subs, reg, store);
+
+  e->handleFrame(FrameKind::AuthRequest, nullptr, 0);   // -> AuthChallenge
+  uint8_t resp[ECB_HASH_SIZE];
+  auth.computeHash(resp);
+  e->handleFrame(FrameKind::AuthResponse, resp, ECB_HASH_SIZE);  // -> AuthResult OK, queues manifest
+
+  // Drain one tick: the queued manifest should now emit a ManifestChunk frame.
+  g_count = 0;
+  memset(g_last, 0, sizeof(g_last));
+  e->tick();
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FrameKind::ManifestChunk), static_cast<uint8_t>(lastKind()));
+}
+
 static void test_wrong_response_fails_and_stays_locked() {
   g_count = 0;
   uint8_t man[4] = {1,2,3,4}; ManifestStore store(man, 4);
@@ -90,5 +108,6 @@ int main(int, char**) {
   RUN_TEST(test_frame_rejected_before_auth);
   RUN_TEST(test_auth_handshake_succeeds);
   RUN_TEST(test_wrong_response_fails_and_stays_locked);
+  RUN_TEST(test_manifest_sent_after_successful_auth);
   return UNITY_END();
 }

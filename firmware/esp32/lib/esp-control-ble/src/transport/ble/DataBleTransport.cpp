@@ -73,6 +73,13 @@ void ProtocolEngine::handleAuthResponse(const uint8_t* body, size_t len) {
   bool ok = (len >= ECB_HASH_SIZE) && _auth.verifyHash(body);
   uint8_t result = ok ? 0x01 : 0x00;
   sendFrame(FrameKind::AuthResult, 0, &result, 1);
+  if (ok) {
+    // Queue the manifest transfer directly (we already hold the mutex here;
+    // sendManifest() would re-take it and FreeRTOS mutexes are non-recursive).
+    // Replaces the old NimBLE send-on-subscribe trigger, lost in the Bluedroid rewrite.
+    _manifestOffset = 0;
+    _manifestPending = true;
+  }
 }
 
 bool ProtocolEngine::sendEncodedFrame(FrameKind kind, uint8_t flags,
