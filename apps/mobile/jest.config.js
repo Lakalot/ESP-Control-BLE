@@ -8,5 +8,6 @@ module.exports = {
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^expo-crypto$': '<rootDir>/__mocks__/expo-crypto.ts',
   },
 };
