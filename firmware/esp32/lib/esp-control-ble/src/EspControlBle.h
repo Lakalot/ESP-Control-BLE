@@ -3,16 +3,15 @@
 #include "protocol/actions/ActionRegistry.h"
 #include "protocol/resources/ResourceTable.h"
 #include "protocol/subscriptions/SubscriptionState.h"
+#include "protocol/auth/AuthHandler.h"
+#include "protocol/manifest/ManifestStore.h"
+#include "transport/ble/DataBleTransport.h"   // ProtocolEngine
 #include "transport/ble/BleTransport.h"
-#include "transport/ble/DataBleTransport.h"
 
 class EspControl {
 public:
   EspControl(const char* deviceName, const char* pin);
 
-  void registerCallback(uint8_t cmdId, EcbCommandFn callback);
-
-  // Data API — additive alongside v4.
   void registerAction(uint32_t actionId, ecb::ActionHandler handler);
   ecb::ResourceTable& resources() { return _resources; }
   void publishDelta(uint32_t resourceId);
@@ -21,18 +20,15 @@ public:
   void begin(const uint8_t* manifestData, uint16_t manifestLen);
 
 private:
-  static void sendDataFrame(void* context, const uint8_t* data, size_t len);
+  static void sendBle(void* context, const uint8_t* data, size_t len);
 
-  const char*                 _deviceName;
-  const char*                 _pin;
-  AuthHandler                 _auth;
-  CommandRegistry             _registry;
-  BleTransport                _transport;
+  const char*             _deviceName;
+  const char*             _pin;
+  AuthHandler             _auth;
 
   ecb::ActionRegistry     _actionRegistry;
   ecb::ResourceTable      _resources;
   ecb::SubscriptionState  _subs;
-  ecb::DataBleTransport*    _dataTransport;
-  const uint8_t*              _dataManifestData;
-  uint16_t                    _dataManifestLen;
+  ecb::ProtocolEngine*    _engine = nullptr;
+  BleTransport            _bleTransport;
 };
