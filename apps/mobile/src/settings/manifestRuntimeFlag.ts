@@ -1,16 +1,18 @@
 /**
- * Which runtime backs the control screen:
- *  - 'device'  : BleRuntime over real BLE (production default).
- *  - 'fixture' : bundled FixtureRuntime (no hardware) — a debug mode for
- *                exercising the full UI without an ESP32.
- * In-memory only; production builds start on 'device'.
+ * Active transport for the control screen:
+ *  - 'ble'     : BleRuntime over BLE (RealBleDevice).
+ *  - 'spp'     : BleRuntime over Bluetooth Classic SPP (SppDevice) — for devices
+ *                whose BLE hardware is unavailable.
+ *  - 'fixture' : bundled FixtureRuntime (no hardware) — debug mode.
+ * In-memory only; default 'ble'. The startup auto-detection (selectTransport)
+ * may set this to 'spp' when BLE is unsupported.
  */
-export type ManifestRuntimeFlag = 'device' | 'fixture';
+export type Transport = 'ble' | 'spp' | 'fixture';
 
-let inMemory: ManifestRuntimeFlag = 'device';
+let inMemory: Transport = 'ble';
 
-export function getManifestRuntime(): ManifestRuntimeFlag { return inMemory; }
+export function getTransport(): Transport { return inMemory; }
 
-export function setManifestRuntime(value: ManifestRuntimeFlag | null): void {
-  inMemory = value === 'fixture' ? 'fixture' : 'device';
+export function setTransport(value: Transport | null): void {
+  inMemory = value === 'spp' || value === 'fixture' ? value : 'ble';
 }

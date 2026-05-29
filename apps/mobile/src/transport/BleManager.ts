@@ -29,7 +29,7 @@ class BleManagerService {
     const state = await this.manager.state();
     const map: Record<State, BleStateType> = {
       [State.Unknown]: 'unknown',
-      [State.Unsupported]: 'off',
+      [State.Unsupported]: 'unsupported',
       [State.Unauthorized]: 'unauthorized',
       [State.PoweredOff]: 'off',
       [State.PoweredOn]: 'on',
@@ -42,7 +42,7 @@ class BleManagerService {
     const sub = this.manager.onStateChange((state) => {
       const map: Record<State, BleStateType> = {
         [State.Unknown]: 'unknown',
-        [State.Unsupported]: 'off',
+        [State.Unsupported]: 'unsupported',
         [State.Unauthorized]: 'unauthorized',
         [State.PoweredOff]: 'off',
         [State.PoweredOn]: 'on',
