@@ -10,7 +10,7 @@ void BleTransport::attach(ecb::ProtocolEngine* engine, const uint8_t* manifest, 
 void BleTransport::begin(const char*) {}
 void BleTransport::send(const uint8_t*, size_t) {}
 void BleTransport::onData(const uint8_t* data, size_t len) { if (_engine) _engine->handleFrame((ecb::FrameKind)data[0], data + 4, len > 4 ? len - 4 : 0); }
-void BleTransport::onConnect() {}
+void BleTransport::onConnect(uint16_t) {}
 void BleTransport::onDisconnect() {}
 
 #else
@@ -28,7 +28,9 @@ class EcbDataCb : public BLECharacteristicCallbacks {
 };
 
 class EcbServerCb : public BLEServerCallbacks {
-  void onConnect(BLEServer*) override { if (s_self) s_self->onConnect(); }
+  void onConnect(BLEServer*, esp_ble_gatts_cb_param_t* param) override {
+    if (s_self) s_self->onConnect(param->connect.conn_id);
+  }
   void onDisconnect(BLEServer*) override {
     if (s_self) s_self->onDisconnect();
     BLEDevice::startAdvertising();
@@ -44,6 +46,7 @@ void BleTransport::begin(const char* deviceName) {
   BLEDevice::init(deviceName);
 
   BLEServer* server = BLEDevice::createServer();
+  _server = server;
   server->setCallbacks(new EcbServerCb());
 
   BLEService* svc = server->createService(BLEUUID(ECB_DATA_SERVICE_UUID), 16, 0);
@@ -90,11 +93,16 @@ void BleTransport::onData(const uint8_t* data, size_t len) {
   _engine->handleFrame(kind, data + 4, bodyLen);
 }
 
-void BleTransport::onConnect() {
+void BleTransport::onConnect(uint16_t connId) {
+  _connId = connId;
   if (_engine && _engine->beginSession(ecb::ProtocolEngine::Session::Ble)) {
     _engine->setSender(ecb::FrameSender{this, [](void* c, const uint8_t* d, size_t n) {
       static_cast<BleTransport*>(c)->send(d, n);
     }});
+  } else if (_server) {
+    // Another session (SPP) owns the link: refuse this central per the spec's
+    // session model by dropping it at the BLE link layer immediately.
+    _server->disconnect(connId);
   }
 }
 

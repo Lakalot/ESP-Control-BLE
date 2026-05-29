@@ -19,7 +19,7 @@ public:
 
   // Called by BLE callbacks.
   void onData(const uint8_t* data, size_t len);
-  void onConnect();
+  void onConnect(uint16_t connId);
   void onDisconnect();
 
 private:
@@ -28,6 +28,8 @@ private:
   uint16_t _manifestLen = 0;
 
 #ifndef UNIT_TEST
+  BLEServer* _server = nullptr;
   BLECharacteristic* _dataChar = nullptr;
+  uint16_t _connId = 0;
 #endif
 };
