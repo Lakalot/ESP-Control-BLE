@@ -10,7 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 
 import { useAuth } from '../src/hooks/useAuth';
-import { useBle } from '../src/hooks/useBle';
+import { useBleScan } from '../src/hooks/useBleScan';
 import type { BleDevice } from '../src/types/ble.types';
 import { DeviceCard } from '../src/ui/components/DeviceCard';
 import { PinPrompt } from '../src/ui/components/PinPrompt';
@@ -49,7 +49,7 @@ function formatLastSeenLabel(lastSeen: string | undefined): string | undefined {
 
 export default function ScanScreen() {
   const navigation = useNavigation<any>();
-  const { bleState, isScanning, discoveredDevices, startScan, stopScan } = useBle();
+  const { bleState, isScanning, discoveredDevices, startScan, stopScan } = useBleScan();
   const { knownDevices, getPin } = useAuth();
 
   const [selectedDevice, setSelectedDevice] = useState<BleDevice | null>(null);
