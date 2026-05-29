@@ -4,6 +4,12 @@ export interface FixtureBleDevice {
   onDisconnected(cb: () => void): () => void;
   queueIncoming(chunk: Uint8Array): void;
   sentFrames: Uint8Array[];
+  /**
+   * Tear down the GATT connection. Optional on the interface: the in-memory
+   * fixture has no real transport to close, so it omits this; RealBleDevice
+   * implements it. BleRuntime.disconnect() guards the call accordingly.
+   */
+  disconnect?(): Promise<void>;
 }
 
 export function createFixtureBleDevice(): FixtureBleDevice & { simulateDisconnect(): void } {

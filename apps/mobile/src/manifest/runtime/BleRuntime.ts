@@ -59,6 +59,25 @@ export class BleRuntime implements ManifestRuntime {
   }
 
   /**
+   * Subscribe to UNINTENTIONAL transport drops. Thin passthrough to the device
+   * so the owning screen can forward drops to the connection machine without
+   * reaching into the underlying RealBleDevice.
+   */
+  onDisconnected(cb: () => void): () => void {
+    return this.device.onDisconnected(cb);
+  }
+
+  /**
+   * Tear down the GATT connection. Thin passthrough so the screen can free the
+   * firmware's exclusive session on unmount. The fixture device has no real
+   * transport (disconnect is optional on the interface), so the `?.()` guard
+   * resolves to a no-op there; RealBleDevice closes the link.
+   */
+  disconnect(): Promise<void> {
+    return this.device.disconnect?.() ?? Promise.resolve();
+  }
+
+  /**
    * Clears in-flight manifest-transfer state. Called on disconnect so a partial
    * (un-EOF'd) transfer is discarded and any pending loadManifest() rejects
    * rather than hanging forever.

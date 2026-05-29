@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { useMachine } from '@xstate/react';
@@ -33,13 +33,39 @@ function DeviceRenderer({ device, pin }: RouteParams) {
     [device.id, pin],
   );
 
-  const [state] = useMachine(machine);
+  const [state, send] = useMachine(machine);
+  const runtime = state.context.runtime;
 
   useEffect(() => {
     if (state.matches('ready')) {
       savePin(device.id, pin, device.name ?? device.id).catch(() => {});
     }
   }, [state, device, pin, savePin]);
+
+  // Forward unintentional link drops to the machine. Keyed on `runtime` (not the
+  // whole `state`, which changes every transition) so we resubscribe exactly
+  // once per fresh runtime — critical because the machine produces a NEW runtime
+  // on each reconnect, and the old runtime's subscription would otherwise go
+  // stale. `unsub` detaches the listener before we attach to the next runtime.
+  useEffect(() => {
+    if (!runtime) return;
+    const unsub = runtime.onDisconnected(() => send({ type: 'DISCONNECTED' }));
+    return unsub;
+  }, [runtime, send]);
+
+  // Free the firmware's exclusive GATT session when the screen unmounts. The
+  // runtime can change across reconnects, so read the latest via a ref rather
+  // than keying this effect on `runtime` (which would tear down + reconnect on
+  // every recovery). The unmount cleanup also sends CANCEL so the machine
+  // settles into its terminal `cancelled` state and stops any pending timers.
+  const runtimeRef = useRef(runtime);
+  runtimeRef.current = runtime;
+  useEffect(() => {
+    return () => {
+      runtimeRef.current?.disconnect().catch(() => {});
+      send({ type: 'CANCEL' });
+    };
+  }, [send]);
 
   if (state.matches('failed')) {
     return (
@@ -51,11 +77,20 @@ function DeviceRenderer({ device, pin }: RouteParams) {
     );
   }
 
-  if (!state.matches('ready') || !state.context.runtime) {
+  if (state.matches('reconnecting')) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator />
+        <Text style={styles.statusText}>Reconnexion…</Text>
+      </View>
+    );
+  }
+
+  if (!state.matches('ready') || !runtime) {
     return <ActivityIndicator />;
   }
 
-  return <ManifestScreenRenderer runtime={state.context.runtime} screenSlug="home" />;
+  return <ManifestScreenRenderer runtime={runtime} screenSlug="home" />;
 }
 
 function FixtureRenderer() {
@@ -93,5 +128,10 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     textAlign: 'center',
+  },
+  statusText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 12,
   },
 });

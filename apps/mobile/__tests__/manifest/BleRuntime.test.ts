@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
 import { BleRuntime } from '../../src/manifest/runtime/BleRuntime';
 import { createFixtureBleDevice } from '../../src/manifest/runtime/BleRuntime.fixture';
 import { encodeFrame, decodeFrames, FrameKind } from '../../src/manifest/runtime/frameCodec';
@@ -206,6 +206,42 @@ describe('BleRuntime', () => {
     unsubscribe();
     device.simulateDisconnect();
     expect(fired).toBe(1);
+  });
+
+  it('onDisconnected passthrough forwards a device drop to the runtime subscriber', () => {
+    const device = createFixtureBleDevice();
+    const rt = new BleRuntime(device);
+
+    let fired = 0;
+    const unsub = rt.onDisconnected(() => { fired += 1; });
+
+    device.simulateDisconnect();
+    expect(fired).toBe(1);
+
+    // The returned unsubscribe detaches the runtime's listener (used by the
+    // screen when the runtime changes across a reconnect).
+    unsub();
+    device.simulateDisconnect();
+    expect(fired).toBe(1);
+  });
+
+  it('disconnect passthrough forwards to the device when present', async () => {
+    const device = createFixtureBleDevice();
+    const disconnect = jest.fn(async () => {});
+    // The in-memory fixture has no transport to close; attach a disconnect so we
+    // can assert BleRuntime forwards to it (RealBleDevice implements this).
+    (device as any).disconnect = disconnect;
+    const rt = new BleRuntime(device);
+
+    await rt.disconnect();
+    expect(disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('disconnect passthrough resolves to a no-op when the device has none', async () => {
+    const device = createFixtureBleDevice();
+    const rt = new BleRuntime(device);
+    // The fixture omits disconnect; the `?.()` guard must resolve, not throw.
+    await expect(rt.disconnect()).resolves.toBeUndefined();
   });
 
   it('disconnect mid-transfer resets partial manifest state', async () => {
