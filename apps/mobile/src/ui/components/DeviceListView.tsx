@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 
 import { useAuth } from '../../hooks/useAuth';
+import { setTransport, useTransport } from '../../settings/manifestRuntimeFlag';
 import type { BleStateType, BleDevice } from '../../types/ble.types';
 import { DeviceCard } from './DeviceCard';
 import { PinPrompt } from './PinPrompt';
@@ -71,7 +72,21 @@ export function DeviceListView({ scan, transport }: Props) {
   const { bleState, isScanning, discoveredDevices, startScan, stopScan } = scan;
   const { knownDevices, getPin } = useAuth();
 
+  // Live transport for the manual selector. The `transport` prop is the mode this
+  // screen was mounted for; `activeTransport` is the store's current value (they
+  // agree once ScanScreen re-renders), so the highlighted button reflects taps
+  // immediately even before the screen swaps.
+  const activeTransport = useTransport();
   const isSpp = transport === 'spp';
+  const handleSelectTransport = (next: 'ble' | 'spp') => {
+    if (activeTransport === next) return;
+    triggerSelectionHaptic();
+    setTransport(next);
+  };
+
+  // Friendly label + the raw value the device reports (e.g. "off"), so a broken-BLE
+  // tablet's actual state is visible for diagnosis.
+  const rawBleStateLabel = `${BLE_STATE_META[bleState]?.label ?? 'Etat Bluetooth'} (${bleState})`;
 
   const [selectedDevice, setSelectedDevice] = useState<BleDevice | null>(null);
   const [showPinPrompt, setShowPinPrompt] = useState(false);
@@ -228,6 +243,60 @@ export function DeviceListView({ scan, transport }: Props) {
                 <Text style={styles.scanBtnText}>{isScanning ? 'Pause' : 'Scanner'}</Text>
               </TouchableOpacity>
             </View>
+
+            <View style={styles.transportRow}>
+              <View style={styles.transportToggle}>
+                <TouchableOpacity
+                  testID="transport-toggle-ble"
+                  style={[
+                    styles.transportBtn,
+                    activeTransport === 'ble' ? styles.transportBtnActive : styles.transportBtnInactive,
+                  ]}
+                  onPress={() => handleSelectTransport('ble')}
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={[
+                      styles.transportBtnText,
+                      activeTransport === 'ble'
+                        ? styles.transportBtnTextActive
+                        : styles.transportBtnTextInactive,
+                    ]}
+                  >
+                    BLE
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  testID="transport-toggle-spp"
+                  style={[
+                    styles.transportBtn,
+                    activeTransport === 'spp' ? styles.transportBtnActive : styles.transportBtnInactive,
+                  ]}
+                  onPress={() => handleSelectTransport('spp')}
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={[
+                      styles.transportBtnText,
+                      activeTransport === 'spp'
+                        ? styles.transportBtnTextActive
+                        : styles.transportBtnTextInactive,
+                    ]}
+                  >
+                    SPP
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text testID="transport-mode-badge" style={styles.modeBadge}>
+                Mode: {activeTransport === 'spp' ? 'SPP' : 'BLE'}
+              </Text>
+            </View>
+
+            <Text testID="transport-ble-state" style={styles.bleStateText}>
+              BLE: {rawBleStateLabel}
+            </Text>
 
             <Text style={styles.heroSubtitle}>{heroSubtitle}</Text>
 
@@ -405,6 +474,56 @@ const styles = StyleSheet.create({
     color: palette.bg,
     fontWeight: '800',
     fontSize: 13,
+  },
+  transportRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  transportToggle: {
+    flexDirection: 'row',
+    gap: 6,
+    padding: 4,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.panelInset,
+  },
+  transportBtn: {
+    minWidth: 56,
+    borderRadius: radius.pill,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transportBtnActive: {
+    backgroundColor: palette.accent,
+  },
+  transportBtnInactive: {
+    backgroundColor: palette.panelInset,
+  },
+  transportBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  transportBtnTextActive: {
+    color: palette.bg,
+  },
+  transportBtnTextInactive: {
+    color: palette.muted,
+  },
+  modeBadge: {
+    color: palette.subtle,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  bleStateText: {
+    color: palette.subtle,
+    fontSize: 11,
+    marginBottom: 14,
   },
   heroSubtitle: {
     color: palette.muted,
