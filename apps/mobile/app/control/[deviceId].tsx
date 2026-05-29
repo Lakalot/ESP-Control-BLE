@@ -5,9 +5,10 @@ import { useMachine } from '@xstate/react';
 
 import { useAuthStore } from '../../src/store/authStore';
 import type { BleDevice } from '../../src/types/ble.types';
-import { getManifestRuntime } from '../../src/settings/manifestRuntimeFlag';
+import { getTransport } from '../../src/settings/manifestRuntimeFlag';
 import { BleRuntime } from '../../src/manifest/runtime/BleRuntime';
 import { createRealBleDevice } from '../../src/manifest/runtime/RealBleDevice';
+import { createSppDevice } from '../../src/manifest/runtime/SppDevice';
 import { createConnectionMachine } from '../../src/manifest/runtime/connectionMachine';
 import { loadBundledFixtureRuntime } from '../../src/manifest/runtime/bundledFixtureRuntime';
 import { ManifestScreenRenderer } from '../../src/manifest/render/ManifestScreenRenderer';
@@ -21,16 +22,26 @@ type RouteParams = {
 
 function DeviceRenderer({ device, pin }: RouteParams) {
   const savePin = useAuthStore((state) => state.savePin);
+  const transport = getTransport();
   const machine = useMemo(
     () =>
       createConnectionMachine({
-        connect: async () => new BleRuntime(await createRealBleDevice(device.id)),
+        connect: async () => {
+          // In SPP mode the device id is the MAC address; in BLE mode it's the
+          // peripheral id. Either way we wrap the transport device in BleRuntime,
+          // so auth/framing/reconnect/UI are reused unchanged.
+          const dev =
+            transport === 'spp'
+              ? await createSppDevice(device.id)
+              : await createRealBleDevice(device.id);
+          return new BleRuntime(dev);
+        },
         authenticate: async (rt) => {
           await rt.authenticate(pin);
         },
         pin,
       }),
-    [device.id, pin],
+    [device.id, pin, transport],
   );
 
   const [state, send] = useMachine(machine);
@@ -111,7 +122,7 @@ function FixtureRenderer() {
 export default function ControlScreen() {
   const route = useRoute();
   const { device, pin } = route.params as RouteParams;
-  return getManifestRuntime() === 'fixture' ? (
+  return getTransport() === 'fixture' ? (
     <FixtureRenderer />
   ) : (
     <DeviceRenderer device={device} pin={pin} />

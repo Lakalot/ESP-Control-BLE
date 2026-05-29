@@ -10,6 +10,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../src/store/authStore';
 import { useBleStore } from '../src/store/bleStore';
 import { bleManagerService } from '../src/transport/BleManager';
+import { selectInitialTransport } from '../src/transport/selectTransport';
+import { setTransport } from '../src/settings/manifestRuntimeFlag';
 import { palette } from '../src/ui/theme/ui';
 
 const Stack = createNativeStackNavigator();
@@ -37,6 +39,23 @@ export default function RootLayout() {
     });
     return unsubscribe;
   }, [loadFromSecureStore, setBleState]);
+
+  // Auto-detect the transport once at startup: read the current BLE state and
+  // fall back to SPP when BLE is unsupported (hardware can't do BLE). By the
+  // time the user reaches the scan screen, getTransport() reflects ble vs spp.
+  useEffect(() => {
+    let cancelled = false;
+    bleManagerService
+      .getBleState()
+      .then((state) => selectInitialTransport(state))
+      .then((transport) => {
+        if (!cancelled) setTransport(transport);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
