@@ -23,6 +23,7 @@
 #include "../../protocol/actions/ActionDecoder.h"
 #include "../../protocol/snapshot/SnapshotEncoder.h"
 #include "../../support/EcbLogging.h"
+#include "../../support/ByteOrder.h"
 
 namespace ecb {
 
@@ -256,10 +257,8 @@ void ProtocolEngine::tick() {
       _manifestPending = false;
       const uint32_t crc = _store.crc32();
       uint8_t eof[8];
-      eof[0] = (total >> 24) & 0xFF; eof[1] = (total >> 16) & 0xFF;
-      eof[2] = (total >> 8) & 0xFF;  eof[3] = total & 0xFF;
-      eof[4] = (crc >> 24) & 0xFF;   eof[5] = (crc >> 16) & 0xFF;
-      eof[6] = (crc >> 8) & 0xFF;    eof[7] = crc & 0xFF;
+      ecb::writeU32BE(static_cast<uint32_t>(total), eof);
+      ecb::writeU32BE(crc, eof + 4);
       xSemaphoreGive(_mutex);
       sendFrame(FrameKind::ManifestEof, 0, eof, 8);
       xSemaphoreTake(_mutex, portMAX_DELAY);
