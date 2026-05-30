@@ -1,18 +1,18 @@
-name: mobile-v5
+name: mobile
 
 on:
   push:
     paths:
       - 'apps/mobile/**'
-      - 'tools/manifest-v5/**'
+      - 'tools/manifest/**'
       - 'proto/**'
-      - '.github/workflows/mobile-v5.yml'
+      - '.github/workflows/mobile.yml'
   pull_request:
     paths:
       - 'apps/mobile/**'
-      - 'tools/manifest-v5/**'
+      - 'tools/manifest/**'
       - 'proto/**'
-      - '.github/workflows/mobile-v5.yml'
+      - '.github/workflows/mobile.yml'
 
 jobs:
   build-and-test:
@@ -23,28 +23,31 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
 
+      # Version is read from the root package.json `packageManager` field;
+      # passing `version:` here too would conflict (ERR_PNPM_BAD_PM_VERSION).
       - uses: pnpm/action-setup@v4
-        with: { version: 9 }
 
       - name: install tools workspace
         run: pnpm install --frozen-lockfile
 
       - name: regenerate pbjs output
-        run: pnpm --filter @esp-control-ble/manifest-v5 run proto:gen:ts
+        run: pnpm --filter @esp-control-ble/manifest run proto:gen:ts
 
       - name: compile demo fixture for mobile asset
-        run: node apps/mobile/scripts/refresh-v5-fixture.mjs
+        run: node apps/mobile/scripts/refresh-fixture.mjs
 
       - name: ensure the fixture asset is committed
-        run: git diff --exit-code -- apps/mobile/assets/manifest_v5_demo.pb
+        run: git diff --exit-code -- apps/mobile/assets/manifest_demo.pb
 
+      # apps/mobile is outside the pnpm workspace (pnpm-workspace.yaml only
+      # globs tools/*) and is managed with its own npm lockfile.
       - name: install mobile deps
         working-directory: apps/mobile
         run: npm ci
 
       - name: copy pbjs into mobile
         working-directory: apps/mobile
-        run: npm run copy-v5-proto
+        run: npm run copy-proto
 
       - name: typecheck
         working-directory: apps/mobile

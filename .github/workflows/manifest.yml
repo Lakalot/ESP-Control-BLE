@@ -1,0 +1,58 @@
+name: manifest
+
+on:
+  push:
+    paths:
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "proto/**"
+      - "tools/manifest/**"
+      - ".github/workflows/manifest.yml"
+  pull_request:
+    paths:
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "proto/**"
+      - "tools/manifest/**"
+      - ".github/workflows/manifest.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm must be set up before setup-node's `cache: pnpm` can find it.
+      # The version comes from the root package.json `packageManager` field;
+      # passing `version:` here too would conflict (ERR_PNPM_BAD_PM_VERSION).
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: regenerate protobufjs output
+        run: pnpm --filter @esp-control-ble/manifest run proto:gen:ts
+
+      - name: fail if generated output changed
+        run: git diff --exit-code -- tools/manifest/src/generated
+
+      - name: typecheck
+        run: pnpm --filter @esp-control-ble/manifest typecheck
+
+      - name: test
+        run: pnpm --filter @esp-control-ble/manifest test
+
+      - name: compile demo fixture
+        run: pnpm --filter @esp-control-ble/manifest run compile -- --source tools/manifest/tests/fixtures/demo.manifest.ts --out tools/manifest/.tmp/manifest_demo.pb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manifest_demo.pb
+          path: tools/manifest/.tmp/manifest_demo.pb

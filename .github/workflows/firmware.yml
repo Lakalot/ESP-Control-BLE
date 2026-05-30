@@ -1,4 +1,4 @@
-name: Firmware V5
+name: firmware
 
 on:
   push:
@@ -20,8 +20,8 @@ jobs:
         with: { python-version: '3.11' }
       - name: Install PlatformIO
         run: pip install platformio==6.1.15
-      - name: Run native v5 tests
-        run: pio test -c firmware/esp32/platformio_test.ini -e native_v5
+      - name: Run native tests
+        run: pio test -c firmware/esp32/platformio_test.ini -e native
   release-build:
     runs-on: ubuntu-latest
     steps:
@@ -30,11 +30,5 @@ jobs:
         with: { python-version: '3.11' }
       - name: Install PlatformIO
         run: pip install platformio==6.1.15
-      - name: Download Plan A artifact
-        env:
-          MANIFEST_V5_ARTIFACT_URL: ${{ secrets.MANIFEST_V5_ARTIFACT_URL }}
-        run: echo "using $MANIFEST_V5_ARTIFACT_URL for embed step"
       - name: Build release env
-        env:
-          MANIFEST_V5_ARTIFACT_URL: ${{ secrets.MANIFEST_V5_ARTIFACT_URL }}
         run: pio run -c firmware/esp32/platformio.ini -e release
