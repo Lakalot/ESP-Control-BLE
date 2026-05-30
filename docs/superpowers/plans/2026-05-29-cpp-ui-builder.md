@@ -15,6 +15,8 @@ The repo root is `D:\DEV\Amazing\ESP-Control-BLE`. Run all `git` from there. Mat
 
 **Commands:** native tests `& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" test -e native` (from `firmware/esp32`); firmware build `... run -e esp32dev`. TS oracle: `cd tools/manifest && npx tsx src/cli/main.ts compile --source <yaml> --out <pb>`.
 
+**⚠️ TOOLCHAIN CONSTRAINT (confirmed at UI-T2):** the native test toolchain is **GCC 5.1.0** (`toolchain-gccmingw32`), which only PARTIALLY implements C++17 despite `-std=gnu++17`. Notably **nested-namespace syntax `namespace ecb::ui {}` does NOT compile** — use `namespace ecb { namespace ui { ... } }`. Avoid C++17 library features that GCC 5 lacks: `std::optional`, `std::string_view`, `std::variant`, structured bindings, `if constexpr`, inline variables, `std::byte`. Stick to C++11/14-safe constructs (the SPIKE used `-std=gnu++14` for the same reason). The esp32dev (Xtensa) toolchain is GCC 8.4 and fine, but **the native tests are the gate**, so code to GCC 5. Prefer `std::vector`/`std::unordered_map`/plain structs/sentinel returns over the above.
+
 ---
 
 ## Byte-equality contract (the spike's whole point)
@@ -340,8 +342,12 @@ NOTE: the exact fluent shape is a design choice — keep it close to the spec's 
 
 **Goal:** Extend the fluent API + emitter to every widget/resource/view/navBar used by the current `manifest.yaml`, and prove the emitter reproduces the **full current manifest** byte-for-byte.
 
+**⚠️ Two known risks surfaced by UI-T4's self-review (handle these explicitly):**
+1. **Action intern order.** In the current `EmitterUi`, an action is created/interned the moment a widget binds it (`.action(id,...)`), so the action string-table positions follow the ORDER widgets bind actions in `buildUi` — which may differ from the YAML `actions:` block order, shifting every downstream string index and breaking byte-equality. Fix options: (a) order the `describeFullDevice` widget/action declarations to reproduce the oracle's action order, OR (b) make `EmitterUi.build()` intern action strings in a deterministic order (e.g. matching normalize: actions are interned in `input.actions` order — replicate that by sorting/ordering actions as the YAML did). Diff the string table against the oracle early to pin this.
+2. **Schema-string derivation is incomplete for non-sliders.** The real manifest needs schema variants the widget type alone can't infer: `relay.toggle` has EMPTY `properties:{}` (no value) while `device.set_debug` (also a toggle) has `value:boolean`; buttons (`system.restart`, `system.factory_reset`) have EMPTY schemas; `device.rename` adds `minLength/maxLength`; `light.set_color`/`fan.set_profile` are string+enum (enum sourced from the bound resource). Extend `.action(...)` with the needed schema options (e.g. a `valueless()` form for no-payload actions, `minLength/maxLength` for text, enum pulled from the bound resource) so each action's `inputSchema` JSON byte-matches the oracle. Get each schema string EXACT (key order, no spaces).
+
 **Files:**
-- Test: `firmware/esp32/test/native/test_ui_emitter_full/test_ui_emitter_full.cpp` + checked-in `oracle_full.pb`
+- Test: `firmware/esp32/test/native/test_ui_emitter_full/test_ui_emitter_full.cpp` + the full-manifest oracle (embed as a C byte array like UI-T3 did, to avoid native-runner CWD path issues, OR check in `oracle_full.pb` only if the relative path resolves)
 
 - [ ] **Step 1:** Generate `oracle_full.pb` from the current `firmware/esp32/src/manifest.yaml` via the TS oracle. Check it into the test dir.
 - [ ] **Step 2: Failing test** — a `describeFullDevice(Ui&)` that mirrors the entire current manifest (3 views, all widgets, navBar, all resources/actions), emit, assert byte-equal to `oracle_full.pb`.
@@ -362,7 +368,8 @@ NOTE: the exact fluent shape is a design choice — keep it close to the spec's 
 
 - [ ] **Step 1: Failing test** — build a small UI via `RuntimeUi` bound to a fake/real `EspControl`; assert: (a) invoking the registered action with a uint payload calls the user lambda with the decoded value; (b) a resource bound to a variable publishes a delta when set. Reuse the `ActionRegistry`/`ProtocolEngine` test patterns.
 - [ ] **Step 2:** Run — fail.
-- [ ] **Step 3:** Implement `RuntimeUi`: `resource(id, ...)` → allocates a resource id (same sort-by-id scheme so ids match the emitted manifest!) and registers it; `slider(...).onSet(fn)` → `registerAction(id, [fn](ctx){ /* type-check + decode + call fn */ })`. CRITICAL: the runtime ids MUST match the emitter's ids (both derive from sort-by-id of the same id strings) so the manifest the tablet has and the handlers the ESP registers refer to the same numeric ids. Add a test asserting an id from RuntimeUi equals the emitter's id for the same slug.
+- [ ] **Step 3:** Implement `RuntimeUi`. FIRST, per UI-T5's recommendation, **hoist the shared id-assignment** (`sort-by-id ascending, 1-based`, and the `idOf(slug)` lookup) out of `EmitterUi.cpp`'s anonymous namespace into a shared header `ui/IdAssignment.h` (or similar), and have `EmitterUi` use it — so there is ONE implementation. `assignIds` is order-independent (a pure function of the SET of slugs), so both impls computing it over the same slug set yields identical ids. Re-run native tests to confirm EmitterUi still emits byte-identical after the refactor (the 3382-byte full oracle must still match).
+  THEN implement `RuntimeUi`: `resource(id, ...)` → derive its id via the shared scheme + register it; `slider(...).onSet(fn)` → `registerAction(id, [fn](ctx){ /* type-check valueKind + decode + call fn */ })`. CRITICAL INVARIANT: the runtime ids MUST equal the emitter's ids for the same slugs (same shared `idOf` over the same slug set) so the manifest the tablet holds and the handlers the ESP registers refer to the same numeric ids. Add a test asserting `RuntimeUi`'s id for a slug equals `EmitterUi`'s id for that slug (build the SAME `describeFullDevice` through both and compare a few ids). The typed `onSet` decode must mirror the widget→ActionValueKind mapping (slider→Uint, toggle→Bool, select/text_input→String) and call the user's `std::function` with the decoded value; on a payload-kind mismatch, `replyError(BadPayload)`.
 - [ ] **Step 4:** Run — pass.
 - [ ] **Step 5: Commit** `feat(firmware): RuntimeUi registers resources and typed handlers`.
 

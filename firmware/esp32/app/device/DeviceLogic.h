@@ -5,20 +5,17 @@
 
 #include "DeviceState.h"
 
-class EspControl;
-
+// Pure, host-portable DeviceState logic: the mutators that decode an inbound
+// action value into the device's state, plus the enum<->slug mappers the publish
+// side uses to write string resources. NO Arduino, NO EspControl -- only
+// <stdint.h>/<string.h>. (Was the static helpers on the old DeviceActions plus its
+// fanProfileName/colorPresetName anonymous-namespace mappers; moved here so the
+// declarative device_ui.cpp + the publishing AppRuntime can share them and
+// DeviceActions can be deleted.)
 namespace app {
 
-class AppRuntime;
-
-class DeviceActions {
- public:
-  explicit DeviceActions(uint8_t ledPin) : ledPin_(ledPin) {}
-
-  void begin() const;
-  void registerAll(EspControl& control, AppRuntime& runtime) const;
-  void syncResources(EspControl& control, const DeviceState& state) const;
-
+struct DeviceLogic {
+  // ---- state mutators (clamp/parse + assign) ----
   static void toggleRelay(DeviceState& state) {
     state.relayEnabled = !state.relayEnabled;
   }
@@ -55,6 +52,26 @@ class DeviceActions {
     if (!deviceName) return;
     strncpy(state.deviceName, deviceName, sizeof(state.deviceName) - 1);
     state.deviceName[sizeof(state.deviceName) - 1] = '\0';
+  }
+
+  // ---- enum -> wire slug mappers (publish side) ----
+  static const char* fanProfileName(uint8_t profile) {
+    switch (profile) {
+      case 2u: return "fast";
+      case 1u: return "normal";
+      default: return "slow";
+    }
+  }
+
+  static const char* colorPresetName(uint8_t preset) {
+    switch (preset) {
+      case 5u: return "party";
+      case 4u: return "blue";
+      case 3u: return "green";
+      case 2u: return "red";
+      case 1u: return "cool_white";
+      default: return "warm_white";
+    }
   }
 
  private:
@@ -96,10 +113,6 @@ class DeviceActions {
     if (strcmp(colorPreset, "party") == 0) return 5u;
     return 0u;
   }
-
-  void applyLightOutput(const DeviceState& state) const;
-
-  uint8_t ledPin_;
 };
 
 }  // namespace app
