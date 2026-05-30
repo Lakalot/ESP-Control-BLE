@@ -88,6 +88,20 @@ static void test_default_res_is_inert() {
   r.set(1u);                        // must not crash
   TEST_ASSERT_EQUAL_UINT32(0u, r.id());
 }
+static void test_res_int_set_get() {
+  RecUi ui;
+  Res<int32_t> r(&ui, 11u);
+  r.set(-5);
+  TEST_ASSERT_EQUAL_INT32(-7, r.get());          // mock returns -7
+  TEST_ASSERT_EQUAL_STRING("wI:11:-5", ui.log[0].c_str());
+}
+static void test_res_float_set_get() {
+  RecUi ui;
+  Res<float> r(&ui, 12u);
+  r.set(2.5f);
+  TEST_ASSERT_EQUAL_FLOAT(1.5f, r.get());         // mock returns 1.5
+  TEST_ASSERT_EQUAL_STRING("wF:12", ui.log[0].c_str());
+}
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_res_uint_set_get);
@@ -95,5 +109,7 @@ int main(int, char**) {
   RUN_TEST(test_res_string_set);
   RUN_TEST(test_res_copy_is_safe_handle);
   RUN_TEST(test_default_res_is_inert);
+  RUN_TEST(test_res_int_set_get);
+  RUN_TEST(test_res_float_set_get);
   return UNITY_END();
 }

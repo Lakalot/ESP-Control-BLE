@@ -129,7 +129,7 @@ public:
   virtual const char* uiReadString(uint32_t /*id*/) { return ""; }
   // resolve a (possibly slot-tagged) handle to its final resource id. Default
   // pass-through; RuntimeUi overrides this in a later task.
-  virtual uint32_t uiResolveId(uint32_t idOrSlot) { return idOrSlot; }
+  virtual uint32_t uiResolveId(uint32_t idOrSlot) const { return idOrSlot; }
 
   // ===== Fluent entry points (defined out-of-line below; return builders) =====
   void  requireCapability(const std::string& feature)  { recordCapability(feature, true); }
