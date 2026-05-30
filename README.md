@@ -86,16 +86,18 @@ ESP-Control-BLE/
 │   │   ├── main.cpp           # Entry point
 │   │   ├── device/            # Business logic
 │   │   │   ├── DeviceState.h  # Your device's mutable state
-│   │   │   ├── DeviceActions  # Action handlers (toggle, set, etc.)
+│   │   │   ├── DeviceLogic.h  # Portable state mutators + enum<->slug mappers
+│   │   │   ├── device_ui.cpp  # Declarative UI + typed .onSet handlers (buildUi)
 │   │   │   └── DeviceTelemetry# Periodic sensor/resource publishing
-│   │   └── runtime/           # Orchestrator + publish scheduler
+│   │   └── runtime/           # AppRuntime (ActionSink seam) + publish scheduler
 │   ├── src/
-│   │   ├── manifest.yaml      # Firmware demo authored YAML manifest
+│   │   ├── manifest.yaml      # Legacy YAML manifest (no longer built; see device_ui.cpp)
 │   │   ├── manifest_data.h    # Auto-generated protobuf binary
 │   │   └── manifest_symbols.* # Auto-generated C++ symbol constants
-│   ├── lib/esp-control-ble/   # Core BLE protocol library
+│   ├── lib/esp-control-ble/   # Core BLE protocol library (incl. ui/ builder)
 │   └── tools/
-│       └── embed_manifest.py  # Pre-build: manifest → protobuf + symbols
+│       ├── emit_ui.py         # Pre-build: device_ui.cpp → protobuf + symbols (pure C++, no Node)
+│       └── ui_emit_main.cpp   # Host emitter main() compiled & run by emit_ui.py
 │
 ├── apps/mobile/               # React Native mobile app (don't edit)
 │   └── src/manifest/          # Auto-renders from your manifest
@@ -430,13 +432,23 @@ If you are writing CLI `.yaml` input today, stay within authored `views[].conten
 
 ## Firmware Business Logic
 
-After editing your manifest authoring file, you write C++ code that:
-1. **Registers action handlers** -- what happens when the user taps a button
-2. **Publishes resource values** -- push sensor data to the phone
+You describe the whole device -- resources, actions, UI layout, **and** the handlers --
+in one place: `firmware/esp32/app/device/device_ui.cpp`. A single fluent
+`buildUi(ecb::ui::Ui&, app::AppRuntime&)` function:
+1. **Declares resources, actions, and the UI tree** -- what the mobile app renders
+2. **Attaches typed `.onSet` handlers to widgets** -- what happens when the user
+   taps/drags a control; each handler just calls a method on `AppRuntime`
+
+The same `buildUi(...)` is visited twice with different `Ui` implementations:
+- on the **host**, at build time, `EmitterUi` walks it to emit the protobuf manifest
+  and the symbol headers (see [Building the Manifest](#building-the-manifest));
+- on the **device**, at `setup()`, `RuntimeUi` walks it to register every resource
+  and every `.onSet` handler. The emitter ignores `.onSet` entirely, so handlers
+  never run at build time.
 
 ### Generated Symbols
 
-When you build, `embed_manifest.py` generates `manifest_symbols.h` with typed constants:
+When you build, `emit_ui.py` generates `manifest_symbols.h` with typed constants:
 
 ```cpp
 namespace manifest_resources {
@@ -455,6 +467,10 @@ Use these constants instead of magic numbers -- they're auto-generated from your
 
 ### Entry Point (`main.cpp`)
 
+`main.cpp` just wires the pieces together. It doesn't register actions itself --
+`runtime.setup(...)` walks `buildUi(...)` and registers everything. (The LED pin
+and all hardware/publishing live inside `AppRuntime`, not here.)
+
 ```cpp
 #include <Arduino.h>
 #include <EspControlBle.h>
@@ -462,21 +478,20 @@ Use these constants instead of magic numbers -- they're auto-generated from your
 #define MANIFEST_DEFINE_DATA
 #include "../src/manifest_data.h"
 
-#include "device/DeviceActions.h"
 #include "device/DeviceTelemetry.h"
 #include "runtime/AppRuntime.h"
 
 namespace {
-constexpr uint8_t kLedPin = 2u;
 app::AppRuntime runtime;
-app::DeviceActions actions(kLedPin);
 app::DeviceTelemetry telemetry;
 EspControl control("ESP32-Test", "1234");  // device name, PIN
 }
 
 void setup() {
   Serial.begin(115200);
-  runtime.setup(control, actions, telemetry, MANIFEST_DATA, MANIFEST_LEN, temperatureRead());
+  Serial.println("[App] Starting...");
+  runtime.setup(control, telemetry, MANIFEST_DATA, MANIFEST_LEN, temperatureRead());
+  Serial.printf("[App] Ready (manifest, %u bytes)\n", (unsigned)MANIFEST_LEN);
 }
 
 void loop() {
