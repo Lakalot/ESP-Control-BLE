@@ -1,13 +1,16 @@
-// Task 5 (UI builder): FULL-manifest byte-equality test for the fluent Ui API +
-// EmitterUi. The single point of this test is the "the tablet sees no change"
-// guarantee: describeFullDevice() reconstructs the ENTIRE current device manifest
-// (firmware/esp32/src/manifest.yaml) through the fluent C++ API, and the emitted
-// protobuf must be byte-for-byte identical to the TS toolchain's output for that
-// YAML (oracle_full.pb, 3382 B). If even one string/id/scalar diverges the whole
-// blob shifts, so this is an all-or-nothing proof of full coverage.
+// FULL-surface byte-equality regression test for the fluent Ui API + EmitterUi.
+// describeFullDevice() exercises every widget/container/field kind through the
+// fluent C++ API, and the emitted protobuf must be byte-for-byte identical to a
+// frozen golden blob (kOracleFull, 3382 B) that the TS toolchain produced for the
+// SAME description. If even one string/id/scalar diverges the whole blob shifts,
+// so this is an all-or-nothing proof that the C++ emitter stays byte-stable.
+//
+// (This is a self-contained emitter regression -- it is NOT the demo device. The
+// shipped device is firmware/esp32/src/device_ui.cpp, emitted at build; its own
+// determinism is guarded by test_emitter_determinism.)
 //
 // The oracle bytes are embedded as a C array (kOracleFull) rather than read from
-// disk, to avoid native-runner CWD fragility (same approach as UI-T3/T4).
+// disk, to avoid native-runner CWD fragility.
 
 #include <unity.h>
 #include <cstdint>
@@ -22,12 +25,11 @@ using namespace ecb::ui;
 void setUp() {}
 void tearDown() {}
 
-// The TS toolchain reference bytes for the full manifest.yaml (3382 B), embedded
-// as a C array (regenerate via:
-//   cd tools/manifest && npx tsx src/cli/main.ts compile \
-//     --source ../../firmware/esp32/src/manifest.yaml --out /tmp/oracle_full.pb
-//   then hexdump the bytes). Kept self-contained (no checked-in .pb / #include),
-// matching test_ui_encoder / test_ui_emitter, to avoid native-runner CWD issues.
+// Frozen golden bytes for the full-surface description below (3382 B), embedded as
+// a C array. This is a fixed regression snapshot: if describeFullDevice() changes,
+// regenerate it from the equivalent YAML fixture under tools/manifest/tests/fixtures
+// (the retained byte-equality oracle) and hexdump the bytes. Kept self-contained
+// (no checked-in .pb / #include) to avoid native-runner CWD issues.
 static const uint8_t kOracleFull[] = {
   0x08, 0x05, 0x10, 0x01, 0x1a, 0x05, 0x31, 0x2e, 0x30, 0x2e, 0x30, 0x22,
   0x04, 0x0a, 0x02, 0x01, 0x02, 0x2a, 0x02, 0x0a, 0x00, 0x2a, 0x11, 0x0a,

@@ -27,9 +27,9 @@ using namespace ecb::ui;
 void setUp() {}
 void tearDown() {}
 
-// ---- Shared full description (mirrors test_ui_emitter_full's describeFullDevice
-// and firmware/esp32/src/manifest.yaml). Visited by BOTH EmitterUi and RuntimeUi
-// so their ids are computed over identical slug sets. ----
+// ---- Shared full-surface description (the same one as test_ui_emitter_full's
+// describeFullDevice). Visited by BOTH EmitterUi and RuntimeUi so their ids are
+// computed over identical slug sets -- the tablet<->device id-agreement guarantee. ----
 static void describeFullDevice(Ui& ui) {
   ui.requireCapability("layout.sections");
   ui.requireCapability("rules.visibility");
