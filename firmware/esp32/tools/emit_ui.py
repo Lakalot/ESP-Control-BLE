@@ -41,27 +41,57 @@ SOURCES = [
 ]
 
 
-def resolve_gxx() -> str:
-    """Locate the host g++: the PlatformIO mingw toolchain on Windows, else system g++."""
+def resolve_gxx():
+    """Locate the host g++. Returns (gxx_path, toolchain_bin_dir_or_None).
+
+    toolchain_bin_dir is the mingw .../bin we must put FIRST on PATH so the
+    compiler's own helper processes (cc1plus.exe, collect2.exe) load THIS
+    toolchain's runtime DLLs -- see controlled_env() for why that matters.
+    """
     # Preferred: the toolchain PlatformIO already installed for the native env.
     try:
         pkg_dir = env.PioPlatform().get_package_dir("toolchain-gccmingw32")
         if pkg_dir:
             candidate = Path(pkg_dir) / "bin" / "g++.exe"
             if candidate.is_file():
-                return str(candidate)
+                return str(candidate), candidate.parent
     except Exception:
         pass
     # Fallback: the conventional core packages location.
     core_candidate = Path.home() / ".platformio" / "packages" / "toolchain-gccmingw32" / "bin" / "g++.exe"
     if core_candidate.is_file():
-        return str(core_candidate)
+        return str(core_candidate), core_candidate.parent
     # Last resort: a system g++ on PATH (non-Windows hosts).
     found = shutil.which("g++")
     if found:
-        return found
+        return found, None
     print("[emit_ui] no host g++ found (toolchain-gccmingw32 or system g++)", file=sys.stderr)
     sys.exit(1)
+
+
+def controlled_env(toolchain_bin):
+    """Run g++ with the mingw toolchain's own dirs FIRST on PATH.
+
+    PlatformIO prepends other toolchains (notably toolchain-xtensa-esp32, an
+    x86_64-SEH mingw build) to PATH before invoking pre-build scripts. Our host
+    g++ is the 32-bit i686-dw2 toolchain-gccmingw32; its helper exes (cc1plus,
+    collect2) are dynamically linked and resolve libstdc++-6 / libgcc_s /
+    libwinpthread by PATH order. If the xtensa bin is found first, they load a
+    mismatched-arch DLL and crash at load with STATUS_STACK_BUFFER_OVERRUN
+    (0xC0000409) and NO output -- intermittently, depending on PATH. Putting the
+    mingw bin (and its i686-w64-mingw32/lib DLL dir) at the front makes the right
+    DLLs win deterministically. ``-static`` only affects the EMITTED exe, not the
+    compiler's own processes, so it does not help here.
+    """
+    if toolchain_bin is None:
+        return None  # system g++ (non-Windows): inherit env unchanged.
+    env_copy = dict(os.environ)
+    dll_dir = toolchain_bin.parent / "i686-w64-mingw32" / "lib"  # libgcc_s_dw2 / libstdc++-6 / libwinpthread
+    front = [str(toolchain_bin)]
+    if dll_dir.is_dir():
+        front.append(str(dll_dir))
+    env_copy["PATH"] = os.pathsep.join(front + [env_copy.get("PATH", "")])
+    return env_copy
 
 
 def writable_exe_path() -> Path:
@@ -90,6 +120,32 @@ def writable_exe_path() -> Path:
     return EXE
 
 
+# Windows NTSTATUS failures (e.g. 0xC0000409 STATUS_STACK_BUFFER_OVERRUN,
+# 0xC0000005 access violation) come back from subprocess as huge unsigned-looking
+# exit codes >= 0xC0000000. Those mean a process CRASHED (a host-environment
+# problem: a DLL mismatch, a Defender real-time hook killing cc1plus, a transient
+# file lock) -- NOT a compile error (g++ returns 1/4 WITH diagnostics for those).
+# Crashes here are intermittent, so a retry clears them; a real compile error is
+# deterministic and must fail fast.
+def _is_crash_code(code):
+    return code is not None and (code & 0xFFFFFFFF) >= 0xC0000000
+
+
+def run_with_retry(cmd, run_env, what, attempts=4):
+    """subprocess.run, retrying only on a crash exit code (not on compile errors)."""
+    last = None
+    for attempt in range(1, attempts + 1):
+        last = subprocess.run(cmd, capture_output=True, text=True, env=run_env)
+        if last.returncode == 0 or not _is_crash_code(last.returncode):
+            return last
+        print(
+            "[emit_ui] %s crashed (exit 0x%08X) on attempt %d/%d -- retrying"
+            % (what, last.returncode & 0xFFFFFFFF, attempt, attempts),
+            file=sys.stderr,
+        )
+    return last
+
+
 def main():
     BUILD_CACHE.mkdir(exist_ok=True)
 
@@ -107,7 +163,8 @@ def main():
         )
         sys.exit(1)
 
-    gxx = resolve_gxx()
+    gxx, toolchain_bin = resolve_gxx()
+    run_env = controlled_env(toolchain_bin)
     exe = writable_exe_path()
 
     cmd = [
@@ -127,14 +184,16 @@ def main():
 
     print("[emit_ui] compiling host emitter:")
     print("[emit_ui]   " + " ".join(cmd))
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = run_with_retry(cmd, run_env, "host compile")
     if result.returncode != 0:
         # Always surface the exit code: a linker that cannot write the .exe can
         # fail with no stdout/stderr, and a bare "host compile failed" with empty
         # output is impossible to diagnose.
         detail = (result.stdout + result.stderr).strip() or "(no compiler output)"
+        crash = " [crash, not a compile error]" if _is_crash_code(result.returncode) else ""
         print(
-            f"[emit_ui] host compile failed (g++ exit {result.returncode}):\n{detail}",
+            "[emit_ui] host compile failed (g++ exit 0x%08X)%s:\n%s"
+            % (result.returncode & 0xFFFFFFFF, crash, detail),
             file=sys.stderr,
         )
         sys.exit(1)
@@ -142,7 +201,7 @@ def main():
         print(result.stderr.strip())
 
     print(f"[emit_ui] running {exe.name} -> {SRC_OUT}")
-    run = subprocess.run([str(exe), str(SRC_OUT)], capture_output=True, text=True)
+    run = subprocess.run([str(exe), str(SRC_OUT)], capture_output=True, text=True, env=run_env)
     if run.returncode != 0:
         detail = (run.stdout + run.stderr).strip() or "(no emitter output)"
         print(
