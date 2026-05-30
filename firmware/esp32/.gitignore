@@ -1,5 +1,4 @@
 .pio/
-src/manifest_data.h
 src/generated/
 build_cache/
 .vscode/.browse.c_cpp.db*
