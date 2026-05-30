@@ -30,12 +30,17 @@ EXE = BUILD_CACHE / ("ui_emit.exe" if sys.platform == "win32" else "ui_emit")
 # copy the native tests link.
 NANOPB_RUNTIME = PROJECT / ".pio" / "libdeps" / "native" / "Nanopb"
 
-# Translation units compiled into the host emitter.
+# Translation units compiled into the host emitter. HwHal.cpp is included because
+# the device description may call ecb::ui::halAnalogWrite / halDigitalWrite from a
+# .onSet handler (the demo drives an LED that way). Under -DECB_HOST_EMIT its body is
+# a guarded no-op (no Arduino), so it only satisfies the link -- it never touches HW
+# at emit time, and EmitterUi ignores .onSet anyway, so the emitted bytes are unaffected.
 SOURCES = [
     PROJECT / "tools" / "ui_emit_main.cpp",
     PROJECT / "src" / "device_ui.cpp",
     LIB_SRC / "ui" / "EmitterUi.cpp",
     LIB_SRC / "ui" / "UiModelEncoder.cpp",
+    LIB_SRC / "ui" / "HwHal.cpp",
 ]
 
 

@@ -1,0 +1,149 @@
+// Single-source device UI description. This ONE buildUi(Ui&) is visited twice:
+//   * EmitterUi (host, via tools/ui_emit_main.cpp) -> normalized UiModel -> nanopb
+//     -> src/generated/manifest_data.h (the embedded manifest the tablet reads).
+//   * RuntimeUi (ESP, via EspControl::beginUi) -> registers resources + the typed
+//     .onSet handlers + the default value-setters below.
+//
+// This file is HOST-PORTABLE: it is compiled by tools/emit_ui.py with the same host
+// g++ the native tests use (-DECB_HOST_EMIT, NO Arduino, NO EspControl). The only
+// "hardware" call allowed is ecb::ui::halAnalogWrite / halDigitalWrite (declared in
+// the portable ui/HwHal.h; the .cpp guards Arduino so the host build is a no-op and
+// the device build drives the real pin). EmitterUi ignores .onSet entirely, so the
+// handlers never run at emit time and do not affect the emitted bytes.
+//
+// The device is a demo "smart light": a relay (Main Power), a brightness slider
+// (drives the on-board LED via PWM), color + fan presets, a debug toggle, a device
+// rename field, restart/factory-reset buttons, and display-only telemetry
+// (temperature/humidity/load/wifi rssi/uptime) pushed from loop().
+//
+// Each widget is declared ONCE (short forms bundle resource + "<slug>.set" action +
+// widget + a default value-setter) and the resulting builder is placed into a view's
+// content()/children(). A custom .onSet SUPPRESSES the default setter, so a handler
+// that needs custom logic also writes its own resource.
+
+#include "device_ui.h"
+#include "ui/HwHal.h"
+
+using namespace ecb::ui;
+
+namespace {
+// On-board LED used as the dimmable "light" output (PWM, 0..100% -> 0..255 duty).
+const uint8_t kLedPin = 2u;
+}  // namespace
+
+// -- telemetry handles (defined here, declared in device_ui.h; written from loop) --
+namespace dev {
+Res<float>    temperature;
+Res<float>    humidity;
+Res<uint32_t> load;
+Res<int32_t>  rssi;
+Res<uint32_t> uptime;
+}  // namespace dev
+
+void buildUi(Ui& ui) {
+  // -- capabilities --
+  ui.requireCapability("layout.sections");
+
+  // ---- interactive controls (declared once; placed in the layout below) ----
+
+  // Typed handles for the relay <-> brightness cross-reference. resourceB/resourceU32
+  // record-or-reuse a resource by slug; the short forms below reuse these same slugs.
+  Res<bool>     relayH = ui.resourceB("relay.auto", ValueType::Bool);
+  Res<uint32_t> bright = ui.resourceU32("light.brightness", ValueType::Uint);
+  // The "%" unit lives on the resource (idempotent by slug; the slider's short form
+  // records the same resource). Widget builders carry no .unit().
+  ui.resource("light.brightness", ValueType::Uint).unit("%");
+
+  // Main Power relay: writes its resource; turning it on from a dark state brings
+  // brightness up to 100% and refreshes the LED. Custom onSet -> writes both itself.
+  ToggleBuilder relay = ui.toggleShort("relay.auto", "Main Power")
+      .onSet([relayH, bright](bool on) {
+        relayH.set(on);
+        if (on && bright.get() == 0u) bright.set(100u);
+        ecb::ui::halAnalogWrite(kLedPin, on ? (int)((long)bright.get() * 255 / 100) : 0);
+      });
+
+  // Brightness slider: writes its resource AND drives the LED. Custom onSet, so it
+  // writes `bright` itself (the default setter is suppressed).
+  SliderBuilder brightness = ui.sliderShort("light.brightness", "Brightness", 0, 100)
+      .formatHint("percent")
+      .onSet([bright](uint8_t v) {
+        bright.set((uint32_t)v);
+        ecb::ui::halAnalogWrite(kLedPin, (int)((long)v * 255 / 100));
+      });
+
+  // Presets / flags / rename: no custom logic -> the short form's default setter
+  // writes the resource automatically.
+  SelectBuilder color = ui.selectShort("light.color", "Color Preset",
+      {"warm_white", "cool_white", "red", "green", "blue", "party"});
+  SelectBuilder fan = ui.selectShort("fan.profile", "Fan Profile", {"slow", "normal", "fast"});
+  ToggleBuilder debug = ui.toggleShort("device.debug", "Debug Mode");
+  TextInputBuilder rename = ui.textInputShort("device.name", "Rename Device");
+
+  // Valueless buttons (no resource / default setter). Device restart/reset is an app
+  // concern; here they just reply Ok (an empty .onSet keeps a valueless handler).
+  ButtonBuilder restart = ui.buttonShort("system.restart", "Restart").onSet([]() {});
+  ButtonBuilder factoryReset = ui.buttonShort("system.factory_reset", "Factory Reset").onSet([]() {});
+
+  // ---- telemetry (display-only) -- recorded via the long-form ui.resource(...) so
+  //      the display widgets can bind to the ResourceRef, AND grabbed again as typed
+  //      Res<T> handles (idempotent by slug) for pushing values from loop(). --------
+  ResourceRef tempRef = ui.resource("env.temperature", ValueType::Float)
+      .label("Temperature").unit("C").readMode(ReadMode::Subscribe).staleAfterMs(5000);
+  ResourceRef humidityRef = ui.resource("env.humidity", ValueType::Float)
+      .label("Humidity").unit("%").readMode(ReadMode::Subscribe).staleAfterMs(5000);
+  ResourceRef loadRef = ui.resource("system.load", ValueType::Uint)
+      .label("Load").unit("%").readMode(ReadMode::Subscribe).staleAfterMs(3000);
+  ResourceRef rssiRef = ui.resource("wifi.rssi", ValueType::Int)
+      .label("WiFi Signal").unit("dBm").readMode(ReadMode::Poll).pollMs(10000).staleAfterMs(15000);
+  ResourceRef uptimeRef = ui.resource("system.uptime", ValueType::DurationMs)
+      .label("Uptime").readMode(ReadMode::Poll).pollMs(5000).staleAfterMs(10000);
+
+  dev::temperature = ui.resourceF("env.temperature", ValueType::Float);
+  dev::humidity    = ui.resourceF("env.humidity", ValueType::Float);
+  dev::load        = ui.resourceU32("system.load", ValueType::Uint);
+  dev::rssi        = ui.resourceI32("wifi.rssi", ValueType::Int);
+  dev::uptime      = ui.resourceU32("system.uptime", ValueType::DurationMs);
+
+  // ---- layout: 3 views (home / stats / settings) + an app-shell nav bar ----
+
+  // home: banner + a Lighting section (power / brightness / color).
+  ViewBuilder home = ui.view("home", "Home");
+  home.content({
+      ui.text("home.banner", "ESP Control").text("BLE-connected device dashboard."),
+      ui.section("lighting.section", "Lighting").children({relay, brightness, color}),
+  });
+
+  // stats: a Telemetry section (stats + fan select) + a System section (rssi/uptime).
+  ViewBuilder stats = ui.view("stats", "Stats");
+  stats.content({
+      ui.section("telemetry.section", "Telemetry").children({
+          ui.stat("telemetry.temp", "Temperature", tempRef).formatHint("float_2"),
+          ui.stat("telemetry.humidity", "Humidity", humidityRef).formatHint("float_1"),
+          ui.stat("telemetry.load", "Load", loadRef).formatHint("percent"),
+          fan,
+      }),
+      ui.section("system.section", "System").children({
+          ui.row("system.row").children({
+              ui.badge("system.rssi", "WiFi", rssiRef),
+              ui.timer("system.uptime", "Uptime", uptimeRef),
+          }),
+      }),
+  });
+
+  // settings: a Device section (rename / restart) + an Advanced section (debug / reset).
+  ViewBuilder settings = ui.view("settings", "Settings");
+  settings.content({
+      ui.section("settings.section", "Device").children({rename, restart}),
+      ui.section("advanced.section", "Advanced").children({
+          debug,
+          ui.text("advanced.note").text("Advanced settings"),
+          factoryReset,
+      }),
+  });
+
+  // app-shell nav bar (declaration order: home / stats / settings).
+  ui.navItem("home", "Home", "home", home);
+  ui.navItem("stats", "Stats", "bar-chart-2", stats);
+  ui.navItem("settings", "Settings", "settings", settings);
+}
