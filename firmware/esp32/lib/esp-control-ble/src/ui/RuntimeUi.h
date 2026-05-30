@@ -103,6 +103,12 @@ public:
   virtual void widgetOnSetString(int nh, std::function<void(const char*)> fn);
   virtual void widgetOnSetVoid(int nh, std::function<void()> fn);
 
+  // default-setter sinks (short-form widgets): tag the node so commit() registers a
+  // value-writing handler on its bound action (unless a user .onSet overrides it).
+  virtual void installDefaultUintSetter(int nh, const std::string& resourceSlug);
+  virtual void installDefaultBoolSetter(int nh, const std::string& resourceSlug);
+  virtual void installDefaultStringSetter(int nh, const std::string& resourceSlug);
+
   // value hooks (override the no-op base; route to control_->resources() + publish).
   virtual void uiWrite(uint32_t id, bool v);
   virtual void uiWrite(uint32_t id, int32_t v);
@@ -148,7 +154,13 @@ private:
   struct NodeDecl {
     std::string slug;
     int bindActionIndex;  // index into actions_, -1 = none
-    NodeDecl() : bindActionIndex(-1) {}
+    // Short-form default setter: write the decoded value into resource
+    // `defaultSetterSlug`. kind 0=none, 1=uint, 2=bool, 3=string. Suppressed when
+    // the node also got a user .onSet (hasUserOnSet) -- user handler wins.
+    std::string defaultSetterSlug;
+    int  defaultSetterKind;
+    bool hasUserOnSet;
+    NodeDecl() : bindActionIndex(-1), defaultSetterKind(0), hasUserOnSet(false) {}
   };
 
   // A handler captured at .onSet time, pending id resolution at commit().

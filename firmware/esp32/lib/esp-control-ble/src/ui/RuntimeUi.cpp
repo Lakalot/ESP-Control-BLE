@@ -205,12 +205,15 @@ void RuntimeUi::recordNavItem(const std::string&, const std::string&, const std:
 
 // ------------------------------ onSet capture -------------------------------
 
+// Each user .onSet also flags the node so a short-form default setter on the SAME
+// widget is suppressed at commit() (user handler wins).
 void RuntimeUi::widgetOnSetUint(int nh, std::function<void(uint8_t)> fn) {
   PendingHandler p;
   p.nodeHandle = nh;
   p.kind = HandlerKind::Uint;
   p.fnUint = fn;
   pending_.push_back(p);
+  nodes_[nh].hasUserOnSet = true;
 }
 void RuntimeUi::widgetOnSetBool(int nh, std::function<void(bool)> fn) {
   PendingHandler p;
@@ -218,6 +221,7 @@ void RuntimeUi::widgetOnSetBool(int nh, std::function<void(bool)> fn) {
   p.kind = HandlerKind::Bool;
   p.fnBool = fn;
   pending_.push_back(p);
+  nodes_[nh].hasUserOnSet = true;
 }
 void RuntimeUi::widgetOnSetString(int nh, std::function<void(const char*)> fn) {
   PendingHandler p;
@@ -225,6 +229,7 @@ void RuntimeUi::widgetOnSetString(int nh, std::function<void(const char*)> fn) {
   p.kind = HandlerKind::String;
   p.fnString = fn;
   pending_.push_back(p);
+  nodes_[nh].hasUserOnSet = true;
 }
 void RuntimeUi::widgetOnSetVoid(int nh, std::function<void()> fn) {
   PendingHandler p;
@@ -232,6 +237,23 @@ void RuntimeUi::widgetOnSetVoid(int nh, std::function<void()> fn) {
   p.kind = HandlerKind::Void;
   p.fnVoid = fn;
   pending_.push_back(p);
+  nodes_[nh].hasUserOnSet = true;
+}
+
+// ----------------------------- default setters ------------------------------
+// Short-form widgets tag their node here; commit() turns the tag into a registered
+// value-writing action handler (unless hasUserOnSet suppressed it).
+void RuntimeUi::installDefaultUintSetter(int nh, const std::string& resourceSlug) {
+  nodes_[nh].defaultSetterSlug = resourceSlug;
+  nodes_[nh].defaultSetterKind = 1;
+}
+void RuntimeUi::installDefaultBoolSetter(int nh, const std::string& resourceSlug) {
+  nodes_[nh].defaultSetterSlug = resourceSlug;
+  nodes_[nh].defaultSetterKind = 2;
+}
+void RuntimeUi::installDefaultStringSetter(int nh, const std::string& resourceSlug) {
+  nodes_[nh].defaultSetterSlug = resourceSlug;
+  nodes_[nh].defaultSetterKind = 3;
 }
 
 // --------------------------------- commit -----------------------------------
@@ -296,6 +318,75 @@ ActionHandler makeVoidHandler(std::function<void()> fn) {
   };
 }
 
+// ----- short-form DEFAULT setters -------------------------------------------
+// A default setter writes the decoded value into the widget's resource AND drives
+// any declarative HW the resource carries -- so a mobile command on a short-form
+// slider with .pwmPin() both updates the table and moves the LED, with no user
+// .onSet needed. To stay self-contained (no RuntimeUi capture -> no dangle if the
+// RuntimeUi is a setup-local destroyed after commit), the maker resolves the
+// resource id + HW config at commit() and captures them BY VALUE (POD + the optional
+// onApply std::function + the long-lived EspControl*).
+struct DefaultSetterHw {
+  int pwmPin;       // -1 = none
+  int gpioPin;      // -1 = none
+  int pwmRangeMax;  // map(value, 0, rangeMax, 0, 255)
+  bool invert;
+  std::function<void(int32_t)> onApply;  // optional escape hatch
+  DefaultSetterHw() : pwmPin(-1), gpioPin(-1), pwmRangeMax(255), invert(false) {}
+};
+
+// Replicates RuntimeUi::applyHw without needing the RuntimeUi/resources_ table.
+void applyDefaultHw(const DefaultSetterHw& hw, int32_t value) {
+  if (hw.pwmPin >= 0) {
+    long long mx = hw.pwmRangeMax > 0 ? hw.pwmRangeMax : 255;
+    long long duty = (value <= 0) ? 0 : (value >= mx ? 255 : ((long long)value * 255LL) / mx);
+    if (hw.invert) duty = 255 - duty;
+    halAnalogWrite(static_cast<uint8_t>(hw.pwmPin), static_cast<int>(duty));
+  }
+  if (hw.gpioPin >= 0) {
+    bool level = value != 0; if (hw.invert) level = !level;
+    halDigitalWrite(static_cast<uint8_t>(hw.gpioPin), level);
+  }
+  if (hw.onApply) hw.onApply(value);
+}
+
+ActionHandler makeDefaultUintSetter(EspControl* control, uint32_t resId, DefaultSetterHw hw) {
+  return [control, resId, hw](ActionContext& ctx) {
+    if (ctx.valueKind != ActionValueKind::Uint) {
+      ctx.replyError(ActionStatus::BadPayload, "expected uint");
+      return;
+    }
+    control->resources().setUint(resId, ctx.uintValue);
+    control->publishDelta(resId);
+    applyDefaultHw(hw, static_cast<int32_t>(ctx.uintValue));
+    ctx.replyOk(nullptr, 0);
+  };
+}
+ActionHandler makeDefaultBoolSetter(EspControl* control, uint32_t resId, DefaultSetterHw hw) {
+  return [control, resId, hw](ActionContext& ctx) {
+    if (ctx.valueKind != ActionValueKind::Bool) {
+      ctx.replyError(ActionStatus::BadPayload, "expected bool");
+      return;
+    }
+    control->resources().setBool(resId, ctx.boolValue);
+    control->publishDelta(resId);
+    applyDefaultHw(hw, ctx.boolValue ? 1 : 0);
+    ctx.replyOk(nullptr, 0);
+  };
+}
+ActionHandler makeDefaultStringSetter(EspControl* control, uint32_t resId, DefaultSetterHw hw) {
+  return [control, resId, hw](ActionContext& ctx) {
+    if (ctx.valueKind != ActionValueKind::String) {
+      ctx.replyError(ActionStatus::BadPayload, "expected string");
+      return;
+    }
+    control->resources().setString(resId, ctx.stringValue);
+    control->publishDelta(resId);
+    applyDefaultHw(hw, 0);  // strings carry no numeric value (PWM->0, GPIO->LOW, onApply(0))
+    ctx.replyOk(nullptr, 0);
+  };
+}
+
 }  // namespace
 
 void RuntimeUi::commit() {
@@ -325,6 +416,34 @@ void RuntimeUi::commit() {
       case HandlerKind::Bool:   control_->registerAction(aid, makeBoolHandler(p.fnBool)); break;
       case HandlerKind::String: control_->registerAction(aid, makeStringHandler(p.fnString)); break;
       case HandlerKind::Void:   control_->registerAction(aid, makeVoidHandler(p.fnVoid)); break;
+    }
+  }
+
+  // Short-form DEFAULT setters: for each node tagged by installDefault*Setter that
+  // did NOT also get a user .onSet, register a value-writing handler on its bound
+  // action. Resolve the resource id + HW config now and capture them by value so the
+  // handler is self-contained (no RuntimeUi capture). Registered AFTER the pending
+  // handlers, but a node never has both (hasUserOnSet gates this), so no override
+  // ambiguity -- user handlers already won by suppressing the default here.
+  for (size_t i = 0; i < nodes_.size(); ++i) {
+    const NodeDecl& nd = nodes_[i];
+    if (nd.defaultSetterKind == 0 || nd.hasUserOnSet) continue;
+    if (nd.bindActionIndex < 0 || nd.bindActionIndex >= static_cast<int>(actions_.size())) continue;
+    uint32_t aid = actIds_.idOf(actions_[nd.bindActionIndex].slug);
+    if (aid == 0u) continue;
+    uint32_t resId = resIds_.idOf(nd.defaultSetterSlug);
+    if (resId == 0u) continue;
+    DefaultSetterHw hw;
+    int ri = findResource(nd.defaultSetterSlug);
+    if (ri >= 0) {
+      const ResourceDecl& r = resources_[ri];
+      hw.pwmPin = r.pwmPin; hw.gpioPin = r.gpioPin;
+      hw.pwmRangeMax = r.pwmRangeMax; hw.invert = r.invert; hw.onApply = r.onApply;
+    }
+    switch (nd.defaultSetterKind) {
+      case 1: control_->registerAction(aid, makeDefaultUintSetter(control_, resId, hw)); break;
+      case 2: control_->registerAction(aid, makeDefaultBoolSetter(control_, resId, hw)); break;
+      case 3: control_->registerAction(aid, makeDefaultStringSetter(control_, resId, hw)); break;
     }
   }
 }

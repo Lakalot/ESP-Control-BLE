@@ -128,6 +128,16 @@ public:
   virtual void  widgetOnSetString(int /*nh*/, std::function<void(const char*)> /*fn*/) {}
   virtual void  widgetOnSetVoid(int /*nh*/, std::function<void()> /*fn*/) {}
 
+  // -- default-setter sinks (short-form widgets only) -- the *Short entry points
+  // below install a DEFAULT .onSet that writes the decoded value straight into the
+  // widget's resource `resourceSlug`. No-op on EmitterUi (structure is unchanged --
+  // a default setter records nothing the long form wouldn't). RuntimeUi captures it
+  // and, at commit(), registers it on the widget's bound action UNLESS the node also
+  // got a user .onSet (a user handler suppresses the default -- user wins).
+  virtual void  installDefaultUintSetter(int /*nh*/, const std::string& /*resourceSlug*/) {}
+  virtual void  installDefaultBoolSetter(int /*nh*/, const std::string& /*resourceSlug*/) {}
+  virtual void  installDefaultStringSetter(int /*nh*/, const std::string& /*resourceSlug*/) {}
+
   // ---- value hooks (Res<T> routes through these). Default no-op: EmitterUi
   //      ignores them; RuntimeUi overrides them to write the table + publish. ----
   virtual void uiWrite(uint32_t /*id*/, bool /*v*/) {}
@@ -160,6 +170,19 @@ public:
   class TextInputBuilder textInput(const std::string& slug, const std::string& title,
                                    const class ResourceRef& res);
   class ButtonBuilder    button(const std::string& slug, const std::string& title);
+
+  // -- SHORT-FORM widget builders -- one call bundles resource + action "<slug>.set"
+  // + widget bound to it + a DEFAULT .onSet (writes the decoded value into the
+  // resource). Returns the same builder type as the long form, so .formatHint /
+  // .pwmPin (via Res) / a user .onSet (overriding the default) still chain. (button
+  // is valueless: action slug == slug, NO resource, NO default setter.)
+  class SliderBuilder    sliderShort(const std::string& slug, const std::string& title, int min, int max);
+  class ToggleBuilder    toggleShort(const std::string& slug, const std::string& title);
+  class SelectBuilder    selectShort(const std::string& slug, const std::string& title,
+                                     const std::vector<std::string>& options);
+  class TextInputBuilder textInputShort(const std::string& slug, const std::string& title);
+  class ButtonBuilder    buttonShort(const std::string& slug, const std::string& title);
+
   class TextBuilder      text(const std::string& slug, const std::string& title);
   class TextBuilder      text(const std::string& slug);  // title-less (text set via .text())
   class StatBuilder      stat(const std::string& slug, const std::string& title,
@@ -420,6 +443,65 @@ inline TextInputBuilder Ui::textInput(const std::string& slug, const std::string
 inline ButtonBuilder Ui::button(const std::string& slug, const std::string& title) {
   int nh = recordWidget(slug, WidgetKind::Button, -1, false, 0, 0);
   nodeTitle(nh, title);
+  return ButtonBuilder(this, nh);
+}
+
+// ----- SHORT-FORM entry points (resource + action + widget + default setter) -----
+// Each is exactly the long-form sequence (so EmitterUi records byte-identical
+// structure) plus an installDefault*Setter call (no-op on EmitterUi).
+inline SliderBuilder Ui::sliderShort(const std::string& slug, const std::string& title, int min, int max) {
+  int rh = recordResource(slug, ValueType::Uint);
+  resourceLabel(rh, title);
+  int ah = recordAction(slug + ".set", title);
+  actionSchemaInteger(ah, min, max);
+  int nh = recordWidget(slug, WidgetKind::Slider, rh, /*hasRange*/ true, min, max);
+  nodeTitle(nh, title);
+  bindWidgetAction(nh, slug + ".set");
+  installDefaultUintSetter(nh, slug);
+  return SliderBuilder(this, nh);
+}
+inline ToggleBuilder Ui::toggleShort(const std::string& slug, const std::string& title) {
+  int rh = recordResource(slug, ValueType::Bool);
+  resourceLabel(rh, title);
+  int ah = recordAction(slug + ".set", title);
+  actionSchemaBoolean(ah);
+  int nh = recordWidget(slug, WidgetKind::Toggle, rh, false, 0, 0);
+  nodeTitle(nh, title);
+  bindWidgetAction(nh, slug + ".set");
+  installDefaultBoolSetter(nh, slug);
+  return ToggleBuilder(this, nh);
+}
+inline SelectBuilder Ui::selectShort(const std::string& slug, const std::string& title,
+                                     const std::vector<std::string>& options) {
+  int rh = recordResource(slug, ValueType::Enum);
+  resourceLabel(rh, title);
+  resourceEnum(rh, options);
+  int ah = recordAction(slug + ".set", title);
+  actionSchemaStringEnum(ah, options);
+  int nh = recordWidget(slug, WidgetKind::Select, rh, false, 0, 0);
+  nodeTitle(nh, title);
+  bindWidgetAction(nh, slug + ".set");
+  installDefaultStringSetter(nh, slug);
+  return SelectBuilder(this, nh);
+}
+inline TextInputBuilder Ui::textInputShort(const std::string& slug, const std::string& title) {
+  int rh = recordResource(slug, ValueType::String);
+  resourceLabel(rh, title);
+  int ah = recordAction(slug + ".set", title);
+  actionSchemaStringLen(ah, 0, 64);
+  int nh = recordWidget(slug, WidgetKind::TextInput, rh, false, 0, 0);
+  nodeTitle(nh, title);
+  bindWidgetAction(nh, slug + ".set");
+  installDefaultStringSetter(nh, slug);
+  return TextInputBuilder(this, nh);
+}
+inline ButtonBuilder Ui::buttonShort(const std::string& slug, const std::string& title) {
+  // No resource; action slug == the slug itself, valueless. NO default setter.
+  int ah = recordAction(slug, title);
+  actionSchemaValueless(ah);
+  int nh = recordWidget(slug, WidgetKind::Button, -1, false, 0, 0);
+  nodeTitle(nh, title);
+  bindWidgetAction(nh, slug);
   return ButtonBuilder(this, nh);
 }
 inline TextBuilder Ui::text(const std::string& slug, const std::string& title) {
