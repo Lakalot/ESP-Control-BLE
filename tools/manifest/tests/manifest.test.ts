@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { loadYamlManifest } from '../src/authoring/loadYamlManifest.js';
 import { expandAuthoringManifest } from '../src/authoring/expand.js';
-import { loadManifestSource } from '../src/cli/loadSource.js';
 import { ManifestSpec } from '../src/schema/manifest.js';
 import { normalize } from '../src/compiler/normalize.js';
 import { validateManifest } from '../src/validation/ajv.js';
@@ -27,91 +26,6 @@ function loadExpandedAuthoringFixture(name: string) {
 
 function loadCanonicalYamlFixture(name: string) {
   return YAML.parse(readFileSync(join(HERE, 'fixtures', name), 'utf8'));
-}
-
-function loadLegacyJsonFixture(name: string) {
-  return JSON.parse(readFileSync(join(HERE, 'fixtures', name), 'utf8'));
-}
-
-function comparableNormalized(manifest: ReturnType<typeof normalize>) {
-  const strings = manifest.strings;
-  const stringAt = (index: number) => (index === 0 ? null : strings[index] ?? null);
-  const resourcesById = new Map(manifest.resources.map((resource) => [resource.id, resource]));
-  const actionsById = new Map(manifest.actions.map((action) => [action.id, action]));
-  const nodesById = new Map(manifest.nodes.map((node) => [node.id, node]));
-  const screensById = new Map(manifest.screens.map((screen) => [screen.id, screen]));
-  const screenSlugById = new Map(manifest.screens.map((screen) => [screen.id, stringAt(screen.slugIdx)]));
-  const nodeSlugById = new Map(manifest.nodes.map((node) => [node.id, stringAt(node.slugIdx)]));
-
-  return {
-    version: manifest.version,
-    schemaVersion: manifest.schemaVersion,
-    minAppVersion: manifest.minAppVersion,
-    capabilities: [...manifest.capabilities.featureIdxs.map((idx) => stringAt(idx))].sort(),
-    appShell: manifest.appShell
-      ? {
-          navBarItems: [...manifest.appShell.navBarItems]
-            .map((item) => ({
-              id: stringAt(item.idIdx),
-              label: stringAt(item.labelIdx),
-              icon: stringAt(item.iconIdx),
-              screen: screenSlugById.get(item.screenId) ?? null,
-            }))
-            .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
-        }
-      : null,
-    resources: [...manifest.resources]
-      .map((resource) => ({
-        slug: stringAt(resource.slugIdx),
-        label: stringAt(resource.labelIdx),
-        unit: stringAt(resource.unitIdx),
-        valueType: resource.valueType,
-        readMode: resource.readMode,
-        staleAfterMs: resource.staleAfterMs,
-        pollMs: resource.pollMs,
-        enumValues: resource.enumValueIdxs.map((idx) => stringAt(idx)),
-      }))
-      .sort((left, right) => String(left.slug).localeCompare(String(right.slug))),
-    actions: [...manifest.actions]
-      .map((action) => ({
-        slug: stringAt(action.slugIdx),
-        label: stringAt(action.labelIdx),
-        dangerLevel: action.dangerLevel,
-        confirm: stringAt(action.confirmIdx),
-        cooldownMs: action.cooldownMs,
-        inputSchema: stringAt(action.inputSchemaIdx),
-        resultSchema: stringAt(action.resultSchemaIdx),
-      }))
-      .sort((left, right) => String(left.slug).localeCompare(String(right.slug))),
-    screens: [...manifest.screens]
-      .map((screen) => ({
-        slug: stringAt(screen.slugIdx),
-        title: stringAt(screen.titleIdx),
-        routeKey: stringAt(screen.routeKeyIdx),
-        rootNode: nodeSlugById.get(screen.rootNodeId) ?? null,
-        entryRules: screen.entryRules.map((rule) => rule.jsonlogic),
-      }))
-      .sort((left, right) => String(left.slug).localeCompare(String(right.slug))),
-    nodes: [...manifest.nodes]
-      .map((node) => ({
-        slug: stringAt(node.slugIdx),
-        kind: node.kind,
-        widgetKind: node.widgetKind,
-        title: stringAt(node.titleIdx),
-        tone: stringAt(node.toneIdx),
-        children: node.childrenIds.map((childId) => nodeSlugById.get(childId) ?? null),
-        columns: node.columns,
-        bind: {
-          resource: node.bind.resourceId === 0 ? null : stringAt(resourcesById.get(node.bind.resourceId)?.slugIdx ?? 0),
-          action: node.bind.actionId === 0 ? null : stringAt(actionsById.get(node.bind.actionId)?.slugIdx ?? 0),
-        },
-        visibleIf: node.visibleIf?.jsonlogic ?? null,
-        enabledIf: node.enabledIf?.jsonlogic ?? null,
-        text: stringAt(node.textIdx),
-        formatHint: stringAt(node.formatHintIdx),
-      }))
-      .sort((left, right) => String(left.slug).localeCompare(String(right.slug))),
-  };
 }
 
 const MINIMAL_MANIFEST = loadExpandedAuthoringFixture('minimal.manifest.yaml');
@@ -156,42 +70,6 @@ describe('ManifestSpec', () => {
 
   it('accepts the full-surface authored YAML fixture as canonical output', () => {
     expect(Value.Check(ManifestSpec, FULL_SURFACE_MANIFEST)).toBe(true);
-  });
-
-  it('keeps the real migrated firmware YAML views aligned to the deleted JSON shape', () => {
-    const loaded = loadYamlManifest(join(HERE, '..', '..', '..', 'firmware', 'esp32', 'src', 'manifest.yaml'));
-
-    expect(loaded.ok).toBe(true);
-
-    if (!loaded.ok) {
-      throw new Error('expected real firmware YAML manifest to load');
-    }
-
-    expect((loaded.value as any).views).toEqual([
-      expect.not.objectContaining({ routeKey: expect.anything() }),
-      expect.not.objectContaining({ routeKey: expect.anything() }),
-      expect.not.objectContaining({ routeKey: expect.anything() }),
-    ]);
-    expect((loaded.value as any).views).toEqual([
-      expect.not.objectContaining({ entryRules: expect.anything() }),
-      expect.not.objectContaining({ entryRules: expect.anything() }),
-      expect.not.objectContaining({ entryRules: expect.anything() }),
-    ]);
-  });
-
-  it('normalizes the real migrated firmware YAML manifest to the same legacy JSON baseline shape', async () => {
-    const authoredYaml = await loadManifestSource(
-      join(HERE, '..', '..', '..', 'firmware', 'esp32', 'src', 'manifest.yaml'),
-    );
-    const legacyJson = loadLegacyJsonFixture('full-surface.manifest.json');
-    const legacyRealBaseline = {
-      ...legacyJson,
-      views: legacyJson.views.map(({ routeKey: _routeKey, entryRules: _entryRules, ...view }: any) => view),
-    };
-
-    expect(comparableNormalized(normalize(authoredYaml as never))).toEqual(
-      comparableNormalized(normalize(legacyRealBaseline as never)),
-    );
   });
 
   it('normalizes the full-surface authored YAML fixture', () => {

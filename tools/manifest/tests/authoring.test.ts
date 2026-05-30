@@ -9,7 +9,6 @@ import { loadYamlManifest } from '../src/authoring/loadYamlManifest.js';
 import { expandAuthoringManifest } from '../src/authoring/expand.js';
 import { loadManifestSource } from '../src/cli/loadSource.js';
 import { runCli } from '../src/cli/main.js';
-import { FULL_SURFACE_MANIFEST_PATH } from './fixtures/full-surface.manifest.js';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 
@@ -129,44 +128,11 @@ describe('loadManifestSource', () => {
     ).rejects.toThrow(/invalid-yaml\.manifest\.yaml: .+/);
   });
 
-  it('loads the real firmware manifest inventory for remaining YAML parity work', async () => {
-    const loaded = await loadManifestSource(FULL_SURFACE_MANIFEST_PATH);
-
-    expect(Value.Check(ManifestSpec, loaded)).toBe(true);
-
-    if (!Value.Check(ManifestSpec, loaded)) {
-      throw new Error('expected the real firmware fixture to match ManifestSpec');
-    }
-
-    const result = loaded;
-    const widgets = Array.from(
-      new Set(
-        result.nodes
-          .filter((node) => node.kind === 'widget')
-          .map((node) => node.widget),
-      ),
-    ).sort();
-
-    expect(result).toMatchObject({
-      appShell: expect.any(Object),
-      views: expect.arrayContaining([
-        expect.objectContaining({ id: 'home' }),
-        expect.objectContaining({ id: 'stats' }),
-        expect.objectContaining({ id: 'settings' }),
-      ]),
-    });
-    expect(widgets).toEqual([
-      'badge',
-      'button',
-      'select',
-      'slider',
-      'stat',
-      'text',
-      'text_input',
-      'timer',
-      'toggle',
-    ]);
-  });
+  // (Removed: a test that loaded firmware/esp32/src/manifest.yaml "for remaining
+  //  YAML parity work". The firmware no longer authors a YAML manifest -- the
+  //  device is described in firmware/esp32/src/device_ui.cpp and the manifest is
+  //  emitted from C++ at build. This TS toolchain is retained only as the
+  //  byte-equality oracle for the emitter; there is no firmware YAML to parse.)
 });
 
 describe('expandAuthoringManifest', () => {
