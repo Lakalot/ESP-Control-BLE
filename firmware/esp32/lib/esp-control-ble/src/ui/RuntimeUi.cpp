@@ -127,6 +127,7 @@ void RuntimeUi::setOnApply(const std::string& slug, std::function<void(int32_t)>
 }
 
 int RuntimeUi::resIndexForId(uint32_t id) const {
+  if (id == 0u) return -1;  // 0 is IdMap's "absent" sentinel (also the pre-commit value)
   for (size_t i = 0; i < resources_.size(); ++i)
     if (resIds_.idOf(resources_[i].slug) == id) return static_cast<int>(i);
   return -1;
@@ -136,8 +137,9 @@ void RuntimeUi::applyHw(int resIndex, int32_t value) {
   if (resIndex < 0) return;
   const ResourceDecl& r = resources_[resIndex];
   if (r.pwmPin >= 0) {
-    long mx = r.pwmRangeMax > 0 ? r.pwmRangeMax : 255;
-    long duty = (value <= 0) ? 0 : (value >= mx ? 255 : (long)((value * 255L) / mx));
+    // 64-bit intermediate so an arbitrarily large pwmRangeMax can't overflow.
+    long long mx = r.pwmRangeMax > 0 ? r.pwmRangeMax : 255;
+    long long duty = (value <= 0) ? 0 : (value >= mx ? 255 : ((long long)value * 255LL) / mx);
     if (r.invert) duty = 255 - duty;
     halAnalogWrite(static_cast<uint8_t>(r.pwmPin), static_cast<int>(duty));
   }
@@ -350,7 +352,7 @@ void RuntimeUi::uiWrite(uint32_t id, float v) {
 }
 void RuntimeUi::uiWrite(uint32_t id, const char* v) {
   control_->resources().setString(id, v); control_->publishDelta(id);
-  applyHw(resIndexForId(id), 0);  // HW on strings is a no-op; pass 0
+  applyHw(resIndexForId(id), 0);  // strings carry no numeric value -> pass 0 (PWM->0, GPIO->LOW, onApply(0))
 }
 
 bool RuntimeUi::uiReadBool(uint32_t id) {
