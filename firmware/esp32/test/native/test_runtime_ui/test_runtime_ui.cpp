@@ -19,6 +19,7 @@
 #include "ui/EmitterUi.h"
 #include "ui/RuntimeUi.h"
 #include "ui/ManifestModel.h"
+#include "ui/HwHal.h"
 #include "EspControlBle.h"
 
 using namespace ecb::ui;
@@ -26,9 +27,9 @@ using namespace ecb::ui;
 void setUp() {}
 void tearDown() {}
 
-// ---- Shared full description (mirrors test_ui_emitter_full's describeFullDevice
-// and firmware/esp32/src/manifest.yaml). Visited by BOTH EmitterUi and RuntimeUi
-// so their ids are computed over identical slug sets. ----
+// ---- Shared full-surface description (the same one as test_ui_emitter_full's
+// describeFullDevice). Visited by BOTH EmitterUi and RuntimeUi so their ids are
+// computed over identical slug sets -- the tablet<->device id-agreement guarantee. ----
 static void describeFullDevice(Ui& ui) {
   ui.requireCapability("layout.sections");
   ui.requireCapability("rules.visibility");
@@ -254,10 +255,150 @@ static void test_runtime_ui_registers_resource() {
   TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ecb::ResourceValueKind::Uint), static_cast<uint8_t>(rv.kind));
 }
 
+static void test_runtimeui_value_hooks_write_table() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  // Drive the hooks directly with a known id.
+  rt.uiWrite(28u, (uint32_t)77u);
+  ecb::ResourceValue v;
+  TEST_ASSERT_TRUE(control.resources().get(28u, v));
+  TEST_ASSERT_EQUAL_UINT32(77u, v.uintValue);
+  TEST_ASSERT_EQUAL_UINT32(77u, rt.uiReadUint(28u));
+
+  rt.uiWrite(29u, true);
+  TEST_ASSERT_TRUE(control.resources().get(29u, v));
+  TEST_ASSERT_TRUE(v.boolValue);
+
+  rt.uiWrite(30u, "warm");
+  TEST_ASSERT_TRUE(control.resources().get(30u, v));
+  TEST_ASSERT_EQUAL_STRING("warm", v.stringValue);
+}
+
+// (DX-T3) A Res<T> handle obtained from a typed creator (resourceU32/resourceB)
+// during description carries a SLOT TAG, not a real id. After commit() resolves
+// the slot -> resource index -> sorted-slug id, set()/get()/id() all work and the
+// resolved id matches the emitter scheme.
+static void test_stored_res_writes_after_commit() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  ecb::ui::Res<uint32_t> bright = rt.resourceU32("light.brightness", ecb::ui::ValueType::Uint);
+  ecb::ui::Res<bool>     relay  = rt.resourceB("relay.auto", ecb::ui::ValueType::Bool);
+  rt.commit();
+  bright.set(55u);
+  relay.set(true);
+  ecb::ResourceValue v;
+  TEST_ASSERT_TRUE(control.resources().get(bright.id(), v));
+  TEST_ASSERT_EQUAL_UINT32(55u, v.uintValue);
+  TEST_ASSERT_TRUE(control.resources().get(relay.id(), v));
+  TEST_ASSERT_TRUE(v.boolValue);
+  // ids match the emitter scheme: sorted slugs ["light.brightness","relay.auto"] -> 1,2
+  TEST_ASSERT_EQUAL_UINT32(1u, bright.id());
+  TEST_ASSERT_EQUAL_UINT32(2u, relay.id());
+}
+
+// (UAF regression) EspControl owns its RuntimeUi (a by-value member), so a Res<T>
+// handle captured during the build function -- like the app's dev:: globals set
+// inside buildUi -- stays valid for writes AFTER the build function returns. The
+// previous beginUi built through a STACK-LOCAL RuntimeUi that died on return,
+// leaving every such handle dangling (use-after-free on the next .set()).
+//
+// We can't call beginUi() here (begin() sets up a static ManifestStore and isn't
+// unit-safe), so we reproduce the exact lifetime contract beginUi now relies on:
+// the RuntimeUi must OUTLIVE the build function. buildSink() captures into a global
+// Res (the dev:: stand-in) and returns; the RuntimeUi lives on in this scope (as
+// the EspControl member does). A write through the captured handle after the build
+// scope must still reach the table. Under the old stack-local design this handle
+// would point at freed memory.
+static ecb::ui::Res<float> g_uafTelemetry;  // stands in for a dev:: global
+static void buildSink(ecb::ui::Ui& ui) {
+  g_uafTelemetry = ui.resourceF("env.temperature", ecb::ui::ValueType::Float);
+}
+static void test_espcontrol_runtimeui_outlives_build() {
+  EspControl control("TestDev", "123456");
+  // RuntimeUi lives as long as `control` would own it -- the build function below
+  // returns while it stays alive, exactly as EspControl::_runtimeUi outlives buildFn.
+  ecb::ui::RuntimeUi rt(control);
+  buildSink(rt);   // captures g_uafTelemetry, then returns (its frame is gone)
+  rt.commit();
+  // The captured handle still writes after the build function returned.
+  g_uafTelemetry.set(21.5f);
+  ecb::ResourceValue v;
+  TEST_ASSERT_TRUE(control.resources().get(g_uafTelemetry.id(), v));
+  TEST_ASSERT_EQUAL_FLOAT(21.5f, v.floatValue);
+}
+
+// (DX-T3) Recording is idempotent by slug: requesting the same resource twice
+// records it ONCE, so both handles resolve to the same id (two slots, one
+// resource). A later task relies on this so res<T>(slug) + a short-form widget
+// referring to the same slug share one resource.
+static void test_idempotent_resource_recording() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  ecb::ui::Res<bool> a = rt.resourceB("relay.auto", ecb::ui::ValueType::Bool);
+  ecb::ui::Res<bool> b = rt.resourceB("relay.auto", ecb::ui::ValueType::Bool);  // same slug again
+  rt.commit();
+  // both handles resolve to the SAME id (resource recorded once).
+  TEST_ASSERT_EQUAL_UINT32(a.id(), b.id());
+  TEST_ASSERT_TRUE(a.id() != 0u);
+  a.set(true);
+  ecb::ResourceValue v;
+  TEST_ASSERT_TRUE(control.resources().get(b.id(), v));
+  TEST_ASSERT_TRUE(v.boolValue);
+}
+
+// (DX-T4) A resource with a declared PWM pin: writing it drives the HAL with
+// the mapped value (map(value, 0, rangeMax, 0, 255)).
+static int g_pwmPin = -1, g_pwmVal = -1;
+static void fakeAnalog(uint8_t pin, int val) { g_pwmPin = pin; g_pwmVal = val; }
+
+static void test_pwm_pin_applies_on_set() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  ecb::ui::setAnalogWriteForTest(&fakeAnalog);                  // inject HAL
+  ecb::ui::Res<uint32_t> bright = rt.resourceU32("light.brightness", ecb::ui::ValueType::Uint);
+  rt.setPwmPin("light.brightness", /*pin*/2, /*rangeMax*/100);  // declare HW (range 0..100 -> 0..255)
+  rt.commit();
+  g_pwmPin = -1; g_pwmVal = -1;                                 // reset after any commit-time seeding
+  bright.set(50u);
+  TEST_ASSERT_EQUAL_INT(2, g_pwmPin);
+  TEST_ASSERT_EQUAL_INT(127, g_pwmVal);                         // map(50,0,100,0,255)=127
+  ecb::ui::setAnalogWriteForTest(nullptr);
+}
+
+// (DX-T6) lookupF returns a real-id Res<float> after commit; set() writes the table.
+static void test_lookup_by_slug() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  rt.resourceF("env.temperature", ecb::ui::ValueType::Float);   // record it (DX-T3 creator)
+  rt.commit();
+  ecb::ui::Res<float> t = rt.lookupF("env.temperature");        // lookup
+  t.set(23.5f);
+  ecb::ResourceValue v;
+  TEST_ASSERT_TRUE(control.resources().get(rt.resourceId("env.temperature"), v));
+  TEST_ASSERT_EQUAL_FLOAT(23.5f, v.floatValue);
+}
+
+// (DX-T6) lookupF on an unknown slug returns an inert id-0 handle; set() must not crash.
+static void test_lookup_unknown_is_inert() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  rt.commit();
+  ecb::ui::Res<float> t = rt.lookupF("nope.missing");           // unknown
+  t.set(1.0f);                                                  // must not crash
+  TEST_ASSERT_EQUAL_UINT32(0u, t.id());                         // unknown -> id 0
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_runtime_ui_ids_match_emitter);
   RUN_TEST(test_runtime_ui_typed_handler_decodes);
   RUN_TEST(test_runtime_ui_registers_resource);
+  RUN_TEST(test_runtimeui_value_hooks_write_table);
+  RUN_TEST(test_stored_res_writes_after_commit);
+  RUN_TEST(test_espcontrol_runtimeui_outlives_build);
+  RUN_TEST(test_idempotent_resource_recording);
+  RUN_TEST(test_pwm_pin_applies_on_set);
+  RUN_TEST(test_lookup_by_slug);
+  RUN_TEST(test_lookup_unknown_is_inert);
   return UNITY_END();
 }

@@ -20,7 +20,6 @@
 #include "protocol/subscriptions/SubscriptionState.h"
 #include "protocol/manifest/ManifestStore.h"
 #include "protocol/auth/AuthHandler.h"
-#include "transport/frame/FrameCodec.h"
 #include "transport/frame/DataFrameCodec.h"
 
 // Helper that prints "AUDIT_SIZEOF <name> <bytes>" for visual inspection
@@ -36,7 +35,6 @@ void tearDown(void) {}
 static void test_audit_sizeof_dump(void) {
     print_size("ecb::FrameHeader",         sizeof(ecb::FrameHeader));
     print_size("ecb::FrameKind",           sizeof(ecb::FrameKind));
-    print_size("ParsedFrame (global)",     sizeof(ParsedFrame));
     print_size("ecb::DataFrameCodec",      sizeof(ecb::DataFrameCodec));
     print_size("AuthHandler",              sizeof(AuthHandler));
     print_size("ecb::ResourceValue",       sizeof(ecb::ResourceValue));

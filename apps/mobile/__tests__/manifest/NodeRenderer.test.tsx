@@ -10,6 +10,7 @@ function tinyManifest(): RuntimeManifest {
     schemaVersion: 1 as const,
     minAppVersion: '1.0.0',
     capabilities: new Set(),
+    appShell: undefined,
     resources: new Map(),
     actions: new Map(),
     forms: new Map(),

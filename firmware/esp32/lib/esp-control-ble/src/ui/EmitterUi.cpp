@@ -116,6 +116,16 @@ void EmitterUi::recordCapability(const std::string& feature, bool required) {
 }
 
 int EmitterUi::recordResource(const std::string& slug, ValueType type) {
+  // Idempotent by slug, matching RuntimeUi::findOrRecordResource: a resource
+  // declared more than once (the device_ui.cpp idempotent-by-slug pattern -- a
+  // typed creator AND the long-form ui.resource(...), plus a short-form widget
+  // on the same slug) must record ONE decl. Otherwise the emitter's id map would
+  // be built over more slugs than RuntimeUi's, assigning different (sort-by-id)
+  // ids for the same slug and breaking the tablet<->device id agreement. On a
+  // hit, return the existing index (the first type wins, like RuntimeUi) so the
+  // chained .label()/.unit()/... setters accumulate onto that same decl.
+  for (size_t i = 0; i < resources_.size(); ++i)
+    if (resources_[i].slug == slug) return static_cast<int>(i);
   ResourceDecl r;
   r.slug = slug;
   r.type = type;

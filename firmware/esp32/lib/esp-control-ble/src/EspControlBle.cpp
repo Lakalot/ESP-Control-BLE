@@ -1,4 +1,6 @@
 #include "EspControlBle.h"
+#include "ui/Ui.h"
+#include "ui/RuntimeUi.h"
 #include "protocol/manifest/ManifestStore.h"
 #include "support/EcbLogging.h"
 
@@ -29,14 +31,14 @@ void logManifestSummary(const uint8_t* manifestData, uint16_t manifestLen) {
 } // namespace
 
 EspControl::EspControl(const char* deviceName, const char* pin)
-  : _deviceName(deviceName), _pin(pin) {}
+  : _deviceName(deviceName), _pin(pin), _runtimeUi(*this) {}
 
 void EspControl::sendBle(void* context, const uint8_t* data, size_t len) {
   static_cast<EspControl*>(context)->_bleTransport.send(data, len);
 }
 
-void EspControl::registerAction(uint32_t actionId, ecb::ActionHandler h) {
-  _actionRegistry.registerAction(actionId, h);
+bool EspControl::registerAction(uint32_t actionId, ecb::ActionHandler h) {
+  return _actionRegistry.registerAction(actionId, h);
 }
 
 void EspControl::publishDelta(uint32_t resourceId) {
@@ -46,6 +48,16 @@ void EspControl::publishDelta(uint32_t resourceId) {
 void EspControl::tick() {
   _sppTransport.poll();
   if (_engine) _engine->tick();
+}
+
+void EspControl::beginUi(void (*buildFn)(ecb::ui::Ui&), const uint8_t* manifestData, uint16_t manifestLen) {
+  // Build + commit through the long-lived _runtimeUi member, NOT a stack local:
+  // buildFn stores Res<T> handles (e.g. the app's dev:: globals) that keep a
+  // pointer to this RuntimeUi. A local would be destroyed on return, leaving those
+  // handles dangling and every later .set() a use-after-free.
+  buildFn(_runtimeUi);
+  _runtimeUi.commit();
+  begin(manifestData, manifestLen);
 }
 
 void EspControl::begin(const uint8_t* manifestData, uint16_t manifestLen) {

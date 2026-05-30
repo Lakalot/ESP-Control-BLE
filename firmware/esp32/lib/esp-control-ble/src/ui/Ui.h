@@ -30,6 +30,7 @@ enum class WidgetKind : uint8_t { Text = 1, Stat = 2, Toggle = 3, Button = 4, Sl
 enum class NodeKind   : uint8_t { Stack = 1, Row = 2, Grid = 3, Section = 4, Widget = 5 };
 
 class Ui;  // forward
+template <typename T> class Res;  // forward (defined in ui/Res.h, included at bottom)
 
 // ---------------------------------------------------------------------------
 // Ui -- abstract description sink. Builders call these virtual hooks to record
@@ -54,6 +55,18 @@ public:
   virtual void  resourceStaleAfterMs(int rh, uint32_t ms) = 0;
   virtual void  resourcePollMs(int rh, uint32_t ms) = 0;
   virtual void  resourceEnum(int rh, const std::vector<std::string>& values) = 0;
+
+  // -- typed resource creators -- create-or-reuse a resource by slug and return a
+  // typed Res<T> handle for reading/writing its value. Default: record the
+  // resource and return an INERT handle (id 0) -- harmless on EmitterUi, which
+  // never resolves or writes a handle. RuntimeUi overrides these to return a
+  // slot-tagged handle resolved to its real id at commit(). Defined out-of-line
+  // at the bottom of this header (after ui/Res.h is included).
+  virtual Res<bool>        resourceB(const std::string& slug, ValueType type);
+  virtual Res<uint32_t>    resourceU32(const std::string& slug, ValueType type);
+  virtual Res<int32_t>     resourceI32(const std::string& slug, ValueType type);
+  virtual Res<float>       resourceF(const std::string& slug, ValueType type);
+  virtual Res<const char*> resourceS(const std::string& slug, ValueType type);
 
   // -- widgets (a node of kind=widget) --
   // resourceHandle < 0 => unbound. hasRange/min/max drive a slider's derived schema.
@@ -115,6 +128,38 @@ public:
   virtual void  widgetOnSetString(int /*nh*/, std::function<void(const char*)> /*fn*/) {}
   virtual void  widgetOnSetVoid(int /*nh*/, std::function<void()> /*fn*/) {}
 
+  // -- default-setter sinks (short-form widgets only) -- the *Short entry points
+  // below install a DEFAULT .onSet that writes the decoded value straight into the
+  // widget's resource `resourceSlug`. No-op on EmitterUi (structure is unchanged --
+  // a default setter records nothing the long form wouldn't). RuntimeUi captures it
+  // and, at commit(), registers it on the widget's bound action UNLESS the node also
+  // got a user .onSet (a user handler suppresses the default -- user wins).
+  virtual void  installDefaultUintSetter(int /*nh*/, const std::string& /*resourceSlug*/) {}
+  virtual void  installDefaultBoolSetter(int /*nh*/, const std::string& /*resourceSlug*/) {}
+  virtual void  installDefaultStringSetter(int /*nh*/, const std::string& /*resourceSlug*/) {}
+
+  // Declarative hardware for a widget's bound resource (no-op on EmitterUi;
+  // RuntimeUi maps it onto the resource's HW config). nh = the widget node handle.
+  virtual void widgetPwmPin(int /*nh*/, uint8_t /*pin*/, int /*rangeMax*/) {}
+  virtual void widgetGpioPin(int /*nh*/, uint8_t /*pin*/) {}
+  virtual void widgetInvertHw(int /*nh*/) {}
+
+  // ---- value hooks (Res<T> routes through these). Default no-op: EmitterUi
+  //      ignores them; RuntimeUi overrides them to write the table + publish. ----
+  virtual void uiWrite(uint32_t /*id*/, bool /*v*/) {}
+  virtual void uiWrite(uint32_t /*id*/, int32_t /*v*/) {}
+  virtual void uiWrite(uint32_t /*id*/, uint32_t /*v*/) {}
+  virtual void uiWrite(uint32_t /*id*/, float /*v*/) {}
+  virtual void uiWrite(uint32_t /*id*/, const char* /*v*/) {}
+  virtual bool        uiReadBool(uint32_t /*id*/)   { return false; }
+  virtual int32_t     uiReadInt(uint32_t /*id*/)    { return 0; }
+  virtual uint32_t    uiReadUint(uint32_t /*id*/)   { return 0u; }
+  virtual float       uiReadFloat(uint32_t /*id*/)  { return 0.0f; }
+  virtual const char* uiReadString(uint32_t /*id*/) { return ""; }
+  // resolve a (possibly slot-tagged) handle to its final resource id. Default
+  // pass-through; RuntimeUi overrides this in a later task.
+  virtual uint32_t uiResolveId(uint32_t idOrSlot) const { return idOrSlot; }
+
   // ===== Fluent entry points (defined out-of-line below; return builders) =====
   void  requireCapability(const std::string& feature)  { recordCapability(feature, true); }
   void  optionalCapability(const std::string& feature) { recordCapability(feature, false); }
@@ -131,6 +176,19 @@ public:
   class TextInputBuilder textInput(const std::string& slug, const std::string& title,
                                    const class ResourceRef& res);
   class ButtonBuilder    button(const std::string& slug, const std::string& title);
+
+  // -- SHORT-FORM widget builders -- one call bundles resource + action "<slug>.set"
+  // + widget bound to it + a DEFAULT .onSet (writes the decoded value into the
+  // resource). Returns the same builder type as the long form, so .formatHint /
+  // .pwmPin / .gpioPin / a user .onSet (overriding the default) still chain. (button
+  // is valueless: action slug == slug, NO resource, NO default setter.)
+  class SliderBuilder    sliderShort(const std::string& slug, const std::string& title, int min, int max);
+  class ToggleBuilder    toggleShort(const std::string& slug, const std::string& title);
+  class SelectBuilder    selectShort(const std::string& slug, const std::string& title,
+                                     const std::vector<std::string>& options);
+  class TextInputBuilder textInputShort(const std::string& slug, const std::string& title);
+  class ButtonBuilder    buttonShort(const std::string& slug, const std::string& title);
+
   class TextBuilder      text(const std::string& slug, const std::string& title);
   class TextBuilder      text(const std::string& slug);  // title-less (text set via .text())
   class StatBuilder      stat(const std::string& slug, const std::string& title,
@@ -235,6 +293,14 @@ public:
   Self& tone(const std::string& v)        { ui_->nodeTone(node_, v); return self(); }
   Self& text(const std::string& v)        { ui_->nodeText(node_, v); return self(); }
   Self& formatHint(const std::string& v)  { ui_->nodeFormatHint(node_, v); return self(); }
+
+  // Declarative hardware: drive a pin from this widget's resource value. The
+  // library applies it on every set() (PWM maps the resource's range -> 0..255).
+  // No-op on EmitterUi (HW is not in the manifest); RuntimeUi maps it onto the
+  // resource's HW config (node slug == resource slug for short-form widgets).
+  Self& pwmPin(uint8_t pin, int rangeMax = 255) { ui_->widgetPwmPin(node_, pin, rangeMax); return self(); }
+  Self& gpioPin(uint8_t pin)                    { ui_->widgetGpioPin(node_, pin); return self(); }
+  Self& invertHw()                              { ui_->widgetInvertHw(node_); return self(); }
 
   // Declare + bind an action; the impl derives its inputSchema from this widget.
   // (Backward-compatible convenience for simple widgets like a lone slider.)
@@ -393,6 +459,69 @@ inline ButtonBuilder Ui::button(const std::string& slug, const std::string& titl
   nodeTitle(nh, title);
   return ButtonBuilder(this, nh);
 }
+
+// ----- SHORT-FORM entry points (resource + action + widget + default setter) -----
+// Each is exactly the long-form sequence (so EmitterUi records byte-identical
+// structure) plus an installDefault*Setter call (no-op on EmitterUi).
+inline SliderBuilder Ui::sliderShort(const std::string& slug, const std::string& title, int min, int max) {
+  int rh = recordResource(slug, ValueType::Uint);
+  resourceLabel(rh, title);
+  resourceReadMode(rh, ReadMode::Subscribe);  // the tablet only subscribes to subscribe-mode resources -> see the control's state
+  int ah = recordAction(slug + ".set", title);
+  actionSchemaInteger(ah, min, max);
+  int nh = recordWidget(slug, WidgetKind::Slider, rh, /*hasRange*/ true, min, max);
+  nodeTitle(nh, title);
+  bindWidgetAction(nh, slug + ".set");
+  installDefaultUintSetter(nh, slug);
+  return SliderBuilder(this, nh);
+}
+inline ToggleBuilder Ui::toggleShort(const std::string& slug, const std::string& title) {
+  int rh = recordResource(slug, ValueType::Bool);
+  resourceLabel(rh, title);
+  resourceReadMode(rh, ReadMode::Subscribe);  // the tablet only subscribes to subscribe-mode resources -> see the control's state
+  int ah = recordAction(slug + ".set", title);
+  actionSchemaBoolean(ah);
+  int nh = recordWidget(slug, WidgetKind::Toggle, rh, false, 0, 0);
+  nodeTitle(nh, title);
+  bindWidgetAction(nh, slug + ".set");
+  installDefaultBoolSetter(nh, slug);
+  return ToggleBuilder(this, nh);
+}
+inline SelectBuilder Ui::selectShort(const std::string& slug, const std::string& title,
+                                     const std::vector<std::string>& options) {
+  int rh = recordResource(slug, ValueType::Enum);
+  resourceLabel(rh, title);
+  resourceReadMode(rh, ReadMode::Subscribe);  // the tablet only subscribes to subscribe-mode resources -> see the control's state
+  resourceEnum(rh, options);
+  int ah = recordAction(slug + ".set", title);
+  actionSchemaStringEnum(ah, options);
+  int nh = recordWidget(slug, WidgetKind::Select, rh, false, 0, 0);
+  nodeTitle(nh, title);
+  bindWidgetAction(nh, slug + ".set");
+  installDefaultStringSetter(nh, slug);
+  return SelectBuilder(this, nh);
+}
+inline TextInputBuilder Ui::textInputShort(const std::string& slug, const std::string& title) {
+  int rh = recordResource(slug, ValueType::String);
+  resourceLabel(rh, title);
+  resourceReadMode(rh, ReadMode::Subscribe);  // the tablet only subscribes to subscribe-mode resources -> see the control's state
+  int ah = recordAction(slug + ".set", title);
+  actionSchemaStringLen(ah, 0, 64);
+  int nh = recordWidget(slug, WidgetKind::TextInput, rh, false, 0, 0);
+  nodeTitle(nh, title);
+  bindWidgetAction(nh, slug + ".set");
+  installDefaultStringSetter(nh, slug);
+  return TextInputBuilder(this, nh);
+}
+inline ButtonBuilder Ui::buttonShort(const std::string& slug, const std::string& title) {
+  // No resource; action slug == the slug itself, valueless. NO default setter.
+  int ah = recordAction(slug, title);
+  actionSchemaValueless(ah);
+  int nh = recordWidget(slug, WidgetKind::Button, -1, false, 0, 0);
+  nodeTitle(nh, title);
+  bindWidgetAction(nh, slug);
+  return ButtonBuilder(this, nh);
+}
 inline TextBuilder Ui::text(const std::string& slug, const std::string& title) {
   int nh = recordWidget(slug, WidgetKind::Text, -1, false, 0, 0);
   nodeTitle(nh, title);
@@ -446,3 +575,11 @@ inline void Ui::navItem(const std::string& id, const std::string& label,
 }
 
 }} // namespace ecb::ui
+
+// Pull in Res<T> so a TU including ONLY Ui.h still gets the complete handle type
+// AND the out-of-line Ui::resourceX definitions (which live at the bottom of
+// Res.h, where BOTH Ui and Res<T> are complete). This sits below class Ui so that
+// when Res.h re-includes Ui.h (#pragma once -> no-op), Ui is already complete.
+// Breaking the Ui<->Res cycle this way: whichever header is entered first, the
+// creator bodies are emitted exactly once from Res.h with complete types.
+#include "ui/Res.h"

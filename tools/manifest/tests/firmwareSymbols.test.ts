@@ -1,18 +1,12 @@
-import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../src/cli/main.js';
 import { generateFirmwareSymbols } from '../src/generate/generateFirmwareSymbols.js';
 
 function loadManifestFixture(name: string) {
   return JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8'));
-}
-
-function sortedMatches(text: string, pattern: RegExp) {
-  return Array.from(text.matchAll(pattern), (match) => match[0]).sort();
 }
 
 const MANIFEST_WITH_SYMBOLS = {
@@ -249,100 +243,5 @@ describe('generateFirmwareSymbols', () => {
     expect(result.exitCode).toBe(0);
     expect(readFileSync(headerOut, 'utf8')).toContain('namespace manifest_resources');
     expect(readFileSync(sourceOut, 'utf8')).toContain('kManifestNodeSymbols');
-  });
-
-  it('loads the real firmware manifest from YAML through the symbols CLI command', async () => {
-    const source = new URL('../../../firmware/esp32/src/manifest.yaml', import.meta.url);
-    const dir = mkdtempSync(join(tmpdir(), 'firmware-manifest-yaml-'));
-    const headerOut = join(dir, 'manifest_symbols.h');
-    const sourceOut = join(dir, 'manifest_symbols.cpp');
-
-    const result = await runCli([
-      'symbols',
-      '--source',
-      fileURLToPath(source),
-      '--header-out',
-      headerOut,
-      '--source-out',
-      sourceOut,
-    ]);
-
-    expect(result.exitCode).toBe(0);
-    expect(readFileSync(headerOut, 'utf8')).toContain('namespace manifest_resources');
-    expect(readFileSync(sourceOut, 'utf8')).toContain('kManifestNodeSymbols');
-  });
-
-  it('matches the checked-in firmware symbol baseline from the real firmware YAML manifest', async () => {
-    const source = new URL('../../../firmware/esp32/src/manifest.yaml', import.meta.url);
-    const expectedHeader = readFileSync(new URL('../../../firmware/esp32/src/manifest_symbols.h', import.meta.url), 'utf8');
-    const expectedSource = readFileSync(new URL('../../../firmware/esp32/src/manifest_symbols.cpp', import.meta.url), 'utf8');
-    const dir = mkdtempSync(join(tmpdir(), 'firmware-symbols-'));
-    const headerOut = join(dir, 'manifest_symbols.h');
-    const sourceOut = join(dir, 'manifest_symbols.cpp');
-
-    const result = await runCli([
-      'symbols',
-      '--source',
-      fileURLToPath(source),
-      '--header-out',
-      headerOut,
-      '--source-out',
-      sourceOut,
-    ]);
-
-    expect(result.exitCode).toBe(0);
-    const actualHeader = readFileSync(headerOut, 'utf8');
-    const actualSource = readFileSync(sourceOut, 'utf8');
-
-    expect(sortedMatches(actualHeader, /^extern const uint32_t .+;$/gm)).toEqual(
-      sortedMatches(expectedHeader, /^extern const uint32_t .+;$/gm),
-    );
-    expect(sortedMatches(actualSource, /^const uint32_t .+ = \d+u;$/gm)).toEqual(
-      sortedMatches(expectedSource, /^const uint32_t .+ = \d+u;$/gm),
-    );
-    expect(sortedMatches(actualSource, /^  \{.+\}$/gm)).toEqual(
-      sortedMatches(expectedSource, /^  \{.+\}$/gm),
-    );
-  });
-
-  it('embed_manifest.py uses manifest.yaml instead of manifest.json', () => {
-    const scriptPath = fileURLToPath(new URL('../../../firmware/esp32/tools/embed_manifest.py', import.meta.url));
-    const scriptContent = readFileSync(scriptPath, 'utf8');
-    expect(scriptContent).toContain('manifest.yaml');
-    expect(scriptContent).not.toContain('manifest.json');
-  });
-
-  it('firmware prebuild script emits manifest data and symbol artifacts from the real firmware manifest', () => {
-    const projectDir = fileURLToPath(new URL('../../../firmware/esp32', import.meta.url));
-    const scriptPath = fileURLToPath(new URL('../../../firmware/esp32/tools/embed_manifest.py', import.meta.url));
-    const expectedHeader = readFileSync(new URL('../../../firmware/esp32/src/manifest_symbols.h', import.meta.url), 'utf8');
-    const expectedSource = readFileSync(new URL('../../../firmware/esp32/src/manifest_symbols.cpp', import.meta.url), 'utf8');
-    const pythonArgs = process.platform === 'win32' ? ['-3'] : [];
-    const bootstrap = [
-      'from pathlib import Path',
-      'import sys',
-      'script = Path(sys.argv[1])',
-      'project_dir = sys.argv[2]',
-      'globals_dict = {',
-      '  "__name__": "__main__",',
-      '  "__file__": str(script),',
-      '  "env": {"PROJECT_DIR": project_dir},',
-      '  "Import": lambda *_args, **_kwargs: None,',
-      '}',
-      'exec(compile(script.read_text(), str(script), "exec"), globals_dict)',
-    ].join('\n');
-
-    const result = spawnSync(
-      process.platform === 'win32' ? 'py' : 'python3',
-      [...pythonArgs, '-c', bootstrap, scriptPath, projectDir],
-      { encoding: 'utf8', cwd: projectDir },
-    );
-
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain('manifest_data.h');
-    expect(result.stdout).toContain('manifest_symbols.h');
-    expect(result.stdout).toContain('manifest_symbols.cpp');
-    expect(readFileSync(new URL('../../../firmware/esp32/src/manifest_symbols.h', import.meta.url), 'utf8')).toBe(expectedHeader);
-    expect(readFileSync(new URL('../../../firmware/esp32/src/manifest_symbols.cpp', import.meta.url), 'utf8')).toBe(expectedSource);
   });
 });
