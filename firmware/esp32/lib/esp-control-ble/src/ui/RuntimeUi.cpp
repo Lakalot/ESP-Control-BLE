@@ -232,4 +232,32 @@ void RuntimeUi::commit() {
 uint32_t RuntimeUi::resourceId(const std::string& slug) const { return resIds_.idOf(slug); }
 uint32_t RuntimeUi::actionId(const std::string& slug) const { return actIds_.idOf(slug); }
 
+// ----------------------------- value hooks ----------------------------------
+
+void RuntimeUi::uiWrite(uint32_t id, bool v)        { control_->resources().setBool(id, v);   control_->publishDelta(id); }
+void RuntimeUi::uiWrite(uint32_t id, int32_t v)     { control_->resources().setInt(id, v);    control_->publishDelta(id); }
+void RuntimeUi::uiWrite(uint32_t id, uint32_t v)    { control_->resources().setUint(id, v);   control_->publishDelta(id); }
+void RuntimeUi::uiWrite(uint32_t id, float v)       { control_->resources().setFloat(id, v);  control_->publishDelta(id); }
+void RuntimeUi::uiWrite(uint32_t id, const char* v) { control_->resources().setString(id, v); control_->publishDelta(id); }
+
+bool RuntimeUi::uiReadBool(uint32_t id) {
+  ecb::ResourceValue v; return control_->resources().get(id, v) ? v.boolValue : false;
+}
+int32_t RuntimeUi::uiReadInt(uint32_t id) {
+  ecb::ResourceValue v; return control_->resources().get(id, v) ? v.intValue : 0;
+}
+uint32_t RuntimeUi::uiReadUint(uint32_t id) {
+  ecb::ResourceValue v; return control_->resources().get(id, v) ? v.uintValue : 0u;
+}
+float RuntimeUi::uiReadFloat(uint32_t id) {
+  ecb::ResourceValue v; return control_->resources().get(id, v) ? v.floatValue : 0.0f;
+}
+const char* RuntimeUi::uiReadString(uint32_t id) {
+  ecb::ResourceValue v;
+  if (!control_->resources().get(id, v)) { readScratch_[0] = '\0'; return readScratch_; }
+  size_t n = 0; while (n < 64 && v.stringValue[n] != '\0') { readScratch_[n] = v.stringValue[n]; ++n; }
+  readScratch_[n] = '\0';
+  return readScratch_;
+}
+
 }} // namespace ecb::ui

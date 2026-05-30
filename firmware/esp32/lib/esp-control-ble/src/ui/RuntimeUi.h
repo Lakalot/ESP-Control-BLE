@@ -93,6 +93,18 @@ public:
   virtual void widgetOnSetString(int nh, std::function<void(const char*)> fn);
   virtual void widgetOnSetVoid(int nh, std::function<void()> fn);
 
+  // value hooks (override the no-op base; route to control_->resources() + publish).
+  virtual void uiWrite(uint32_t id, bool v);
+  virtual void uiWrite(uint32_t id, int32_t v);
+  virtual void uiWrite(uint32_t id, uint32_t v);
+  virtual void uiWrite(uint32_t id, float v);
+  virtual void uiWrite(uint32_t id, const char* v);
+  virtual bool        uiReadBool(uint32_t id);
+  virtual int32_t     uiReadInt(uint32_t id);
+  virtual uint32_t    uiReadUint(uint32_t id);
+  virtual float       uiReadFloat(uint32_t id);
+  virtual const char* uiReadString(uint32_t id);
+
 private:
   // Minimal recorded state -- only what's needed for ids, seeding, and handler
   // registration. Presentation-only inputs (titles/tones/text/confirm/danger/
@@ -134,6 +146,10 @@ private:
   // Built by commit(); back the resourceId()/actionId() accessors.
   IdMap resIds_;
   IdMap actIds_;
+
+  // Scratch buffer for uiReadString() -- keeps the returned pointer valid after
+  // the local ResourceValue goes out of scope.
+  char readScratch_[65];
 };
 
 }} // namespace ecb::ui

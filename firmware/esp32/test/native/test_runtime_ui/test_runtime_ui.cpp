@@ -254,10 +254,30 @@ static void test_runtime_ui_registers_resource() {
   TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ecb::ResourceValueKind::Uint), static_cast<uint8_t>(rv.kind));
 }
 
+static void test_runtimeui_value_hooks_write_table() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  // Drive the hooks directly with a known id.
+  rt.uiWrite(28u, (uint32_t)77u);
+  ecb::ResourceValue v;
+  TEST_ASSERT_TRUE(control.resources().get(28u, v));
+  TEST_ASSERT_EQUAL_UINT32(77u, v.uintValue);
+  TEST_ASSERT_EQUAL_UINT32(77u, rt.uiReadUint(28u));
+
+  rt.uiWrite(29u, true);
+  TEST_ASSERT_TRUE(control.resources().get(29u, v));
+  TEST_ASSERT_TRUE(v.boolValue);
+
+  rt.uiWrite(30u, "warm");
+  TEST_ASSERT_TRUE(control.resources().get(30u, v));
+  TEST_ASSERT_EQUAL_STRING("warm", v.stringValue);
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_runtime_ui_ids_match_emitter);
   RUN_TEST(test_runtime_ui_typed_handler_decodes);
   RUN_TEST(test_runtime_ui_registers_resource);
+  RUN_TEST(test_runtimeui_value_hooks_write_table);
   return UNITY_END();
 }
