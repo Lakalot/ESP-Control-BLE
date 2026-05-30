@@ -15,6 +15,8 @@ The repo root is `D:\DEV\Amazing\ESP-Control-BLE`. Run all `git` from there. Mat
 
 **Commands:** native tests `& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" test -e native` (from `firmware/esp32`); firmware build `... run -e esp32dev`. TS oracle: `cd tools/manifest && npx tsx src/cli/main.ts compile --source <yaml> --out <pb>`.
 
+**⚠️ TOOLCHAIN CONSTRAINT (confirmed at UI-T2):** the native test toolchain is **GCC 5.1.0** (`toolchain-gccmingw32`), which only PARTIALLY implements C++17 despite `-std=gnu++17`. Notably **nested-namespace syntax `namespace ecb::ui {}` does NOT compile** — use `namespace ecb { namespace ui { ... } }`. Avoid C++17 library features that GCC 5 lacks: `std::optional`, `std::string_view`, `std::variant`, structured bindings, `if constexpr`, inline variables, `std::byte`. Stick to C++11/14-safe constructs (the SPIKE used `-std=gnu++14` for the same reason). The esp32dev (Xtensa) toolchain is GCC 8.4 and fine, but **the native tests are the gate**, so code to GCC 5. Prefer `std::vector`/`std::unordered_map`/plain structs/sentinel returns over the above.
+
 ---
 
 ## Byte-equality contract (the spike's whole point)
