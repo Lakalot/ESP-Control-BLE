@@ -19,6 +19,7 @@
 #include "ui/EmitterUi.h"
 #include "ui/RuntimeUi.h"
 #include "ui/ManifestModel.h"
+#include "ui/HwHal.h"
 #include "EspControlBle.h"
 
 using namespace ecb::ui;
@@ -314,6 +315,25 @@ static void test_idempotent_resource_recording() {
   TEST_ASSERT_TRUE(v.boolValue);
 }
 
+// (DX-T4) A resource with a declared PWM pin: writing it drives the HAL with
+// the mapped value (map(value, 0, rangeMax, 0, 255)).
+static int g_pwmPin = -1, g_pwmVal = -1;
+static void fakeAnalog(uint8_t pin, int val) { g_pwmPin = pin; g_pwmVal = val; }
+
+static void test_pwm_pin_applies_on_set() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  ecb::ui::setAnalogWriteForTest(&fakeAnalog);                  // inject HAL
+  ecb::ui::Res<uint32_t> bright = rt.resourceU32("light.brightness", ecb::ui::ValueType::Uint);
+  rt.setPwmPin("light.brightness", /*pin*/2, /*rangeMax*/100);  // declare HW (range 0..100 -> 0..255)
+  rt.commit();
+  g_pwmPin = -1; g_pwmVal = -1;                                 // reset after any commit-time seeding
+  bright.set(50u);
+  TEST_ASSERT_EQUAL_INT(2, g_pwmPin);
+  TEST_ASSERT_EQUAL_INT(127, g_pwmVal);                         // map(50,0,100,0,255)=127
+  ecb::ui::setAnalogWriteForTest(nullptr);
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_runtime_ui_ids_match_emitter);
@@ -322,5 +342,6 @@ int main(int, char**) {
   RUN_TEST(test_runtimeui_value_hooks_write_table);
   RUN_TEST(test_stored_res_writes_after_commit);
   RUN_TEST(test_idempotent_resource_recording);
+  RUN_TEST(test_pwm_pin_applies_on_set);
   return UNITY_END();
 }

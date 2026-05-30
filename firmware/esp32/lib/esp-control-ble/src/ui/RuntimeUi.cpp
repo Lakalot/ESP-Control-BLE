@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "EspControlBle.h"  // full EspControl + ecb::ActionContext / ResourceTable
+#include "ui/HwHal.h"
 
 namespace ecb { namespace ui {
 
@@ -101,6 +102,51 @@ void RuntimeUi::nodeTitle(int, const std::string&) {}
 void RuntimeUi::nodeTone(int, const std::string&) {}
 void RuntimeUi::nodeText(int, const std::string&) {}
 void RuntimeUi::nodeFormatHint(int, const std::string&) {}
+
+int RuntimeUi::findResource(const std::string& slug) const {
+  for (size_t i = 0; i < resources_.size(); ++i)
+    if (resources_[i].slug == slug) return static_cast<int>(i);
+  return -1;
+}
+
+void RuntimeUi::setPwmPin(const std::string& slug, uint8_t pin, int rangeMax) {
+  int i = findResource(slug);
+  if (i >= 0) { resources_[i].pwmPin = static_cast<int>(pin); resources_[i].pwmRangeMax = (rangeMax > 0 ? rangeMax : 255); }
+}
+void RuntimeUi::setGpioPin(const std::string& slug, uint8_t pin) {
+  int i = findResource(slug);
+  if (i >= 0) resources_[i].gpioPin = static_cast<int>(pin);
+}
+void RuntimeUi::setInvert(const std::string& slug) {
+  int i = findResource(slug);
+  if (i >= 0) resources_[i].invert = true;
+}
+void RuntimeUi::setOnApply(const std::string& slug, std::function<void(int32_t)> fn) {
+  int i = findResource(slug);
+  if (i >= 0) resources_[i].onApply = fn;
+}
+
+int RuntimeUi::resIndexForId(uint32_t id) const {
+  for (size_t i = 0; i < resources_.size(); ++i)
+    if (resIds_.idOf(resources_[i].slug) == id) return static_cast<int>(i);
+  return -1;
+}
+
+void RuntimeUi::applyHw(int resIndex, int32_t value) {
+  if (resIndex < 0) return;
+  const ResourceDecl& r = resources_[resIndex];
+  if (r.pwmPin >= 0) {
+    long mx = r.pwmRangeMax > 0 ? r.pwmRangeMax : 255;
+    long duty = (value <= 0) ? 0 : (value >= mx ? 255 : (long)((value * 255L) / mx));
+    if (r.invert) duty = 255 - duty;
+    halAnalogWrite(static_cast<uint8_t>(r.pwmPin), static_cast<int>(duty));
+  }
+  if (r.gpioPin >= 0) {
+    bool level = value != 0; if (r.invert) level = !level;
+    halDigitalWrite(static_cast<uint8_t>(r.gpioPin), level);
+  }
+  if (r.onApply) r.onApply(value);
+}
 
 int RuntimeUi::findAction(const std::string& slug) const {
   for (size_t i = 0; i < actions_.size(); ++i)
@@ -286,11 +332,26 @@ uint32_t RuntimeUi::actionId(const std::string& slug) const { return actIds_.idO
 
 // ----------------------------- value hooks ----------------------------------
 
-void RuntimeUi::uiWrite(uint32_t id, bool v)        { control_->resources().setBool(id, v);   control_->publishDelta(id); }
-void RuntimeUi::uiWrite(uint32_t id, int32_t v)     { control_->resources().setInt(id, v);    control_->publishDelta(id); }
-void RuntimeUi::uiWrite(uint32_t id, uint32_t v)    { control_->resources().setUint(id, v);   control_->publishDelta(id); }
-void RuntimeUi::uiWrite(uint32_t id, float v)       { control_->resources().setFloat(id, v);  control_->publishDelta(id); }
-void RuntimeUi::uiWrite(uint32_t id, const char* v) { control_->resources().setString(id, v); control_->publishDelta(id); }
+void RuntimeUi::uiWrite(uint32_t id, bool v) {
+  control_->resources().setBool(id, v); control_->publishDelta(id);
+  applyHw(resIndexForId(id), v ? 1 : 0);
+}
+void RuntimeUi::uiWrite(uint32_t id, int32_t v) {
+  control_->resources().setInt(id, v); control_->publishDelta(id);
+  applyHw(resIndexForId(id), v);
+}
+void RuntimeUi::uiWrite(uint32_t id, uint32_t v) {
+  control_->resources().setUint(id, v); control_->publishDelta(id);
+  applyHw(resIndexForId(id), static_cast<int32_t>(v));
+}
+void RuntimeUi::uiWrite(uint32_t id, float v) {
+  control_->resources().setFloat(id, v); control_->publishDelta(id);
+  applyHw(resIndexForId(id), static_cast<int32_t>(v));
+}
+void RuntimeUi::uiWrite(uint32_t id, const char* v) {
+  control_->resources().setString(id, v); control_->publishDelta(id);
+  applyHw(resIndexForId(id), 0);  // HW on strings is a no-op; pass 0
+}
 
 bool RuntimeUi::uiReadBool(uint32_t id) {
   ecb::ResourceValue v; return control_->resources().get(id, v) ? v.boolValue : false;
