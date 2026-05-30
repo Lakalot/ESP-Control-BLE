@@ -147,7 +147,6 @@ public:
   void setPwmPin(const std::string& slug, uint8_t pin, int rangeMax);
   void setGpioPin(const std::string& slug, uint8_t pin);
   void setInvert(const std::string& slug);
-  void setOnApply(const std::string& slug, std::function<void(int32_t)> fn);
 
 private:
   // Minimal recorded state -- only what's needed for ids, seeding, and handler
@@ -160,7 +159,6 @@ private:
     int     gpioPin;      // -1 = none
     int     pwmRangeMax;  // map(value, 0, rangeMax, 0, 255); default 255
     bool    invert;
-    std::function<void(int32_t)> onApply;  // optional escape hatch (value as int32)
     ResourceDecl() : type(ValueType::Bool), pwmPin(-1), gpioPin(-1), pwmRangeMax(255), invert(false) {}
   };
   struct ActionDecl {

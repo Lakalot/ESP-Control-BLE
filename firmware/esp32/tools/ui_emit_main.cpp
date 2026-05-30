@@ -39,7 +39,8 @@ bool writeFile(const std::string& path, const std::string& contents) {
   return true;
 }
 
-// ---- manifest_data.h (mirror tools/embed_manifest.py byte-for-byte) ------------
+// ---- manifest_data.h (a #pragma once header: MANIFEST_LEN + the byte array,
+//      the array guarded by MANIFEST_DEFINE_DATA so exactly one TU defines it) ----
 std::string renderManifestData(const std::vector<uint8_t>& data) {
   std::string out;
   char buf[32];

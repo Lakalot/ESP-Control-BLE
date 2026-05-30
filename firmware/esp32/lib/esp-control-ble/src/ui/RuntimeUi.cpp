@@ -122,10 +122,6 @@ void RuntimeUi::setInvert(const std::string& slug) {
   int i = findResource(slug);
   if (i >= 0) resources_[i].invert = true;
 }
-void RuntimeUi::setOnApply(const std::string& slug, std::function<void(int32_t)> fn) {
-  int i = findResource(slug);
-  if (i >= 0) resources_[i].onApply = fn;
-}
 
 int RuntimeUi::resIndexForId(uint32_t id) const {
   if (id == 0u) return -1;  // 0 is IdMap's "absent" sentinel (also the pre-commit value)
@@ -148,7 +144,6 @@ void RuntimeUi::applyHw(int resIndex, int32_t value) {
     bool level = value != 0; if (r.invert) level = !level;
     halDigitalWrite(static_cast<uint8_t>(r.gpioPin), level);
   }
-  if (r.onApply) r.onApply(value);
 }
 
 int RuntimeUi::findAction(const std::string& slug) const {
@@ -343,14 +338,13 @@ ActionHandler makeVoidHandler(std::function<void()> fn) {
 // slider with .pwmPin() both updates the table and moves the LED, with no user
 // .onSet needed. To stay self-contained (no RuntimeUi capture -> no dangle if the
 // RuntimeUi is a setup-local destroyed after commit), the maker resolves the
-// resource id + HW config at commit() and captures them BY VALUE (POD + the optional
-// onApply std::function + the long-lived EspControl*).
+// resource id + HW config at commit() and captures them BY VALUE (POD + the
+// long-lived EspControl*).
 struct DefaultSetterHw {
   int pwmPin;       // -1 = none
   int gpioPin;      // -1 = none
   int pwmRangeMax;  // map(value, 0, rangeMax, 0, 255)
   bool invert;
-  std::function<void(int32_t)> onApply;  // optional escape hatch
   DefaultSetterHw() : pwmPin(-1), gpioPin(-1), pwmRangeMax(255), invert(false) {}
 };
 
@@ -366,7 +360,6 @@ void applyDefaultHw(const DefaultSetterHw& hw, int32_t value) {
     bool level = value != 0; if (hw.invert) level = !level;
     halDigitalWrite(static_cast<uint8_t>(hw.gpioPin), level);
   }
-  if (hw.onApply) hw.onApply(value);
 }
 
 ActionHandler makeDefaultUintSetter(EspControl* control, uint32_t resId, DefaultSetterHw hw) {
@@ -401,7 +394,7 @@ ActionHandler makeDefaultStringSetter(EspControl* control, uint32_t resId, Defau
     }
     control->resources().setString(resId, ctx.stringValue);
     control->publishDelta(resId);
-    applyDefaultHw(hw, 0);  // strings carry no numeric value (PWM->0, GPIO->LOW, onApply(0))
+    applyDefaultHw(hw, 0);  // strings carry no numeric value (PWM->0, GPIO->LOW)
     ctx.replyOk(nullptr, 0);
   };
 }
@@ -459,7 +452,7 @@ void RuntimeUi::commit() {
     if (ri >= 0) {
       const ResourceDecl& r = resources_[ri];
       hw.pwmPin = r.pwmPin; hw.gpioPin = r.gpioPin;
-      hw.pwmRangeMax = r.pwmRangeMax; hw.invert = r.invert; hw.onApply = r.onApply;
+      hw.pwmRangeMax = r.pwmRangeMax; hw.invert = r.invert;
     }
     bool ok = false;
     switch (nd.defaultSetterKind) {
@@ -500,7 +493,7 @@ void RuntimeUi::uiWrite(uint32_t id, float v) {
 }
 void RuntimeUi::uiWrite(uint32_t id, const char* v) {
   control_->resources().setString(id, v); control_->publishDelta(id);
-  applyHw(resIndexForId(id), 0);  // strings carry no numeric value -> pass 0 (PWM->0, GPIO->LOW, onApply(0))
+  applyHw(resIndexForId(id), 0);  // strings carry no numeric value -> pass 0 (PWM->0, GPIO->LOW)
 }
 
 bool RuntimeUi::uiReadBool(uint32_t id) {
