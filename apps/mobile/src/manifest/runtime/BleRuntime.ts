@@ -9,6 +9,11 @@ import type { FixtureBleDevice } from './BleRuntime.fixture';
 import { RuntimeManifest } from '../model/runtime.types';
 import { decodeManifest } from '../decode/decodeManifest';
 import type { ResourceValue, ResourceState } from '../model/snapshot.types';
+import { makeLog } from '../../utils/logger';
+
+// Protocol tracing (manifest transfer, snapshot/delta decode, subscribe). Off by
+// default; enable with EXPO_PUBLIC_DEBUG=ble (see utils/logger.ts).
+const log = makeLog('ble');
 
 export class AuthError extends Error {
   constructor(message: string) { super(message); this.name = 'AuthError'; }
@@ -156,7 +161,7 @@ export class BleRuntime implements ManifestRuntime {
     if (kind === FrameKind.AuthResult) { this.onAuthResult(body); return; }
 
     if (kind === FrameKind.ManifestChunk || kind === FrameKind.ManifestEof) {
-      console.log('[BleRuntime] manifest frame kind=', kind, 'bodyLen=', body.length);
+      log('manifest frame kind=', kind, 'bodyLen=', body.length);
     }
 
     if (kind === FrameKind.InvokeResult) {
@@ -176,10 +181,10 @@ export class BleRuntime implements ManifestRuntime {
     if (kind === FrameKind.Snapshot) {
       const msg = manifest.ResourceSnapshot.decode(new Reader(body));
       const now = Date.now();
-      console.log('[BleRuntime] Snapshot received, values count:', (msg.values ?? []).length);
+      log('Snapshot received, values count:', (msg.values ?? []).length);
       for (const rv of (msg.values ?? [])) {
         const slug = this.idToSlug.get(rv.resourceId);
-        console.log('[BleRuntime] Snapshot rv.resourceId=', rv.resourceId, 'slug=', slug, 'hasValue=', !!rv.value);
+        log('Snapshot rv.resourceId=', rv.resourceId, 'slug=', slug, 'hasValue=', !!rv.value);
         if (!slug || !rv.value) continue;
         const value = decodeCommonValue(rv.value);
         const state: ResourceState = { slug, value, updatedAt: now, stale: false };
@@ -192,10 +197,10 @@ export class BleRuntime implements ManifestRuntime {
     if (kind === FrameKind.Delta) {
       const msg = manifest.ResourceDelta.decode(new Reader(body));
       const slug = this.idToSlug.get(msg.resourceId);
-      console.log('[BleRuntime] Delta received resourceId=', msg.resourceId, 'slug=', slug, 'hasValue=', !!msg.value, 'kind=', msg.value?.kind);
+      log('Delta received resourceId=', msg.resourceId, 'slug=', slug, 'hasValue=', !!msg.value, 'kind=', msg.value?.kind);
       if (!slug || !msg.value) return;
       const value = decodeCommonValue(msg.value);
-      console.log('[BleRuntime] Delta decoded value=', JSON.stringify(value));
+      log('Delta decoded value=', JSON.stringify(value));
       const state: ResourceState = { slug, value, updatedAt: Date.now(), stale: false };
       this.localSnapshot.set(slug, state);
       this.fanOut(slug, state);
@@ -250,7 +255,7 @@ export class BleRuntime implements ManifestRuntime {
       return;
     }
 
-    console.log('[BleRuntime] Unhandled frame kind=', kind, 'bodyLen=', body.length);
+    log('Unhandled frame kind=', kind, 'bodyLen=', body.length);
   }
 
   private fanOut(slug: string, state: ResourceState) {
@@ -260,11 +265,11 @@ export class BleRuntime implements ManifestRuntime {
 
   async loadManifest(timeoutMs = 10000): Promise<RuntimeManifest> {
     if (this.manifest) return this.manifest;
-    console.log('[BleRuntime] loadManifest: waiting for manifest transfer');
+    log('loadManifest: waiting for manifest transfer');
     const bytes = await this.readManifestTransfer(timeoutMs);
-    console.log('[BleRuntime] loadManifest: got', bytes.length, 'bytes, decoding...');
+    log('loadManifest: got', bytes.length, 'bytes, decoding...');
     this.manifest = decodeManifest(bytes);
-    console.log('[BleRuntime] loadManifest: decoded OK, resources=', this.manifest.resources.size, 'actions=', this.manifest.actions.size);
+    log('loadManifest: decoded OK, resources=', this.manifest.resources.size, 'actions=', this.manifest.actions.size);
     this.resourceIds = new Map([...this.manifest.resources.values()].map((r) => [r.slug, r.runtimeId]));
     this.idToSlug = new Map([...this.manifest.resources.values()].map((r) => [r.runtimeId, r.slug]));
     this.actionIds = new Map([...this.manifest.actions.values()].map((a) => [a.slug, a.runtimeId]));
@@ -296,18 +301,18 @@ export class BleRuntime implements ManifestRuntime {
 
   private async readManifestTransfer(timeoutMs = 10000): Promise<Uint8Array> {
     if (this.bufferedManifest) {
-      console.log('[BleRuntime] readManifestTransfer: using buffered manifest', this.bufferedManifest.length);
+      log('readManifestTransfer: using buffered manifest', this.bufferedManifest.length);
       const cached = this.bufferedManifest;
       this.bufferedManifest = null;
       return cached;
     }
     if ((this.device as any).manifestBytes) {
-      console.log('[BleRuntime] readManifestTransfer: using fixture manifest bytes');
+      log('readManifestTransfer: using fixture manifest bytes');
       return (this.device as any).manifestBytes;
     }
 
     return new Promise((resolve, reject) => {
-      console.log('[BleRuntime] readManifestTransfer: awaiting live manifest frames');
+      log('readManifestTransfer: awaiting live manifest frames');
       this.manifestResolve = resolve;
       this.manifestReject = reject;
       // Guard against a transfer that never completes (no EOF / silent peer).
@@ -351,7 +356,7 @@ export class BleRuntime implements ManifestRuntime {
       const resourceIds = newSlugs
         .map((s) => this.resourceIds.get(s))
         .filter((id): id is number => id !== undefined);
-      console.log('[BleRuntime] Subscribing to slugs=', newSlugs, 'resourceIds=', resourceIds);
+      log('Subscribing to slugs=', newSlugs, 'resourceIds=', resourceIds);
       if (resourceIds.length > 0) {
         const msg = manifest.Subscribe.create({ resourceIds });
         const encoded = manifest.Subscribe.encode(msg).finish();
