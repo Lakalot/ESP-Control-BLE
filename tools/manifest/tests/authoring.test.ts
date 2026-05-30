@@ -901,11 +901,17 @@ describe('runCli help', () => {
 });
 
 describe('Documentation', () => {
-  it('documents YAML as the primary manifest format in README.md without referencing legacy JSON paths', () => {
+  it('documents device_ui.cpp as the firmware authoring source and keeps the YAML toolchain as the oracle, without legacy JSON paths', () => {
     const readmePath = join(HERE, '../../../README.md');
     const readme = readFileSync(readmePath, 'utf8');
 
-    expect(readme).toContain('firmware/esp32/src/manifest.yaml');
+    // The firmware demo is now authored in C++ (device_ui.cpp / buildUi); the
+    // manifest is emitted from C++ at build with no Node step.
+    expect(readme).toContain('device_ui.cpp');
+    // The YAML toolchain (tools/manifest) is retained only as the byte-equality
+    // oracle, so the README still references its fixtures/data model.
+    expect(readme).toContain('tools/manifest');
+    // No legacy JSON authoring path.
     expect(readme).not.toContain('manifest.json');
   });
 });

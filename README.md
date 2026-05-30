@@ -1,6 +1,6 @@
 # ESP-Control-BLE
 
-BLE-connected IoT dashboard for ESP32. Define your device UI with a YAML manifest, write your business logic in C++, and control everything from your phone -- no mobile app code required.
+BLE-connected IoT dashboard for ESP32. Describe your device UI and handlers in one C++ file, build with PlatformIO (no Node needed), and control everything from your phone -- no mobile app code required.
 
 ## How It Works
 
@@ -13,29 +13,38 @@ BLE-connected IoT dashboard for ESP32. Define your device UI with a YAML manifes
 └──────────────┘                       └──────────────────┘
 ```
 
-1. You write a `manifest.yaml` that describes your device's **resources** (data), **actions** (controls), and **UI layout** (`views` with nested authoring content)
-2. At build time, the YAML authoring is expanded into the canonical manifest shape, then compiled to protobuf and embedded into the firmware
+1. You describe your device's **resources** (data), **actions** (controls), **UI layout**, and the **action handlers** in one C++ file -- `firmware/esp32/app/device/device_ui.cpp` -- using a fluent `buildUi(...)` builder
+2. At build time, a pure-C++ host tool walks `buildUi(...)` to emit the protobuf manifest and type-safe symbol constants, embedded into the firmware (no Node/pnpm)
 3. The mobile app connects via BLE, downloads the manifest, and **renders the UI automatically**
-4. Your C++ code publishes resource values and handles actions using generated **type-safe symbol constants**
+4. On the device, the same `buildUi(...)` registers each resource and its typed `.onSet` handler; handlers forward values to your business logic and the library publishes resource updates over BLE
+
+> **Migrating from YAML?** Earlier versions authored the device in `src/manifest.yaml`
+> compiled by a Node toolchain. That path is now legacy: the device is described in
+> `device_ui.cpp` and the manifest is emitted from C++ at build time. The
+> YAML-centric sections below are retained for reference to the manifest data model
+> (resource/action fields, value types), which is unchanged.
 
 ## Quick Start
 
 ### Prerequisites
 
-- [PlatformIO](https://platformio.org/) (installed via VSCode extension or CLI)
-- [Node.js](https://nodejs.org/) 18+ and [pnpm](https://pnpm.io/)
-- [Expo](https://docs.expo.dev/) (for mobile app development)
+- [PlatformIO](https://platformio.org/) (installed via VSCode extension or CLI) -- builds the firmware **and** emits the manifest from C++; no Node needed for the firmware
 - An ESP32 board
+- For the mobile app only: [Node.js](https://nodejs.org/) 18+, [pnpm](https://pnpm.io/), and [Expo](https://docs.expo.dev/)
 
 ### 1. Install dependencies
 
-```bash
-# Root workspace (manifest compiler tools)
-pnpm install
+The firmware needs no JS dependencies -- a clone + PlatformIO is enough. The
+Node/pnpm steps below are only for the mobile app and the legacy manifest tooling
+(kept as the test oracle, not invoked by the firmware build):
 
+```bash
 # Mobile app
 cd apps/mobile
 npm install
+
+# (optional) Legacy/oracle manifest tools at the repo root
+pnpm install
 ```
 
 ### 2. Build the firmware
@@ -115,11 +124,20 @@ ESP-Control-BLE/
 
 ---
 
-## The Manifest (`manifest.yaml`)
+## The Manifest (data model)
 
-This is the heart of the system. It defines what your device **is** -- its data model, controls, and UI. The mobile app reads it and renders everything automatically.
+The manifest defines what your device **is** -- its data model, controls, and UI.
+The mobile app reads it and renders everything automatically.
 
-The authoring path documented here is YAML (`manifest.yaml`). The firmware demo uses `firmware/esp32/src/manifest.yaml` as its primary manifest source.
+> **Authoring note:** the firmware demo no longer authors this in YAML. It is
+> described in C++ via `buildUi(...)` in `firmware/esp32/app/device/device_ui.cpp`
+> (see [Building the Manifest](#building-the-manifest) and
+> [Firmware Business Logic](#firmware-business-logic)). The YAML below documents the
+> **manifest data model** -- the resource/action fields, value types, read modes,
+> and danger levels -- which is identical regardless of how you author it. The
+> builder method names map directly onto these fields (e.g. `.readMode(...)`,
+> `.unit(...)`, `.integerRange(...)`). The legacy YAML toolchain
+> (`tools/manifest`, `src/manifest.yaml`) is kept only as the test oracle.
 
 ### Minimal Example (No Navigation Bar)
 
@@ -430,6 +448,35 @@ If you are writing CLI `.yaml` input today, stay within authored `views[].conten
 
 ---
 
+## Building the Manifest
+
+The firmware demo's device is described in `firmware/esp32/app/device/device_ui.cpp`,
+not in YAML. The manifest the mobile app downloads is emitted from that C++ at build
+time -- **with no Node/pnpm step** (a clone + PlatformIO is enough).
+
+PlatformIO runs `tools/emit_ui.py` as a pre-build step (see `extra_scripts` in
+`platformio.ini`). It compiles a small host program -- `tools/ui_emit_main.cpp` plus
+`device_ui.cpp`, the library's host-side `EmitterUi`, and the vendored nanopb
+encoder -- with the same host g++ the native tests use, then runs it. The program
+walks `buildUi(...)` with `EmitterUi`, normalizes the model (string table, ids,
+refs), encodes the protobuf, and writes:
+
+- `src/manifest_data.h` -- the embedded protobuf the device sends to the tablet
+- `src/manifest_symbols.h` / `.cpp` -- the `manifest_resources::` / `manifest_actions::`
+  (and node/view) id tables your C++ references
+
+The emitted protobuf is **byte-for-byte identical** to what the old YAML→Node
+toolchain produced, so the mobile app and wire protocol are unaffected. Any
+compile/run failure fails the build loudly rather than falling back to stale
+headers.
+
+> **Legacy path:** `tools/embed_manifest.py` + `src/manifest.yaml` (compiled by the
+> `tools/manifest` TypeScript toolchain) are no longer invoked by the firmware build.
+> The TS toolchain is retained as the **golden oracle** for tests (it proves the C++
+> emitter's bytes match), but you don't need it -- or Node -- to build the firmware.
+
+---
+
 ## Firmware Business Logic
 
 You describe the whole device -- resources, actions, UI layout, **and** the handlers --
@@ -504,12 +551,14 @@ void loop() {
 Define your device's mutable state:
 
 ```cpp
-// device/DeviceState.h
+// device/DeviceState.h -- a plain struct, no Arduino/EspControl includes
 struct DeviceState {
   bool relayEnabled = false;
   uint8_t brightness = 0;
   float temperatureC = 0.0f;
   uint8_t fanProfile = 0;
+  uint8_t colorPreset = 0;
+  uint32_t loadPercent = 0;
   float humidityPercent = 45.0f;
   int32_t wifiRssiDbm = -58;
   uint32_t uptimeMs = 0;
@@ -518,105 +567,99 @@ struct DeviceState {
 };
 ```
 
-### Registering Actions
+Keep `DeviceState.h` (and the logic that mutates it, `DeviceLogic.h`) free of
+`<Arduino.h>` and `EspControl`. That portability is what lets the **same**
+`device_ui.cpp` compile on the host for the manifest emitter (where no Arduino
+exists) and run on the device -- and it lets the handlers be unit-tested natively.
 
-Use `control.registerAction(symbol, handler)` in your `DeviceActions::registerAll()`:
+### Declaring the UI and Handlers (`device_ui.cpp`)
+
+You declare each resource/action/widget with the fluent `Ui` builder and attach a
+typed `.onSet` handler to the interactive widgets. The handler signature is fixed by
+the widget kind, so a mismatch is a **compile error** (it replaces the old runtime
+`valueKind` checks): `toggle` -> `void(bool)`, `slider` -> `void(uint8_t)`,
+`select`/`textInput` -> `void(const char*)`, `button` -> `void()`.
 
 ```cpp
-#include "../../src/manifest_symbols.h"
+// app/device/device_ui.cpp  (excerpt -- the "Lighting" section of the demo)
+#include "device/device_ui.h"
+#include "runtime/AppRuntime.h"
+#include "ui/Ui.h"
 
-void DeviceActions::registerAll(EspControl& control, AppRuntime& runtime) const {
+using namespace ecb::ui;
 
-  // Toggle relay -- no input
-  control.registerAction(manifest_actions::relay_toggle,
-    [this, &control, &runtime](ecb::ActionContext& ctx) {
-      runtime.toggleRelay();
-      applyRelayOutput(runtime.state());
-      control.resources().setBool(manifest_resources::relay_auto, runtime.state().relayEnabled);
-      control.publishDelta(manifest_resources::relay_auto);
-      ctx.replyOk(nullptr, 0);
-    });
+void buildUi(Ui& ui, app::AppRuntime& rt) {
+  // Resources: id, value type, then label/unit/readMode/... fluently.
+  ResourceRef relayAuto = ui.resource("relay.auto", ValueType::Bool)
+      .label("Main Power").readMode(ReadMode::Subscribe).staleAfterMs(5000);
+  ResourceRef lightBrightness = ui.resource("light.brightness", ValueType::Uint)
+      .label("Brightness").unit("%").readMode(ReadMode::Subscribe).staleAfterMs(5000);
 
-  // Set brightness -- integer input
-  control.registerAction(manifest_actions::light_set_brightness,
-    [this, &control, &runtime](ecb::ActionContext& ctx) {
-      if (ctx.valueKind == ecb::ActionValueKind::Uint) {
-        runtime.setBrightness(ctx.uintValue);
-      } else if (ctx.valueKind == ecb::ActionValueKind::Int) {
-        runtime.setBrightness(ctx.intValue);
-      } else {
-        ctx.replyError(ecb::ActionStatus::BadPayload, "need uint");
-        return;
-      }
-      applyBrightnessOutput(runtime.state());
-      control.resources().setUint(manifest_resources::light_brightness, runtime.state().brightness);
-      control.publishDelta(manifest_resources::light_brightness);
-      ctx.replyOk(nullptr, 0);
-    });
+  // Actions: id + label, then the input shape (valueless/integerRange/boolean/...).
+  ui.action("relay.toggle", "Toggle").valueless();
+  ui.action("light.set_brightness", "Set Brightness").integerRange(0, 100);
 
-  // Set fan profile -- enum (string) input
-  control.registerAction(manifest_actions::fan_set_profile,
-    [&control, &runtime](ecb::ActionContext& ctx) {
-      if (ctx.valueKind != ecb::ActionValueKind::String) {
-        ctx.replyError(ecb::ActionStatus::BadPayload, "need string");
-        return;
-      }
-      runtime.setFanProfile(ctx.stringValue);
-      control.resources().setString(manifest_resources::fan_profile, fanProfileName(runtime.state().fanProfile));
-      control.publishDelta(manifest_resources::fan_profile);
-      ctx.replyOk(nullptr, 0);
-    });
-
-  // Debug toggle -- boolean input
-  control.registerAction(manifest_actions::device_set_debug,
-    [&control, &runtime](ecb::ActionContext& ctx) {
-      if (ctx.valueKind != ecb::ActionValueKind::Bool) {
-        ctx.replyError(ecb::ActionStatus::BadPayload, "need bool");
-        return;
-      }
-      runtime.setDebugEnabled(ctx.boolValue);
-      control.resources().setBool(manifest_resources::device_debug, runtime.state().debugEnabled);
-      control.publishDelta(manifest_resources::device_debug);
-      ctx.replyOk(nullptr, 0);
-    });
-
-  // Dangerous action with no input
-  control.registerAction(manifest_actions::system_factory_reset,
-    [](ecb::ActionContext& ctx) {
-      // ... perform factory reset ...
-      ctx.replyOk(nullptr, 0);
-    });
+  // Widgets live inside a view; .bindAction wires the widget to its action, and
+  // .onSet is the handler -- it forwards the decoded value to AppRuntime.
+  ViewBuilder home = ui.view("home", "Home");
+  home.content({
+      ui.section("lighting.section", "Lighting").children({
+          ui.toggle("lighting.toggle", "Main Power", relayAuto).bindAction("relay.toggle")
+              .onSet([&rt](bool /*on*/) { rt.toggleRelay(); }),
+          ui.slider("lighting.slider", "Brightness", lightBrightness, 0, 100)
+              .bindAction("light.set_brightness").formatHint("percent")
+              .onSet([&rt](uint8_t value) { rt.setBrightness(static_cast<uint32_t>(value)); }),
+      }),
+  });
+  ui.navItem("home", "Home", "home", home);
 }
 ```
 
-#### ActionContext API
+Notice what the handlers **don't** do: no `valueKind` switch, no
+`control.resources().setX(...)` / `publishDelta(...)`, no `ctx.replyOk(...)`. The
+library decodes the inbound payload into the typed argument, calls your `.onSet`,
+and replies for you. Each handler only forwards the value to an `AppRuntime` method
+-- and `device_ui.cpp` stays free of `<Arduino.h>`/`EspControl`, so the host
+emitter can compile it too.
+
+### Where the hardware & publishing live (`AppRuntime`)
+
+The `.onSet` handlers call `AppRuntime` action methods (`rt.toggleRelay()`,
+`rt.setBrightness(v)`, `rt.setColorPreset(c)`, ...). Each method mutates
+`DeviceState` (via the portable `DeviceLogic`) and then drives a small **`ActionSink`
+seam** for the side effects -- writing the changed resource into the control's
+`ResourceTable`, calling `publishDelta`, and driving the LED.
+
+`ActionSink` is an abstract interface in the portable `AppRuntime.h`. Its concrete
+implementation, `EspActionSink`, lives in `AppRuntime.cpp` and is the **only** place
+`manifest_resources::` ids, `control.resources().setX`, `publishDelta`,
+`analogWrite`, and `Serial` appear on the action path:
 
 ```cpp
-struct ActionContext {
-  uint32_t correlationId;       // Internal correlation (don't modify)
-  ActionValueKind valueKind;    // None, Bool, Int, Uint, Float, String
-  bool     boolValue;           // Valid when valueKind == Bool
-  int32_t  intValue;            // Valid when valueKind == Int
-  uint32_t uintValue;           // Valid when valueKind == Uint
-  float    floatValue;          // Valid when valueKind == Float
-  char     stringValue[65];     // Valid when valueKind == String
+// app/runtime/AppRuntime.h -- portable: no <Arduino.h>, no EspControl
+void toggleRelay() {
+  DeviceLogic::toggleRelay(state_);
+  if (state_.relayEnabled && state_.brightness == 0) {   // power-on -> usable level
+    DeviceLogic::setBrightness(state_, 100u);
+  }
+  if (sink_) sink_->onRelayChanged(state_);
+}
 
-  bool hasValue() const;        // true if valueKind != None
-  void replyOk(const uint8_t* data, size_t len);
-  void replyError(ActionStatus s, const char* msg);
-};
+// app/runtime/AppRuntime.cpp -- ESP-only: the publish + hardware side (inside EspActionSink)
+void onRelayChanged(const DeviceState& state) override {
+  applyLightOutput(state);                                                       // LED
+  control_.resources().setBool(manifest_resources::relay_auto, state.relayEnabled);
+  control_.resources().setUint(manifest_resources::light_brightness, state.brightness);
+  control_.publishDelta(manifest_resources::relay_auto);
+  control_.publishDelta(manifest_resources::light_brightness);
+}
 ```
 
-#### ActionValueKind enum
-
-| Value | Received when inputSchema has |
-|---|---|
-| `None` | No `value` property in schema |
-| `Bool` | `"type": "boolean"` |
-| `Int` | `"type": "integer"` with negative range |
-| `Uint` | `"type": "integer"` with non-negative range |
-| `Float` | `"type": "number"` (non-integer) |
-| `String` | `"type": "string"` or `"enum"` values |
+When no sink is attached (e.g. native unit tests construct an `AppRuntime` without
+one), the action methods are pure state mutators -- the publish branch is skipped
+and no device-only symbol is referenced. `runtime.setup(...)` attaches the real
+`EspActionSink`, walks `buildUi(...)` with `RuntimeUi` to register the resources and
+handlers, then seeds the resources with the device's real initial values.
 
 ### Publishing Resources
 
@@ -661,16 +704,22 @@ if (table.get(resourceId, val)) {
 
 ### Syncing Initial State
 
-On startup, sync all resource values so the mobile app gets a complete snapshot:
+`RuntimeUi::commit()` seeds every resource to zero when it registers it, so on
+startup you overwrite the action-owned resources with the device's real values to
+give the mobile app a correct first snapshot. In the demo this is
+`EspActionSink::syncResources` (called by `runtime.setup(...)` right after
+`buildUi(...)` is walked); telemetry seeds its own resources separately:
 
 ```cpp
-void DeviceActions::syncResources(EspControl& control, const DeviceState& state) const {
-  control.resources().setBool(manifest_resources::relay_auto, state.relayEnabled);
-  control.resources().setUint(manifest_resources::light_brightness, state.brightness);
-  control.resources().setFloat(manifest_resources::env_temperature, state.temperatureC);
-  control.resources().setString(manifest_resources::fan_profile, fanProfileName(state.fanProfile));
-  control.resources().setBool(manifest_resources::device_debug, state.debugEnabled);
-  control.resources().setString(manifest_resources::device_name, state.deviceName);
+// app/runtime/AppRuntime.cpp -- inside EspActionSink
+void syncResources(const DeviceState& state) {
+  applyLightOutput(state);  // refresh the LED to match initial brightness/relay
+  control_.resources().setBool(manifest_resources::relay_auto, state.relayEnabled);
+  control_.resources().setUint(manifest_resources::light_brightness, state.brightness);
+  control_.resources().setString(manifest_resources::fan_profile, DeviceLogic::fanProfileName(state.fanProfile));
+  control_.resources().setString(manifest_resources::light_color, DeviceLogic::colorPresetName(state.colorPreset));
+  control_.resources().setBool(manifest_resources::device_debug, state.debugEnabled);
+  control_.resources().setString(manifest_resources::device_name, state.deviceName);
 }
 ```
 
@@ -690,81 +739,72 @@ if (temperaturePublisher.shouldPublish(nowMs)) {
 
 ## Adding a New Resource & Action
 
-Here's the complete workflow to add, say, a "motor speed" resource and action:
+Here's the complete workflow to add, say, a "motor speed" resource and action.
+Everything except the hardware/publish wiring happens in `device_ui.cpp`.
 
-### 1. Add to `manifest.yaml`
+### 1. Declare it in `device_ui.cpp`
 
-```yaml
-resources:
-  - id: motor.speed
-    firmwareSymbol: motor_speed
-    label: Motor Speed
-    valueType: uint
-    unit: RPM
-    readMode: subscribe
-    staleAfterMs: 3000
-actions:
-  - id: motor.set_speed
-    firmwareSymbol: motor_set_speed
-    label: Set Speed
-    dangerLevel: normal
-    inputSchema:
-      type: object
-      additionalProperties: false
-      required:
-        - value
-      properties:
-        value:
-          type: integer
-          minimum: 0
-          maximum: 5000
+Inside `buildUi(...)`, declare the resource and action, then add a widget bound to
+the action with a typed `.onSet` handler:
+
+```cpp
+// Resource + action (alongside the others, in manifest order)
+ResourceRef motorSpeed = ui.resource("motor.speed", ValueType::Uint)
+    .label("Motor Speed").unit("RPM").readMode(ReadMode::Subscribe).staleAfterMs(3000);
+ui.action("motor.set_speed", "Set Speed").integerRange(0, 5000);
+
+// Widget inside a section of some view -- this is what makes the control appear.
+// (Declaring the resource/action alone does NOT render anything.)
+ui.slider("motor.slider", "Motor Speed", motorSpeed, 0, 5000)
+    .bindAction("motor.set_speed")
+    .onSet([&rt](uint8_t value) { rt.setMotorSpeed(static_cast<uint32_t>(value)); }),
 ```
 
-CLI `.yaml` inputs must use the authoring schema shown above. The current authored YAML subset does not yet provide a shorthand slider entry, so keep `manifest.yaml` focused on the supported authoring shape and treat richer canonical `nodes` examples as internal expanded output rather than valid CLI YAML input.
+> Note: `slider` decodes to `uint8_t` (0..100 UI range). For a wider raw range,
+> scale inside the handler, or pick the widget/handler type that fits your data.
 
-Also note that adding a `resource` and `action` alone does not make a control appear automatically. In the current authored YAML model, UI only appears when you add supported entries under `views[].content`.
-
-### 2. Build the firmware
-
-```bash
-pio run -t upload
-```
-
-The build automatically:
-- Compiles `firmware/esp32/src/manifest.yaml` to protobuf
-- Generates `manifest_symbols.h` with `manifest_resources::motor_speed` and `manifest_actions::motor_set_speed`
-
-### 3. Add C++ business logic
+### 2. Add the state + business logic (portable)
 
 ```cpp
 // In DeviceState.h -- add your state field
-uint16_t motorSpeedRpm = 0;
+uint32_t motorSpeedRpm = 0;
 
-// In DeviceActions.cpp -- register the handler
-control.registerAction(manifest_actions::motor_set_speed,
-  [&control, &runtime](ecb::ActionContext& ctx) {
-    if (ctx.valueKind != ecb::ActionValueKind::Uint) {
-      ctx.replyError(ecb::ActionStatus::BadPayload, "need uint");
-      return;
-    }
-    runtime.setMotorSpeed(ctx.uintValue);
-    // ... apply to hardware ...
-    control.resources().setUint(manifest_resources::motor_speed, runtime.state().motorSpeedRpm);
-    control.publishDelta(manifest_resources::motor_speed);
-    ctx.replyOk(nullptr, 0);
-  });
-
-// In syncResources -- set initial value
-control.resources().setUint(manifest_resources::motor_speed, state.motorSpeedRpm);
+// In DeviceLogic.h -- a pure mutator (clamp/assign, no Arduino/EspControl)
+static void setMotorSpeed(DeviceState& state, uint32_t rpm) {
+  state.motorSpeedRpm = rpm > 5000u ? 5000u : rpm;
+}
 ```
 
-### 4. Rebuild & flash
+### 3. Wire the publish + hardware side (`AppRuntime`)
+
+```cpp
+// In AppRuntime.h -- the action method the .onSet handler calls
+void setMotorSpeed(uint32_t rpm) {
+  DeviceLogic::setMotorSpeed(state_, rpm);
+  if (sink_) sink_->onMotorChanged(state_);
+}
+
+// In AppRuntime.h ActionSink -- add the seam method:  virtual void onMotorChanged(const DeviceState&) = 0;
+// In AppRuntime.cpp EspActionSink -- implement it (the ONLY place ids/publish/HW appear):
+void onMotorChanged(const DeviceState& state) override {
+  // ... drive the motor hardware ...
+  control_.resources().setUint(manifest_resources::motor_speed, state.motorSpeedRpm);
+  control_.publishDelta(manifest_resources::motor_speed);
+}
+// In EspActionSink::syncResources -- seed the initial value:
+control_.resources().setUint(manifest_resources::motor_speed, state.motorSpeedRpm);
+```
+
+### 4. Build & flash
 
 ```bash
 pio run -t upload
 ```
 
-Once you also add a supported control entry under `views[].content`, the mobile app will render it automatically when it reconnects.
+The build re-emits the manifest from `device_ui.cpp` and regenerates
+`manifest_symbols.h` with `manifest_resources::motor_speed` and
+`manifest_actions::motor_set_speed` -- no Node/pnpm step. The mobile app renders the
+new slider automatically when it reconnects.
 
 ---
 
@@ -915,23 +955,25 @@ npx tsx src/cli/main.ts symbols \
 ```
 firmware/esp32/
 ├── app/                              # YOUR CODE
-│   ├── main.cpp                      # Entry point
+│   ├── main.cpp                      # Entry point (just wires runtime + control)
 │   ├── device/
-│   │   ├── DeviceState.h             # Device state struct
-│   │   ├── DeviceActions.h/.cpp      # Action handlers + output control
+│   │   ├── DeviceState.h             # Device state struct (portable)
+│   │   ├── DeviceLogic.h             # State mutators + enum<->slug mappers (portable)
+│   │   ├── device_ui.cpp             # buildUi(): declarative UI + typed .onSet handlers
 │   │   └── DeviceTelemetry.h/.cpp    # Periodic telemetry publishing
 │   └── runtime/
-│       ├── AppRuntime.h/.cpp         # Setup/tick orchestrator
+│       ├── AppRuntime.h/.cpp         # Setup/tick + ActionSink seam (EspActionSink in .cpp)
 │       └── PublishScheduler.h        # Rate-limit helper
 │
 ├── src/
-│   ├── manifest.yaml                 # Firmware demo authored YAML manifest
-│   ├── manifest_data.h               # (auto-generated)
-│   └── manifest_symbols.h/.cpp       # (auto-generated)
+│   ├── manifest.yaml                 # Legacy YAML manifest (no longer built)
+│   ├── manifest_data.h               # (auto-generated from device_ui.cpp)
+│   └── manifest_symbols.h/.cpp       # (auto-generated from device_ui.cpp)
 │
 ├── lib/esp-control-ble/              # Core library (don't edit)
 │   └── src/
 │       ├── EspControlBle.h/.cpp      # Top-level facade
+│       ├── ui/                       # Ui builder: RuntimeUi (device) + EmitterUi (host)
 │       ├── protocol/
 │       │   ├── core/Protocol.h       # Constants, UUIDs, frame types
 │       │   ├── auth/                 # PIN challenge-response
@@ -944,7 +986,9 @@ firmware/esp32/
 │           └── ble/                  # NimBLE server + data protocol
 │
 └── tools/
-    ├── embed_manifest.py             # Pre-build: compile + generate symbols
+    ├── emit_ui.py                    # Pre-build: device_ui.cpp → manifest + symbols (pure C++)
+    ├── ui_emit_main.cpp              # Host emitter entry point (compiled by emit_ui.py)
+    ├── embed_manifest.py             # Legacy YAML→protobuf path (no longer invoked)
     └── gen_nanopb.py                 # Pre-build: protobuf C codegen
 ```
 
