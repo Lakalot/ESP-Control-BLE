@@ -16,6 +16,7 @@ back to stale generated headers (that would hide manifest drift).
 """
 Import("env")  # noqa: F821  (PlatformIO injects it)
 from pathlib import Path
+import os
 import shutil
 import subprocess
 import sys
@@ -63,6 +64,32 @@ def resolve_gxx() -> str:
     sys.exit(1)
 
 
+def writable_exe_path() -> Path:
+    """Return a path the linker can write the host emitter to.
+
+    The linker cannot overwrite an .exe that is currently open (a transient
+    AV scan or a zombie process holding build_cache/ui_emit.exe makes g++ fail
+    to write the output -- on mingw that surfaces as a non-zero exit with NO
+    diagnostic, an opaque "host compile failed" with empty output). So delete a
+    stale target up front; if it is locked, fall back to a uniquely-named exe so
+    the build still succeeds instead of dying on a file lock.
+    """
+    if EXE.exists():
+        try:
+            EXE.unlink()
+            return EXE
+        except OSError:
+            # Locked (AV / open handle): use a distinct name this run.
+            alt = BUILD_CACHE / ("ui_emit_%d%s" % (os.getpid(), EXE.suffix))
+            print(
+                "[emit_ui] %s is locked (open handle / AV?); emitting to %s instead"
+                % (EXE.name, alt.name),
+                file=sys.stderr,
+            )
+            return alt
+    return EXE
+
+
 def main():
     BUILD_CACHE.mkdir(exist_ok=True)
 
@@ -81,6 +108,7 @@ def main():
         sys.exit(1)
 
     gxx = resolve_gxx()
+    exe = writable_exe_path()
 
     cmd = [
         gxx,
@@ -95,21 +123,32 @@ def main():
     ]
     cmd += [str(s) for s in SOURCES]
     cmd += [str(NANOPB_RUNTIME / "pb_encode.c"), str(NANOPB_RUNTIME / "pb_common.c")]
-    cmd += ["-o", str(EXE)]
+    cmd += ["-o", str(exe)]
 
     print("[emit_ui] compiling host emitter:")
     print("[emit_ui]   " + " ".join(cmd))
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        print(f"[emit_ui] host compile failed:\n{result.stdout}\n{result.stderr}", file=sys.stderr)
+        # Always surface the exit code: a linker that cannot write the .exe can
+        # fail with no stdout/stderr, and a bare "host compile failed" with empty
+        # output is impossible to diagnose.
+        detail = (result.stdout + result.stderr).strip() or "(no compiler output)"
+        print(
+            f"[emit_ui] host compile failed (g++ exit {result.returncode}):\n{detail}",
+            file=sys.stderr,
+        )
         sys.exit(1)
     if result.stderr.strip():
         print(result.stderr.strip())
 
-    print(f"[emit_ui] running {EXE.name} -> {SRC_OUT}")
-    run = subprocess.run([str(EXE), str(SRC_OUT)], capture_output=True, text=True)
+    print(f"[emit_ui] running {exe.name} -> {SRC_OUT}")
+    run = subprocess.run([str(exe), str(SRC_OUT)], capture_output=True, text=True)
     if run.returncode != 0:
-        print(f"[emit_ui] emitter run failed:\n{run.stdout}\n{run.stderr}", file=sys.stderr)
+        detail = (run.stdout + run.stderr).strip() or "(no emitter output)"
+        print(
+            f"[emit_ui] emitter run failed (exit {run.returncode}):\n{detail}",
+            file=sys.stderr,
+        )
         sys.exit(1)
     print(run.stdout.strip())
 
