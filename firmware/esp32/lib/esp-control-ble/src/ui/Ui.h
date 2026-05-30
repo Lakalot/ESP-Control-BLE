@@ -76,6 +76,24 @@ public:
   virtual void  recordWidgetAction(int nh, const std::string& slug, const std::string& label,
                                    Danger danger, const std::string& confirm, uint32_t cooldownMs) = 0;
 
+  // -- actions -- declared EXPLICITLY (in manifest/YAML order) with an explicit
+  //    inputSchema. This pins the string-table intern order (actions interned in
+  //    declaration order, matching normalize.ts) and carries the exact schema a
+  //    widget kind cannot infer (e.g. valueless toggle vs boolean toggle). Returns
+  //    an action handle; widgets bind it later by slug via bindWidgetAction.
+  virtual int   recordAction(const std::string& slug, const std::string& label) = 0;
+  virtual void  actionDanger(int ah, Danger danger) = 0;
+  virtual void  actionConfirm(int ah, const std::string& confirm) = 0;
+  virtual void  actionCooldownMs(int ah, uint32_t cooldownMs) = 0;
+  // inputSchema selectors -- exactly one applies per action (last one wins):
+  virtual void  actionSchemaValueless(int ah) = 0;                       // {} (no value)
+  virtual void  actionSchemaBoolean(int ah) = 0;                         // value: boolean
+  virtual void  actionSchemaInteger(int ah, int minimum, int maximum) = 0;  // value: integer min..max
+  virtual void  actionSchemaStringLen(int ah, int minLength, int maxLength) = 0;  // value: string len
+  virtual void  actionSchemaStringEnum(int ah, const std::vector<std::string>& values) = 0;  // value: string enum
+  // Bind a widget to an already-declared action (by slug). No schema derivation.
+  virtual void  bindWidgetAction(int nh, const std::string& slug) = 0;
+
   // -- views --
   virtual int   recordView(const std::string& slug, const std::string& title) = 0;
   virtual void  viewRouteKey(int vh, const std::string& routeKey) = 0;
@@ -90,6 +108,7 @@ public:
   void  optionalCapability(const std::string& feature) { recordCapability(feature, false); }
 
   class ResourceRef    resource(const std::string& slug, ValueType type);
+  class ActionBuilder  action(const std::string& slug, const std::string& label);
 
   class SliderBuilder    slider(const std::string& slug, const std::string& title,
                                 const class ResourceRef& res, int min, int max);
@@ -101,6 +120,7 @@ public:
                                    const class ResourceRef& res);
   class ButtonBuilder    button(const std::string& slug, const std::string& title);
   class TextBuilder      text(const std::string& slug, const std::string& title);
+  class TextBuilder      text(const std::string& slug);  // title-less (text set via .text())
   class StatBuilder      stat(const std::string& slug, const std::string& title,
                               const class ResourceRef& res);
   class BadgeBuilder     badge(const std::string& slug, const std::string& title,
@@ -145,6 +165,38 @@ private:
 };
 
 // ---------------------------------------------------------------------------
+// ActionBuilder -- handle to an explicitly-declared action; chainable setters
+// for danger/confirm/cooldown and a single inputSchema selector. Declaring an
+// action up front (ui.action(...)) fixes its string-table position in
+// declaration order (matching normalize.ts) and lets the author specify the
+// exact JSON schema a widget kind cannot infer.
+// ---------------------------------------------------------------------------
+class ActionBuilder {
+public:
+  ActionBuilder() : ui_(0), handle_(-1) {}
+  ActionBuilder(Ui* ui, int handle, const std::string& slug) : ui_(ui), handle_(handle), slug_(slug) {}
+
+  const std::string& slug() const { return slug_; }
+  int handle() const { return handle_; }
+
+  ActionBuilder& danger(Danger v)              { ui_->actionDanger(handle_, v); return *this; }
+  ActionBuilder& confirm(const std::string& v) { ui_->actionConfirm(handle_, v); return *this; }
+  ActionBuilder& cooldownMs(uint32_t v)        { ui_->actionCooldownMs(handle_, v); return *this; }
+
+  // inputSchema selectors (mutually exclusive; pick exactly one):
+  ActionBuilder& valueless()                       { ui_->actionSchemaValueless(handle_); return *this; }
+  ActionBuilder& boolean()                         { ui_->actionSchemaBoolean(handle_); return *this; }
+  ActionBuilder& integerRange(int lo, int hi)      { ui_->actionSchemaInteger(handle_, lo, hi); return *this; }
+  ActionBuilder& stringLen(int lo, int hi)         { ui_->actionSchemaStringLen(handle_, lo, hi); return *this; }
+  ActionBuilder& stringEnum(const std::vector<std::string>& v) { ui_->actionSchemaStringEnum(handle_, v); return *this; }
+
+private:
+  Ui* ui_;
+  int handle_;
+  std::string slug_;
+};
+
+// ---------------------------------------------------------------------------
 // NodeHandle -- value base for every widget/container builder. Carries {ui,node}
 // so any builder can be passed (sliced) into content()/children().
 // ---------------------------------------------------------------------------
@@ -173,6 +225,7 @@ public:
   Self& formatHint(const std::string& v)  { ui_->nodeFormatHint(node_, v); return self(); }
 
   // Declare + bind an action; the impl derives its inputSchema from this widget.
+  // (Backward-compatible convenience for simple widgets like a lone slider.)
   Self& action(const std::string& id, const std::string& label) {
     ui_->recordWidgetAction(node_, id, label, Danger::Normal, std::string(), 0);
     return self();
@@ -180,6 +233,14 @@ public:
   Self& action(const std::string& id, const std::string& label, Danger danger,
                const std::string& confirm, uint32_t cooldownMs) {
     ui_->recordWidgetAction(node_, id, label, danger, confirm, cooldownMs);
+    return self();
+  }
+
+  // Bind to an action declared up-front via ui.action(...). Preferred when the
+  // schema/danger/confirm are non-trivial: the action (and its string-table
+  // position) is fixed at declaration time, not at widget-binding time.
+  Self& bindAction(const std::string& id) {
+    ui_->bindWidgetAction(node_, id);
     return self();
   }
 
@@ -291,6 +352,9 @@ private:
 inline ResourceRef Ui::resource(const std::string& slug, ValueType type) {
   return ResourceRef(this, recordResource(slug, type), slug);
 }
+inline ActionBuilder Ui::action(const std::string& slug, const std::string& label) {
+  return ActionBuilder(this, recordAction(slug, label), slug);
+}
 inline SliderBuilder Ui::slider(const std::string& slug, const std::string& title,
                                 const ResourceRef& res, int min, int max) {
   int nh = recordWidget(slug, WidgetKind::Slider, res.handle(), /*hasRange*/ true, min, max);
@@ -321,6 +385,9 @@ inline TextBuilder Ui::text(const std::string& slug, const std::string& title) {
   int nh = recordWidget(slug, WidgetKind::Text, -1, false, 0, 0);
   nodeTitle(nh, title);
   return TextBuilder(this, nh);
+}
+inline TextBuilder Ui::text(const std::string& slug) {
+  return TextBuilder(this, recordWidget(slug, WidgetKind::Text, -1, false, 0, 0));
 }
 inline StatBuilder Ui::stat(const std::string& slug, const std::string& title, const ResourceRef& res) {
   int nh = recordWidget(slug, WidgetKind::Stat, res.handle(), false, 0, 0);

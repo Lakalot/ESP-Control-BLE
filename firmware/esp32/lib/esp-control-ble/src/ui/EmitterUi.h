@@ -48,6 +48,17 @@ public:
   virtual void recordWidgetAction(int nh, const std::string& slug, const std::string& label,
                                   Danger danger, const std::string& confirm, uint32_t cooldownMs);
 
+  virtual int  recordAction(const std::string& slug, const std::string& label);
+  virtual void actionDanger(int ah, Danger danger);
+  virtual void actionConfirm(int ah, const std::string& confirm);
+  virtual void actionCooldownMs(int ah, uint32_t cooldownMs);
+  virtual void actionSchemaValueless(int ah);
+  virtual void actionSchemaBoolean(int ah);
+  virtual void actionSchemaInteger(int ah, int minimum, int maximum);
+  virtual void actionSchemaStringLen(int ah, int minLength, int maxLength);
+  virtual void actionSchemaStringEnum(int ah, const std::vector<std::string>& values);
+  virtual void bindWidgetAction(int nh, const std::string& slug);
+
   virtual int  recordView(const std::string& slug, const std::string& title);
   virtual void viewRouteKey(int vh, const std::string& routeKey);
   virtual void viewContent(int vh, const std::vector<int>& topLevelNodeHandles);
@@ -72,14 +83,42 @@ private:
     ResourceDecl() : type(ValueType::Bool), readMode(ReadMode::Snapshot), staleAfterMs(0), pollMs(0) {}
   };
 
+  // How an action's inputSchema JSON is built. Either DERIVED from the binding
+  // widget's kind+range (legacy .action(id,label) path) or specified EXPLICITLY
+  // via a ui.action(...) schema selector (the full manifest uses the latter, as
+  // the widget kind alone cannot distinguish e.g. a valueless toggle action from
+  // a boolean one).
+  enum class SchemaKind {
+    DerivedFromWidget,  // build the schema from the bound widget at build() time
+    Valueless,          // {} (no value property)
+    Boolean,            // value: boolean
+    Integer,            // value: integer minimum..maximum
+    StringLen,          // value: string minLength..maxLength
+    StringEnum          // value: string enum [...]
+  };
+
   struct ActionDecl {
     std::string slug;
     std::string label;
     Danger      danger;
     std::string confirm;
     uint32_t    cooldownMs;
-    std::string inputSchemaJson;  // derived
-    ActionDecl() : danger(Danger::Normal), cooldownMs(0) {}
+    // schema spec ----
+    SchemaKind  schemaKind;
+    int         schemaMin;     // integer minimum / string minLength
+    int         schemaMax;     // integer maximum / string maxLength
+    std::vector<std::string> schemaEnum;
+    // For SchemaKind::DerivedFromWidget, the binding widget supplies kind/range/enum.
+    WidgetKind  deriveWidgetKind;
+    bool        deriveHasRange;
+    int         deriveRangeMin;
+    int         deriveRangeMax;
+    std::vector<std::string> deriveEnum;
+    ActionDecl()
+        : danger(Danger::Normal), cooldownMs(0),
+          schemaKind(SchemaKind::Valueless), schemaMin(0), schemaMax(0),
+          deriveWidgetKind(WidgetKind::Text), deriveHasRange(false),
+          deriveRangeMin(0), deriveRangeMax(0) {}
   };
 
   struct NodeDecl {
@@ -127,6 +166,9 @@ private:
 
   // index of an existing action by slug, or -1.
   int findAction(const std::string& slug) const;
+
+  // Build an action's inputSchema JSON (byte-exact JSON.stringify) from its spec.
+  static std::string buildSchemaJson(const ActionDecl& a);
 };
 
 }} // namespace ecb::ui

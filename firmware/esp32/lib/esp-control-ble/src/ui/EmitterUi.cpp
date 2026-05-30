@@ -39,52 +39,69 @@ std::string jsonString(const std::string& s) {
   return out;
 }
 
-// Derive an action's inputSchema JSON from the bound widget. Byte-exact (no spaces,
-// JSON.stringify key order) so it matches the oracle.
+// Byte-exact inputSchema fragments (no spaces, JSON.stringify key order) so the
+// emitted strings match the oracle.
+const char* const kSchemaHead = "{\"type\":\"object\",\"additionalProperties\":false";
+
+std::string schemaValueless() {
+  return std::string(kSchemaHead) + ",\"properties\":{}}";
+}
+std::string schemaBoolean() {
+  return std::string(kSchemaHead) + ",\"required\":[\"value\"],\"properties\":{\"value\":{\"type\":\"boolean\"}}}";
+}
+std::string schemaInteger(int minimum, int maximum) {
+  std::string s = std::string(kSchemaHead) +
+      ",\"required\":[\"value\"],\"properties\":{\"value\":{\"type\":\"integer\"";
+  s += ",\"minimum\":" + intStr(minimum);
+  s += ",\"maximum\":" + intStr(maximum);
+  s += "}}}";
+  return s;
+}
+std::string schemaStringLen(int minLength, int maxLength) {
+  std::string s = std::string(kSchemaHead) +
+      ",\"required\":[\"value\"],\"properties\":{\"value\":{\"type\":\"string\"";
+  s += ",\"minLength\":" + intStr(minLength);
+  s += ",\"maxLength\":" + intStr(maxLength);
+  s += "}}}";
+  return s;
+}
+std::string schemaStringEnum(const std::vector<std::string>& values) {
+  std::string s = std::string(kSchemaHead) +
+      ",\"required\":[\"value\"],\"properties\":{\"value\":{\"type\":\"string\"";
+  if (!values.empty()) {
+    s += ",\"enum\":[";
+    for (size_t i = 0; i < values.size(); ++i) {
+      if (i) s.push_back(',');
+      s += jsonString(values[i]);
+    }
+    s.push_back(']');
+  }
+  s += "}}}";
+  return s;
+}
+std::string schemaPlainString() {  // string with no length/enum constraints
+  return std::string(kSchemaHead) + ",\"required\":[\"value\"],\"properties\":{\"value\":{\"type\":\"string\"}}}";
+}
+
+// Derive an action's inputSchema JSON from the bound widget (legacy convenience
+// path used when an action is declared inline on a widget via .action(id,label)):
 //   slider     -> { value: integer, minimum, maximum }
 //   toggle     -> { value: boolean }
 //   select     -> { value: string, enum: [...] }
 //   text_input -> { value: string }
 //   other      -> {} (no value)
-// NOTE (Task 5): the FULL manifest pins additional forms -- e.g. a toggle bound to
-// an action with EMPTY properties (relay.toggle) vs a boolean value (device.set_debug),
-// and value-less button actions. Those distinctions are authoring intent the full
-// oracle disambiguates; revisit this derivation there. The slider case is exact now.
 std::string deriveInputSchema(WidgetKind kind, bool hasRange, int rangeMin, int rangeMax,
                               const std::vector<std::string>& enumValues) {
-  const std::string head = "{\"type\":\"object\",\"additionalProperties\":false";
-
   if (kind == WidgetKind::Slider) {
-    std::string s = head;
-    s += ",\"required\":[\"value\"],\"properties\":{\"value\":{\"type\":\"integer\"";
-    if (hasRange) {
-      s += ",\"minimum\":" + intStr(rangeMin);
-      s += ",\"maximum\":" + intStr(rangeMax);
-    }
-    s += "}}}";
+    if (hasRange) return schemaInteger(rangeMin, rangeMax);
+    std::string s = std::string(kSchemaHead) +
+        ",\"required\":[\"value\"],\"properties\":{\"value\":{\"type\":\"integer\"}}}";
     return s;
   }
-  if (kind == WidgetKind::Toggle) {
-    return head + ",\"required\":[\"value\"],\"properties\":{\"value\":{\"type\":\"boolean\"}}}";
-  }
-  if (kind == WidgetKind::Select) {
-    std::string s = head + ",\"required\":[\"value\"],\"properties\":{\"value\":{\"type\":\"string\"";
-    if (!enumValues.empty()) {
-      s += ",\"enum\":[";
-      for (size_t i = 0; i < enumValues.size(); ++i) {
-        if (i) s.push_back(',');
-        s += jsonString(enumValues[i]);
-      }
-      s.push_back(']');
-    }
-    s += "}}}";
-    return s;
-  }
-  if (kind == WidgetKind::TextInput) {
-    return head + ",\"required\":[\"value\"],\"properties\":{\"value\":{\"type\":\"string\"}}}";
-  }
-  // Buttons and display widgets: no value.
-  return head + ",\"properties\":{}}";
+  if (kind == WidgetKind::Toggle)    return schemaBoolean();
+  if (kind == WidgetKind::Select)    return schemaStringEnum(enumValues);
+  if (kind == WidgetKind::TextInput) return schemaPlainString();
+  return schemaValueless();  // buttons and display widgets: no value
 }
 
 // sort-by-id ascending, 1-based (assignIds.ts). Lexicographic on std::string
@@ -171,8 +188,62 @@ void EmitterUi::recordWidgetAction(int nh, const std::string& slug, const std::s
     a.danger = danger;
     a.confirm = confirm;
     a.cooldownMs = cooldownMs;
-    a.inputSchemaJson = deriveInputSchema(n.widgetKind, n.hasRange, n.rangeMin, n.rangeMax,
-                                          n.enumValuesForSchema);
+    a.schemaKind = SchemaKind::DerivedFromWidget;
+    a.deriveWidgetKind = n.widgetKind;
+    a.deriveHasRange = n.hasRange;
+    a.deriveRangeMin = n.rangeMin;
+    a.deriveRangeMax = n.rangeMax;
+    a.deriveEnum = n.enumValuesForSchema;
+    actions_.push_back(a);
+    idx = static_cast<int>(actions_.size()) - 1;
+  }
+  nodes_[nh].bindActionIndex = idx;
+}
+
+int EmitterUi::recordAction(const std::string& slug, const std::string& label) {
+  // If an action with this slug already exists (e.g. inferred from an earlier
+  // widget binding), upgrade it in place so the explicit declaration wins; else
+  // append in declaration order (this is what pins the intern order to YAML order).
+  int idx = findAction(slug);
+  if (idx < 0) {
+    ActionDecl a;
+    a.slug = slug;
+    a.label = label;
+    a.schemaKind = SchemaKind::Valueless;  // default until a selector is chosen
+    actions_.push_back(a);
+    idx = static_cast<int>(actions_.size()) - 1;
+  } else {
+    actions_[idx].label = label;
+  }
+  return idx;
+}
+void EmitterUi::actionDanger(int ah, Danger v)              { actions_[ah].danger = v; }
+void EmitterUi::actionConfirm(int ah, const std::string& v) { actions_[ah].confirm = v; }
+void EmitterUi::actionCooldownMs(int ah, uint32_t v)        { actions_[ah].cooldownMs = v; }
+void EmitterUi::actionSchemaValueless(int ah)               { actions_[ah].schemaKind = SchemaKind::Valueless; }
+void EmitterUi::actionSchemaBoolean(int ah)                 { actions_[ah].schemaKind = SchemaKind::Boolean; }
+void EmitterUi::actionSchemaInteger(int ah, int minimum, int maximum) {
+  actions_[ah].schemaKind = SchemaKind::Integer;
+  actions_[ah].schemaMin = minimum;
+  actions_[ah].schemaMax = maximum;
+}
+void EmitterUi::actionSchemaStringLen(int ah, int minLength, int maxLength) {
+  actions_[ah].schemaKind = SchemaKind::StringLen;
+  actions_[ah].schemaMin = minLength;
+  actions_[ah].schemaMax = maxLength;
+}
+void EmitterUi::actionSchemaStringEnum(int ah, const std::vector<std::string>& values) {
+  actions_[ah].schemaKind = SchemaKind::StringEnum;
+  actions_[ah].schemaEnum = values;
+}
+void EmitterUi::bindWidgetAction(int nh, const std::string& slug) {
+  // The action must already be declared (ui.action) or inferred. If somehow not,
+  // create a valueless placeholder so the binding still resolves deterministically.
+  int idx = findAction(slug);
+  if (idx < 0) {
+    ActionDecl a;
+    a.slug = slug;
+    a.schemaKind = SchemaKind::Valueless;
     actions_.push_back(a);
     idx = static_cast<int>(actions_.size()) - 1;
   }
@@ -197,6 +268,20 @@ void EmitterUi::recordNavItem(const std::string& id, const std::string& label,
   n.icon = icon;
   n.viewHandle = viewHandle;
   navItems_.push_back(n);
+}
+
+std::string EmitterUi::buildSchemaJson(const ActionDecl& a) {
+  switch (a.schemaKind) {
+    case SchemaKind::Valueless:  return schemaValueless();
+    case SchemaKind::Boolean:    return schemaBoolean();
+    case SchemaKind::Integer:    return schemaInteger(a.schemaMin, a.schemaMax);
+    case SchemaKind::StringLen:  return schemaStringLen(a.schemaMin, a.schemaMax);
+    case SchemaKind::StringEnum: return schemaStringEnum(a.schemaEnum);
+    case SchemaKind::DerivedFromWidget:
+    default:
+      return deriveInputSchema(a.deriveWidgetKind, a.deriveHasRange,
+                               a.deriveRangeMin, a.deriveRangeMax, a.deriveEnum);
+  }
 }
 
 // ================================== build ===================================
@@ -303,7 +388,7 @@ UiModel EmitterUi::build() const {
     na.dangerLevel = static_cast<uint32_t>(a.danger);
     na.confirmIdx = m.strings.internOptional(a.confirm.c_str());
     na.cooldownMs = a.cooldownMs;
-    na.inputSchemaIdx = m.strings.intern(a.inputSchemaJson);
+    na.inputSchemaIdx = m.strings.intern(buildSchemaJson(a));
     na.resultSchemaIdx = 0;
     m.actions.push_back(na);
   }
