@@ -104,6 +104,36 @@ static void test_missing_key_returns_false() {
   TEST_ASSERT_FALSE(t.get(999, v));
 }
 
+// Characterizes the upsert "initialize-before-publish" contract: after inserting
+// a fresh id, size() must reflect exactly one new finalized entry AND that entry
+// must be readable with the value just written. (Single-threaded native tests
+// cannot observe the torn-read window directly, so this locks in that the
+// reordered upsert still publishes a fully-initialized entry on the happy path.)
+static void test_new_uint_publishes_finalized_entry() {
+  ResourceTable t;
+  const size_t before = t.size();
+  t.setUint(100, 0xABCDEF01u);
+  TEST_ASSERT_EQUAL_UINT32(before + 1u, t.size());
+  ResourceValue v{};
+  TEST_ASSERT_TRUE(t.get(100, v));
+  TEST_ASSERT_EQUAL(static_cast<int>(ResourceValueKind::Uint), static_cast<int>(v.kind));
+  TEST_ASSERT_EQUAL_UINT32(0xABCDEF01u, v.uintValue);
+}
+
+// Exercises the upsert-existing path: re-interning the same id (even across a
+// kind change) must update in place, never grow the table.
+static void test_reintern_same_id_updates_in_place() {
+  ResourceTable t;
+  t.setUint(200, 1);
+  const size_t afterFirst = t.size();
+  t.setString(200, "x");
+  TEST_ASSERT_EQUAL_UINT32(afterFirst, t.size());
+  ResourceValue v{};
+  TEST_ASSERT_TRUE(t.get(200, v));
+  TEST_ASSERT_EQUAL(static_cast<int>(ResourceValueKind::String), static_cast<int>(v.kind));
+  TEST_ASSERT_EQUAL_STRING("x", v.stringValue);
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_set_and_get_bool);
@@ -114,5 +144,7 @@ int main(int, char**) {
   RUN_TEST(test_blob_slots_are_released_and_reused_after_scalar_transition);
   RUN_TEST(test_blob_backed_value_can_change_kind_without_stale_payload);
   RUN_TEST(test_missing_key_returns_false);
+  RUN_TEST(test_new_uint_publishes_finalized_entry);
+  RUN_TEST(test_reintern_same_id_updates_in_place);
   return UNITY_END();
 }

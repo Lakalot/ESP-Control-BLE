@@ -9,7 +9,7 @@ void BleTransport::attach(ecb::ProtocolEngine* engine, const uint8_t* manifest, 
 }
 void BleTransport::begin(const char*) {}
 void BleTransport::send(const uint8_t*, size_t) {}
-void BleTransport::onData(const uint8_t* data, size_t len) { if (_engine) _engine->handleFrame((ecb::FrameKind)data[0], data + 4, len > 4 ? len - 4 : 0); }
+void BleTransport::onData(const uint8_t* data, size_t len) { if (_engine) _engine->handleFrame(static_cast<ecb::FrameKind>(data[0]), data + 4, len > 4 ? len - 4 : 0); }
 void BleTransport::onConnect(uint16_t) {}
 void BleTransport::onDisconnect() {}
 
@@ -47,7 +47,12 @@ void BleTransport::begin(const char* deviceName) {
 
   BLEServer* server = BLEDevice::createServer();
   _server = server;
-  server->setCallbacks(new EcbServerCb());
+  // begin() runs once for the device lifetime; function-local statics are
+  // constructed once and live until program exit. The BLE stack only borrows
+  // these callbacks (it never takes ownership / frees them), so this hands it a
+  // stable address with no heap allocation and no leak (was: raw new, leaked).
+  static EcbServerCb serverCb;
+  server->setCallbacks(&serverCb);
 
   BLEService* svc = server->createService(BLEUUID(ECB_DATA_SERVICE_UUID), 16, 0);
 
@@ -62,7 +67,8 @@ void BleTransport::begin(const char* deviceName) {
   _dataChar = svc->createCharacteristic(
       BLEUUID(ECB_DATA_DATA_CHAR_UUID),
       BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
-  _dataChar->setCallbacks(new EcbDataCb());
+  static EcbDataCb dataCb;  // same lifetime rationale as serverCb above
+  _dataChar->setCallbacks(&dataCb);
 
   svc->start();
 
@@ -87,7 +93,7 @@ void BleTransport::onData(const uint8_t* data, size_t len) {
   _engine->setSender(ecb::FrameSender{this, [](void* c, const uint8_t* d, size_t n) {
     static_cast<BleTransport*>(c)->send(d, n);
   }});
-  const ecb::FrameKind kind = (ecb::FrameKind)data[0];
+  const ecb::FrameKind kind = static_cast<ecb::FrameKind>(data[0]);
   const uint16_t bodyLen = (uint16_t)((data[2] << 8) | data[3]);
   if ((size_t)(4 + bodyLen) > len) return;
   _engine->handleFrame(kind, data + 4, bodyLen);
