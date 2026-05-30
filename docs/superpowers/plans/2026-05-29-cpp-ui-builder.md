@@ -342,8 +342,12 @@ NOTE: the exact fluent shape is a design choice — keep it close to the spec's 
 
 **Goal:** Extend the fluent API + emitter to every widget/resource/view/navBar used by the current `manifest.yaml`, and prove the emitter reproduces the **full current manifest** byte-for-byte.
 
+**⚠️ Two known risks surfaced by UI-T4's self-review (handle these explicitly):**
+1. **Action intern order.** In the current `EmitterUi`, an action is created/interned the moment a widget binds it (`.action(id,...)`), so the action string-table positions follow the ORDER widgets bind actions in `buildUi` — which may differ from the YAML `actions:` block order, shifting every downstream string index and breaking byte-equality. Fix options: (a) order the `describeFullDevice` widget/action declarations to reproduce the oracle's action order, OR (b) make `EmitterUi.build()` intern action strings in a deterministic order (e.g. matching normalize: actions are interned in `input.actions` order — replicate that by sorting/ordering actions as the YAML did). Diff the string table against the oracle early to pin this.
+2. **Schema-string derivation is incomplete for non-sliders.** The real manifest needs schema variants the widget type alone can't infer: `relay.toggle` has EMPTY `properties:{}` (no value) while `device.set_debug` (also a toggle) has `value:boolean`; buttons (`system.restart`, `system.factory_reset`) have EMPTY schemas; `device.rename` adds `minLength/maxLength`; `light.set_color`/`fan.set_profile` are string+enum (enum sourced from the bound resource). Extend `.action(...)` with the needed schema options (e.g. a `valueless()` form for no-payload actions, `minLength/maxLength` for text, enum pulled from the bound resource) so each action's `inputSchema` JSON byte-matches the oracle. Get each schema string EXACT (key order, no spaces).
+
 **Files:**
-- Test: `firmware/esp32/test/native/test_ui_emitter_full/test_ui_emitter_full.cpp` + checked-in `oracle_full.pb`
+- Test: `firmware/esp32/test/native/test_ui_emitter_full/test_ui_emitter_full.cpp` + the full-manifest oracle (embed as a C byte array like UI-T3 did, to avoid native-runner CWD path issues, OR check in `oracle_full.pb` only if the relative path resolves)
 
 - [ ] **Step 1:** Generate `oracle_full.pb` from the current `firmware/esp32/src/manifest.yaml` via the TS oracle. Check it into the test dir.
 - [ ] **Step 2: Failing test** — a `describeFullDevice(Ui&)` that mirrors the entire current manifest (3 views, all widgets, navBar, all resources/actions), emit, assert byte-equal to `oracle_full.pb`.
