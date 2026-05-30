@@ -29,10 +29,13 @@ static void describeShort(Ui& ui) {
     ui.sliderShort("light.brightness", "Brightness", 0, 100)
   );
 }
-// LONG form: same structure spelled out with the existing API.
+// LONG form: same structure spelled out with the existing API. The short form
+// defaults its resource to ReadMode::Subscribe (so the tablet subscribes and sees
+// the control's state), so the long form must set it too for byte-equality.
 static void describeLong(Ui& ui) {
   ResourceRef b = ui.resource("light.brightness", ValueType::Uint);
   b.label("Brightness");
+  b.readMode(ReadMode::Subscribe);
   ui.action("light.brightness.set", "Brightness").integerRange(0, 100);
   ui.view("home", "Home").content(
     ui.slider("light.brightness", "Brightness", b, 0, 100).bindAction("light.brightness.set")

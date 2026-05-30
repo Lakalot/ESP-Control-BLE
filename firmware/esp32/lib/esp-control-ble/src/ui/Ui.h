@@ -466,6 +466,7 @@ inline ButtonBuilder Ui::button(const std::string& slug, const std::string& titl
 inline SliderBuilder Ui::sliderShort(const std::string& slug, const std::string& title, int min, int max) {
   int rh = recordResource(slug, ValueType::Uint);
   resourceLabel(rh, title);
+  resourceReadMode(rh, ReadMode::Subscribe);  // the tablet only subscribes to subscribe-mode resources -> see the control's state
   int ah = recordAction(slug + ".set", title);
   actionSchemaInteger(ah, min, max);
   int nh = recordWidget(slug, WidgetKind::Slider, rh, /*hasRange*/ true, min, max);
@@ -477,6 +478,7 @@ inline SliderBuilder Ui::sliderShort(const std::string& slug, const std::string&
 inline ToggleBuilder Ui::toggleShort(const std::string& slug, const std::string& title) {
   int rh = recordResource(slug, ValueType::Bool);
   resourceLabel(rh, title);
+  resourceReadMode(rh, ReadMode::Subscribe);  // the tablet only subscribes to subscribe-mode resources -> see the control's state
   int ah = recordAction(slug + ".set", title);
   actionSchemaBoolean(ah);
   int nh = recordWidget(slug, WidgetKind::Toggle, rh, false, 0, 0);
@@ -489,6 +491,7 @@ inline SelectBuilder Ui::selectShort(const std::string& slug, const std::string&
                                      const std::vector<std::string>& options) {
   int rh = recordResource(slug, ValueType::Enum);
   resourceLabel(rh, title);
+  resourceReadMode(rh, ReadMode::Subscribe);  // the tablet only subscribes to subscribe-mode resources -> see the control's state
   resourceEnum(rh, options);
   int ah = recordAction(slug + ".set", title);
   actionSchemaStringEnum(ah, options);
@@ -501,6 +504,7 @@ inline SelectBuilder Ui::selectShort(const std::string& slug, const std::string&
 inline TextInputBuilder Ui::textInputShort(const std::string& slug, const std::string& title) {
   int rh = recordResource(slug, ValueType::String);
   resourceLabel(rh, title);
+  resourceReadMode(rh, ReadMode::Subscribe);  // the tablet only subscribes to subscribe-mode resources -> see the control's state
   int ah = recordAction(slug + ".set", title);
   actionSchemaStringLen(ah, 0, 64);
   int nh = recordWidget(slug, WidgetKind::TextInput, rh, false, 0, 0);

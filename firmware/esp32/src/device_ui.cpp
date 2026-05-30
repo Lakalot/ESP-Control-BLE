@@ -108,10 +108,13 @@ void buildUi(Ui& ui) {
       .label("Humidity").unit("%").readMode(ReadMode::Subscribe).staleAfterMs(5000);
   ResourceRef loadRef = ui.resource("system.load", ValueType::Uint)
       .label("Load").unit("%").readMode(ReadMode::Subscribe).staleAfterMs(3000);
+  // Subscribe (not Poll): the mobile app only subscribes to subscribe-mode resources
+  // (it never actively polls), so Poll telemetry never reached the tablet (rssi stale,
+  // uptime stuck at --:--). loop() pushes these on a timer; the device sends the deltas.
   ResourceRef rssiRef = ui.resource("wifi.rssi", ValueType::Int)
-      .label("WiFi Signal").unit("dBm").readMode(ReadMode::Poll).pollMs(10000).staleAfterMs(15000);
+      .label("WiFi Signal").unit("dBm").readMode(ReadMode::Subscribe).staleAfterMs(15000);
   ResourceRef uptimeRef = ui.resource("system.uptime", ValueType::DurationMs)
-      .label("Uptime").readMode(ReadMode::Poll).pollMs(5000).staleAfterMs(10000);
+      .label("Uptime").readMode(ReadMode::Subscribe).staleAfterMs(10000);
 
   dev::temperature = ui.resourceF("env.temperature", ValueType::Float);
   dev::humidity    = ui.resourceF("env.humidity", ValueType::Float);
