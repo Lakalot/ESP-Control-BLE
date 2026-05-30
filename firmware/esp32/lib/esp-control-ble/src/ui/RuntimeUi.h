@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "ui/IdAssignment.h"
+#include "ui/Res.h"
 #include "ui/Ui.h"
 
 // Forward-declared so this header does NOT pull in EspControlBle.h (and the
@@ -53,6 +54,14 @@ public:
   virtual void resourceStaleAfterMs(int rh, uint32_t ms);
   virtual void resourcePollMs(int rh, uint32_t ms);
   virtual void resourceEnum(int rh, const std::vector<std::string>& values);
+
+  // typed resource creators -- create-or-reuse a resource (idempotent by slug) and
+  // return a SLOT-TAGGED handle. The slot is resolved to the real id at commit().
+  virtual Res<bool>        resourceB(const std::string& slug, ValueType type);
+  virtual Res<uint32_t>    resourceU32(const std::string& slug, ValueType type);
+  virtual Res<int32_t>     resourceI32(const std::string& slug, ValueType type);
+  virtual Res<float>       resourceF(const std::string& slug, ValueType type);
+  virtual Res<const char*> resourceS(const std::string& slug, ValueType type);
 
   virtual int  recordWidget(const std::string& slug, WidgetKind kind,
                             int resourceHandle, bool hasRange, int rangeMin, int rangeMax);
@@ -105,6 +114,11 @@ public:
   virtual float       uiReadFloat(uint32_t id);
   virtual const char* uiReadString(uint32_t id);
 
+  // Resolve a slot-tagged handle (high bit set) -> its resource's real id (valid
+  // post-commit; 0 before). A plain id (high bit clear) passes through unchanged,
+  // so raw-id callers (and Res handles already holding a real id) are untouched.
+  virtual uint32_t uiResolveId(uint32_t idOrSlot) const;
+
 private:
   // Minimal recorded state -- only what's needed for ids, seeding, and handler
   // registration. Presentation-only inputs (titles/tones/text/confirm/danger/
@@ -136,9 +150,15 @@ private:
   };
 
   int findAction(const std::string& slug) const;
+  // Idempotent resource recording: returns the existing index if slug is already
+  // recorded, else records it and returns the new index.
+  int findOrRecordResource(const std::string& slug, ValueType type);
 
   EspControl* control_;
   std::vector<ResourceDecl>   resources_;
+  // Maps a slot (index) -> index into resources_. A slot-tagged Res handle carries
+  // (kSlotTag | slot); uiResolveId() follows slot -> resource -> sorted-slug id.
+  std::vector<int>            slotResourceIndex_;
   std::vector<ActionDecl>     actions_;
   std::vector<NodeDecl>       nodes_;
   std::vector<PendingHandler> pending_;

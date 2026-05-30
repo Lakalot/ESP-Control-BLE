@@ -273,11 +273,54 @@ static void test_runtimeui_value_hooks_write_table() {
   TEST_ASSERT_EQUAL_STRING("warm", v.stringValue);
 }
 
+// (DX-T3) A Res<T> handle obtained from a typed creator (resourceU32/resourceB)
+// during description carries a SLOT TAG, not a real id. After commit() resolves
+// the slot -> resource index -> sorted-slug id, set()/get()/id() all work and the
+// resolved id matches the emitter scheme.
+static void test_stored_res_writes_after_commit() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  ecb::ui::Res<uint32_t> bright = rt.resourceU32("light.brightness", ecb::ui::ValueType::Uint);
+  ecb::ui::Res<bool>     relay  = rt.resourceB("relay.auto", ecb::ui::ValueType::Bool);
+  rt.commit();
+  bright.set(55u);
+  relay.set(true);
+  ecb::ResourceValue v;
+  TEST_ASSERT_TRUE(control.resources().get(bright.id(), v));
+  TEST_ASSERT_EQUAL_UINT32(55u, v.uintValue);
+  TEST_ASSERT_TRUE(control.resources().get(relay.id(), v));
+  TEST_ASSERT_TRUE(v.boolValue);
+  // ids match the emitter scheme: sorted slugs ["light.brightness","relay.auto"] -> 1,2
+  TEST_ASSERT_EQUAL_UINT32(1u, bright.id());
+  TEST_ASSERT_EQUAL_UINT32(2u, relay.id());
+}
+
+// (DX-T3) Recording is idempotent by slug: requesting the same resource twice
+// records it ONCE, so both handles resolve to the same id (two slots, one
+// resource). A later task relies on this so res<T>(slug) + a short-form widget
+// referring to the same slug share one resource.
+static void test_idempotent_resource_recording() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  ecb::ui::Res<bool> a = rt.resourceB("relay.auto", ecb::ui::ValueType::Bool);
+  ecb::ui::Res<bool> b = rt.resourceB("relay.auto", ecb::ui::ValueType::Bool);  // same slug again
+  rt.commit();
+  // both handles resolve to the SAME id (resource recorded once).
+  TEST_ASSERT_EQUAL_UINT32(a.id(), b.id());
+  TEST_ASSERT_TRUE(a.id() != 0u);
+  a.set(true);
+  ecb::ResourceValue v;
+  TEST_ASSERT_TRUE(control.resources().get(b.id(), v));
+  TEST_ASSERT_TRUE(v.boolValue);
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_runtime_ui_ids_match_emitter);
   RUN_TEST(test_runtime_ui_typed_handler_decodes);
   RUN_TEST(test_runtime_ui_registers_resource);
   RUN_TEST(test_runtimeui_value_hooks_write_table);
+  RUN_TEST(test_stored_res_writes_after_commit);
+  RUN_TEST(test_idempotent_resource_recording);
   return UNITY_END();
 }

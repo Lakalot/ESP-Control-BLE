@@ -67,4 +67,16 @@ template <> inline const char* Res<const char*>::readImpl() const        { retur
 // class specialization just for one method on GCC 5).
 inline void toggle(const Res<bool>& r) { r.set(!r.get()); }
 
+// ---- Ui typed-creator default bodies. Declared on the Ui base in Ui.h; defined
+//      HERE, where both Ui (included at the top of this header) and Res<T> (above)
+//      are complete -- this is what breaks the Ui<->Res include cycle. The default
+//      records the resource and returns an INERT (id 0) handle: harmless on
+//      EmitterUi, which never resolves or writes a handle. RuntimeUi overrides
+//      these (RuntimeUi.cpp) to return slot-tagged handles resolved at commit().
+inline Res<bool>        Ui::resourceB(const std::string& slug, ValueType type)   { recordResource(slug, type); return Res<bool>(this, 0u); }
+inline Res<uint32_t>    Ui::resourceU32(const std::string& slug, ValueType type) { recordResource(slug, type); return Res<uint32_t>(this, 0u); }
+inline Res<int32_t>     Ui::resourceI32(const std::string& slug, ValueType type) { recordResource(slug, type); return Res<int32_t>(this, 0u); }
+inline Res<float>       Ui::resourceF(const std::string& slug, ValueType type)   { recordResource(slug, type); return Res<float>(this, 0u); }
+inline Res<const char*> Ui::resourceS(const std::string& slug, ValueType type)   { recordResource(slug, type); return Res<const char*>(this, 0u); }
+
 }} // namespace ecb::ui

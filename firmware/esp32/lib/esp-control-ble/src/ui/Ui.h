@@ -30,6 +30,7 @@ enum class WidgetKind : uint8_t { Text = 1, Stat = 2, Toggle = 3, Button = 4, Sl
 enum class NodeKind   : uint8_t { Stack = 1, Row = 2, Grid = 3, Section = 4, Widget = 5 };
 
 class Ui;  // forward
+template <typename T> class Res;  // forward (defined in ui/Res.h, included at bottom)
 
 // ---------------------------------------------------------------------------
 // Ui -- abstract description sink. Builders call these virtual hooks to record
@@ -54,6 +55,18 @@ public:
   virtual void  resourceStaleAfterMs(int rh, uint32_t ms) = 0;
   virtual void  resourcePollMs(int rh, uint32_t ms) = 0;
   virtual void  resourceEnum(int rh, const std::vector<std::string>& values) = 0;
+
+  // -- typed resource creators -- create-or-reuse a resource by slug and return a
+  // typed Res<T> handle for reading/writing its value. Default: record the
+  // resource and return an INERT handle (id 0) -- harmless on EmitterUi, which
+  // never resolves or writes a handle. RuntimeUi overrides these to return a
+  // slot-tagged handle resolved to its real id at commit(). Defined out-of-line
+  // at the bottom of this header (after ui/Res.h is included).
+  virtual Res<bool>        resourceB(const std::string& slug, ValueType type);
+  virtual Res<uint32_t>    resourceU32(const std::string& slug, ValueType type);
+  virtual Res<int32_t>     resourceI32(const std::string& slug, ValueType type);
+  virtual Res<float>       resourceF(const std::string& slug, ValueType type);
+  virtual Res<const char*> resourceS(const std::string& slug, ValueType type);
 
   // -- widgets (a node of kind=widget) --
   // resourceHandle < 0 => unbound. hasRange/min/max drive a slider's derived schema.
@@ -462,3 +475,11 @@ inline void Ui::navItem(const std::string& id, const std::string& label,
 }
 
 }} // namespace ecb::ui
+
+// Pull in Res<T> so a TU including ONLY Ui.h still gets the complete handle type
+// AND the out-of-line Ui::resourceX definitions (which live at the bottom of
+// Res.h, where BOTH Ui and Res<T> are complete). This sits below class Ui so that
+// when Res.h re-includes Ui.h (#pragma once -> no-op), Ui is already complete.
+// Breaking the Ui<->Res cycle this way: whichever header is entered first, the
+// creator bodies are emitted exactly once from Res.h with complete types.
+#include "ui/Res.h"

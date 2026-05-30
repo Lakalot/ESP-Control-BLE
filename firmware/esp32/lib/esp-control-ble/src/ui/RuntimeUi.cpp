@@ -6,6 +6,11 @@
 
 namespace ecb { namespace ui {
 
+// High bit marks a Res handle's id as a SLOT (index into slotResourceIndex_)
+// rather than a real resource id. Real ids are small 1-based ints, so the high
+// bit is always clear for them -- a plain id is distinguishable from a slot tag.
+static const uint32_t kSlotTag = 0x80000000u;
+
 RuntimeUi::RuntimeUi(EspControl& control) : control_(&control) {}
 
 // ----------------------------- recording hooks ------------------------------
@@ -14,13 +19,57 @@ RuntimeUi::RuntimeUi(EspControl& control) : control_(&control) {}
 
 void RuntimeUi::recordCapability(const std::string& /*feature*/, bool /*required*/) {}
 
-int RuntimeUi::recordResource(const std::string& slug, ValueType type) {
+// Idempotent by slug: reuse an existing decl if the slug was already recorded
+// (so res<T>(slug) + a short-form widget on the same slug share one resource).
+int RuntimeUi::findOrRecordResource(const std::string& slug, ValueType type) {
+  for (size_t i = 0; i < resources_.size(); ++i)
+    if (resources_[i].slug == slug) return static_cast<int>(i);
   ResourceDecl r;
   r.slug = slug;
   r.type = type;
   resources_.push_back(r);
   return static_cast<int>(resources_.size()) - 1;
 }
+
+int RuntimeUi::recordResource(const std::string& slug, ValueType type) {
+  return findOrRecordResource(slug, type);
+}
+
+// Typed creators: record-or-reuse the resource, allocate a slot pointing at its
+// resource index, and return a slot-tagged handle resolved to the real id at
+// commit(). Recording is idempotent, so requesting the same slug twice yields two
+// slots that both resolve to the same id.
+Res<bool> RuntimeUi::resourceB(const std::string& slug, ValueType type) {
+  int ri = findOrRecordResource(slug, type);
+  uint32_t slot = static_cast<uint32_t>(slotResourceIndex_.size());
+  slotResourceIndex_.push_back(ri);
+  return Res<bool>(this, kSlotTag | slot);
+}
+Res<uint32_t> RuntimeUi::resourceU32(const std::string& slug, ValueType type) {
+  int ri = findOrRecordResource(slug, type);
+  uint32_t slot = static_cast<uint32_t>(slotResourceIndex_.size());
+  slotResourceIndex_.push_back(ri);
+  return Res<uint32_t>(this, kSlotTag | slot);
+}
+Res<int32_t> RuntimeUi::resourceI32(const std::string& slug, ValueType type) {
+  int ri = findOrRecordResource(slug, type);
+  uint32_t slot = static_cast<uint32_t>(slotResourceIndex_.size());
+  slotResourceIndex_.push_back(ri);
+  return Res<int32_t>(this, kSlotTag | slot);
+}
+Res<float> RuntimeUi::resourceF(const std::string& slug, ValueType type) {
+  int ri = findOrRecordResource(slug, type);
+  uint32_t slot = static_cast<uint32_t>(slotResourceIndex_.size());
+  slotResourceIndex_.push_back(ri);
+  return Res<float>(this, kSlotTag | slot);
+}
+Res<const char*> RuntimeUi::resourceS(const std::string& slug, ValueType type) {
+  int ri = findOrRecordResource(slug, type);
+  uint32_t slot = static_cast<uint32_t>(slotResourceIndex_.size());
+  slotResourceIndex_.push_back(ri);
+  return Res<const char*>(this, kSlotTag | slot);
+}
+
 void RuntimeUi::resourceLabel(int, const std::string&) {}
 void RuntimeUi::resourceUnit(int, const std::string&) {}
 void RuntimeUi::resourceReadMode(int, ReadMode) {}
@@ -258,6 +307,20 @@ const char* RuntimeUi::uiReadString(uint32_t id) {
   size_t n = 0; while (n < 64 && v.stringValue[n] != '\0') { readScratch_[n] = v.stringValue[n]; ++n; }
   readScratch_[n] = '\0';
   return readScratch_;
+}
+
+// --------------------------- slot-tag id resolution -------------------------
+// A plain id (high bit clear) is already final -- pass it through. This keeps the
+// raw-id value-hook callers and any Res holding a real id working unchanged. A
+// slot-tagged value is followed slot -> resource index -> sorted-slug id (0 if
+// commit() hasn't built resIds_ yet, or the slot/resource is out of range).
+uint32_t RuntimeUi::uiResolveId(uint32_t idOrSlot) const {
+  if ((idOrSlot & kSlotTag) == 0) return idOrSlot;
+  uint32_t slot = idOrSlot & ~kSlotTag;
+  if (slot >= slotResourceIndex_.size()) return 0u;
+  int ri = slotResourceIndex_[slot];
+  if (ri < 0 || ri >= static_cast<int>(resources_.size())) return 0u;
+  return resIds_.idOf(resources_[ri].slug);
 }
 
 }} // namespace ecb::ui
