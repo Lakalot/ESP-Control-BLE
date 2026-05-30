@@ -21,6 +21,9 @@ void RuntimeUi::recordCapability(const std::string& /*feature*/, bool /*required
 
 // Idempotent by slug: reuse an existing decl if the slug was already recorded
 // (so res<T>(slug) + a short-form widget on the same slug share one resource).
+// NOTE: on a slug hit the FIRST registration's type wins; the incoming `type` is
+// ignored. Callers must use a consistent type per slug (mixing e.g. resourceU32
+// and resourceB on one slug would write mismatched value kinds to the same entry).
 int RuntimeUi::findOrRecordResource(const std::string& slug, ValueType type) {
   for (size_t i = 0; i < resources_.size(); ++i)
     if (resources_[i].slug == slug) return static_cast<int>(i);
