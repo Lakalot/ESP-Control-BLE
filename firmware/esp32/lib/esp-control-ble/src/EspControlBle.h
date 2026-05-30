@@ -15,6 +15,9 @@ public:
 
   void registerAction(uint32_t actionId, ecb::ActionHandler handler);
   ecb::ResourceTable& resources() { return _resources; }
+  // Read-only access to the action registry (symmetric with resources()). Used
+  // by RuntimeUi tests to invoke a registered handler directly.
+  const ecb::ActionRegistry& actions() const { return _actionRegistry; }
   void publishDelta(uint32_t resourceId);
   void tick();
 

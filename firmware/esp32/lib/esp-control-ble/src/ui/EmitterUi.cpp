@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstdio>
 
+#include "ui/IdAssignment.h"
+
 // Host-side normalization. Ported field-for-field from tools/manifest/src/compiler
 // (normalize.ts + assignIds.ts) and the YAML authoring expander
 // (authoring/expand.ts). The string-table intern order and the sort-by-id id
@@ -102,20 +104,6 @@ std::string deriveInputSchema(WidgetKind kind, bool hasRange, int rangeMin, int 
   if (kind == WidgetKind::Select)    return schemaStringEnum(enumValues);
   if (kind == WidgetKind::TextInput) return schemaPlainString();
   return schemaValueless();  // buttons and display widgets: no value
-}
-
-// sort-by-id ascending, 1-based (assignIds.ts). Lexicographic on std::string
-// matches JS string `<` for the ASCII slugs used as ids.
-void assignIds(const std::vector<std::string>& slugs,
-               std::vector<std::string>& outSorted) {
-  outSorted = slugs;
-  std::sort(outSorted.begin(), outSorted.end());
-}
-uint32_t idOf(const std::vector<std::string>& sorted, const std::string& slug) {
-  // 1-based index in the sorted list.
-  std::vector<std::string>::const_iterator it =
-      std::lower_bound(sorted.begin(), sorted.end(), slug);
-  return static_cast<uint32_t>((it - sorted.begin()) + 1);
 }
 
 }  // namespace
@@ -336,17 +324,18 @@ UiModel EmitterUi::build() const {
       appender.appendSubtree(view.topLevelHandles[i]);
   }
 
-  // ---- assignIds (sort-by-id ascending, 1-based) per kind.
+  // ---- assignIds (sort-by-id ascending, 1-based) per kind, via the shared
+  // IdMap (ui/IdAssignment.h) so RuntimeUi computes the identical ids.
   std::vector<std::string> resSlugs, actSlugs, scrSlugs, nodeSlugs;
   for (size_t i = 0; i < resources_.size(); ++i) resSlugs.push_back(resources_[i].slug);
   for (size_t i = 0; i < actions_.size(); ++i)   actSlugs.push_back(actions_[i].slug);
   for (size_t i = 0; i < views_.size(); ++i)     scrSlugs.push_back(views_[i].slug);
   for (size_t i = 0; i < canon.size(); ++i)      nodeSlugs.push_back(canon[i].slug);
-  std::vector<std::string> resSorted, actSorted, scrSorted, nodeSorted;
-  assignIds(resSlugs, resSorted);
-  assignIds(actSlugs, actSorted);
-  assignIds(scrSlugs, scrSorted);
-  assignIds(nodeSlugs, nodeSorted);
+  IdMap resIds, actIds, scrIds, nodeIds;
+  resIds.build(resSlugs);
+  actIds.build(actSlugs);
+  scrIds.build(scrSlugs);
+  nodeIds.build(nodeSlugs);
 
   // map: authored-node handle -> canonical slug (for child id resolution).
   // canon entries with authoredIndex>=0 give the slug of that handle.
@@ -365,7 +354,7 @@ UiModel EmitterUi::build() const {
   for (size_t i = 0; i < resources_.size(); ++i) {
     const ResourceDecl& r = resources_[i];
     UiResource nr;
-    nr.id = idOf(resSorted, r.slug);
+    nr.id = resIds.idOf(r.slug);
     nr.slugIdx = m.strings.intern(r.slug);
     nr.labelIdx = m.strings.internOptional(r.label.c_str());
     nr.unitIdx = m.strings.internOptional(r.unit.c_str());
@@ -382,7 +371,7 @@ UiModel EmitterUi::build() const {
   for (size_t i = 0; i < actions_.size(); ++i) {
     const ActionDecl& a = actions_[i];
     UiAction na;
-    na.id = idOf(actSorted, a.slug);
+    na.id = actIds.idOf(a.slug);
     na.slugIdx = m.strings.intern(a.slug);
     na.labelIdx = m.strings.internOptional(a.label.c_str());
     na.dangerLevel = static_cast<uint32_t>(a.danger);
@@ -397,11 +386,11 @@ UiModel EmitterUi::build() const {
   for (size_t i = 0; i < views_.size(); ++i) {
     const ViewDecl& v = views_[i];
     UiScreen ns;
-    ns.id = idOf(scrSorted, v.slug);
+    ns.id = scrIds.idOf(v.slug);
     ns.slugIdx = m.strings.intern(v.slug);
     ns.titleIdx = m.strings.intern(v.title);
     ns.routeKeyIdx = m.strings.internOptional(v.routeKey.c_str());
-    ns.rootNodeId = idOf(nodeSorted, v.slug + ".root");
+    ns.rootNodeId = nodeIds.idOf(v.slug + ".root");
     m.screens.push_back(ns);
   }
 
@@ -413,7 +402,7 @@ UiModel EmitterUi::build() const {
       nn.idIdx = m.strings.intern(it.id);
       nn.labelIdx = m.strings.intern(it.label);
       nn.iconIdx = m.strings.intern(it.icon);
-      nn.screenId = (it.viewHandle >= 0) ? idOf(scrSorted, views_[it.viewHandle].slug) : 0;
+      nn.screenId = (it.viewHandle >= 0) ? scrIds.idOf(views_[it.viewHandle].slug) : 0;
       m.navItems.push_back(nn);
     }
   }
@@ -426,7 +415,7 @@ UiModel EmitterUi::build() const {
     const bool isWidget = (!synthetic) && nd->kind == NodeKind::Widget;
 
     UiNode nn;
-    nn.id = idOf(nodeSorted, c.slug);
+    nn.id = nodeIds.idOf(c.slug);
     nn.slugIdx = m.strings.intern(c.slug);
     nn.kind = synthetic ? static_cast<uint32_t>(NodeKind::Stack) : static_cast<uint32_t>(nd->kind);
     nn.widgetKind = isWidget ? static_cast<uint32_t>(nd->widgetKind) : 0u;
@@ -435,13 +424,13 @@ UiModel EmitterUi::build() const {
 
     if (!isWidget) {
       for (size_t k = 0; k < c.childHandles.size(); ++k)
-        nn.childrenIds.push_back(idOf(nodeSorted, handleSlug[c.childHandles[k]]));
+        nn.childrenIds.push_back(nodeIds.idOf(handleSlug[c.childHandles[k]]));
     }
     nn.columns = (synthetic || isWidget) ? 0u : nd->columns;
     nn.bindResourceId = (isWidget && nd->bindResourceHandle >= 0)
-                            ? idOf(resSorted, resources_[nd->bindResourceHandle].slug) : 0u;
+                            ? resIds.idOf(resources_[nd->bindResourceHandle].slug) : 0u;
     nn.bindActionId = (isWidget && nd->bindActionIndex >= 0)
-                          ? idOf(actSorted, actions_[nd->bindActionIndex].slug) : 0u;
+                          ? actIds.idOf(actions_[nd->bindActionIndex].slug) : 0u;
     nn.textIdx = isWidget ? m.strings.internOptional(nd->text.c_str()) : 0u;
     nn.formatHintIdx = isWidget ? m.strings.internOptional(nd->formatHint.c_str()) : 0u;
     m.nodes.push_back(nn);

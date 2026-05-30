@@ -103,6 +103,18 @@ public:
   virtual void  recordNavItem(const std::string& id, const std::string& label,
                               const std::string& icon, int viewHandle) = 0;
 
+  // -- typed handler sinks -- a widget's .onSet(fn) routes here with the widget's
+  // node handle (nh). Default no-op: EmitterUi ignores handlers (it cares only
+  // about STRUCTURE), so it need not override these. RuntimeUi overrides them to
+  // capture the decoded callback and registerAction it (resolving nh -> bound
+  // action id) at commit() time. The signature per hook matches the widget kind:
+  //   slider           -> uint8 ; toggle -> bool ; select/text_input -> const char* ;
+  //   button           -> void .
+  virtual void  widgetOnSetUint(int /*nh*/, std::function<void(uint8_t)> /*fn*/) {}
+  virtual void  widgetOnSetBool(int /*nh*/, std::function<void(bool)> /*fn*/) {}
+  virtual void  widgetOnSetString(int /*nh*/, std::function<void(const char*)> /*fn*/) {}
+  virtual void  widgetOnSetVoid(int /*nh*/, std::function<void()> /*fn*/) {}
+
   // ===== Fluent entry points (defined out-of-line below; return builders) =====
   void  requireCapability(const std::string& feature)  { recordCapability(feature, true); }
   void  optionalCapability(const std::string& feature) { recordCapability(feature, false); }
@@ -253,31 +265,31 @@ class SliderBuilder : public WidgetBuilder<SliderBuilder> {
 public:
   SliderBuilder() {}
   SliderBuilder(Ui* ui, int node) : WidgetBuilder<SliderBuilder>(ui, node) {}
-  SliderBuilder& onSet(std::function<void(uint8_t)>) { return *this; }  // ignored by EmitterUi
+  SliderBuilder& onSet(std::function<void(uint8_t)> fn) { ui_->widgetOnSetUint(node_, fn); return *this; }
 };
 class ToggleBuilder : public WidgetBuilder<ToggleBuilder> {
 public:
   ToggleBuilder() {}
   ToggleBuilder(Ui* ui, int node) : WidgetBuilder<ToggleBuilder>(ui, node) {}
-  ToggleBuilder& onSet(std::function<void(bool)>) { return *this; }
+  ToggleBuilder& onSet(std::function<void(bool)> fn) { ui_->widgetOnSetBool(node_, fn); return *this; }
 };
 class SelectBuilder : public WidgetBuilder<SelectBuilder> {
 public:
   SelectBuilder() {}
   SelectBuilder(Ui* ui, int node) : WidgetBuilder<SelectBuilder>(ui, node) {}
-  SelectBuilder& onSet(std::function<void(const char*)>) { return *this; }
+  SelectBuilder& onSet(std::function<void(const char*)> fn) { ui_->widgetOnSetString(node_, fn); return *this; }
 };
 class TextInputBuilder : public WidgetBuilder<TextInputBuilder> {
 public:
   TextInputBuilder() {}
   TextInputBuilder(Ui* ui, int node) : WidgetBuilder<TextInputBuilder>(ui, node) {}
-  TextInputBuilder& onSet(std::function<void(const char*)>) { return *this; }
+  TextInputBuilder& onSet(std::function<void(const char*)> fn) { ui_->widgetOnSetString(node_, fn); return *this; }
 };
 class ButtonBuilder : public WidgetBuilder<ButtonBuilder> {
 public:
   ButtonBuilder() {}
   ButtonBuilder(Ui* ui, int node) : WidgetBuilder<ButtonBuilder>(ui, node) {}
-  ButtonBuilder& onSet(std::function<void()>) { return *this; }
+  ButtonBuilder& onSet(std::function<void()> fn) { ui_->widgetOnSetVoid(node_, fn); return *this; }
 };
 // Display-only widgets (no handler).
 class TextBuilder : public WidgetBuilder<TextBuilder> {
