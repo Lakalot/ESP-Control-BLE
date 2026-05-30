@@ -4,21 +4,7 @@
 #include "../../protocol/core/Protocol.h"
 #include "../frame/DataFrameCodec.h"
 #include "../../protocol/auth/AuthHandler.h"
-
-#ifdef UNIT_TEST
-
-using SemaphoreHandle_t = void*;
-constexpr int portMAX_DELAY = 0;
-inline SemaphoreHandle_t xSemaphoreCreateMutex() { return nullptr; }
-inline void xSemaphoreTake(SemaphoreHandle_t, int) {}
-inline void xSemaphoreGive(SemaphoreHandle_t) {}
-
-#else
-
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
-
-#endif
+#include "../../support/FreeRtosShim.h"
 
 namespace ecb {
 

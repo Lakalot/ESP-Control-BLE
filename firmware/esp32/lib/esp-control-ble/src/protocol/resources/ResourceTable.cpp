@@ -1,5 +1,6 @@
 #include "ResourceTable.h"
 #include <string.h>
+#include "../../support/EcbLogging.h"
 
 namespace ecb {
 
@@ -19,6 +20,13 @@ ResourceTable::ResourceTable() : _entries{}, _blobSlots{}, _count(0), _generatio
   for (size_t i = 0; i < kMaxEntries; ++i) {
     _entries[i].blobSlot = kNoBlobSlot;
   }
+  _mutex = xSemaphoreCreateMutex();
+  if (_mutex == nullptr) {
+    // Allocation only fails on heap exhaustion at boot. Without the mutex
+    // every take/give silently no-ops and cross-task access is unprotected,
+    // so surface it loudly rather than running races undiagnosed.
+    ECB_LOGF("[ECB DATA] FATAL: ResourceTable mutex allocation failed\n");
+  }
 }
 
 size_t ResourceTable::findIndex(uint32_t resourceId) const {
@@ -30,10 +38,15 @@ ResourceEntry* ResourceTable::upsert(uint32_t resourceId) {
   size_t idx = findIndex(resourceId);
   if (idx == kMaxEntries) {
     if (_count >= kMaxEntries) return nullptr;
-    idx = _count++;
+    // Initialize the new entry BEFORE publishing it via _count. A reader that
+    // walks [0, _count) (size()/at()) must never observe a slot that _count
+    // covers but whose fields are still half-written. Publishing _count last
+    // guarantees the entry is fully formed by the time it becomes visible.
+    idx = _count;
     _entries[idx] = ResourceEntry{};
     _entries[idx].resourceId = resourceId;
     _entries[idx].blobSlot = kNoBlobSlot;
+    _count = idx + 1;
   }
   return &_entries[idx];
 }
@@ -96,76 +109,114 @@ bool ResourceTable::fillValue(const ResourceEntry& entry, ResourceValue& out) co
 }
 
 bool ResourceTable::get(uint32_t resourceId, ResourceValue& out) const {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
   size_t idx = findIndex(resourceId);
-  if (idx == kMaxEntries) return false;
-  return fillValue(_entries[idx], out);
+  const bool ok = (idx != kMaxEntries) && fillValue(_entries[idx], out);
+  xSemaphoreGive(_mutex);
+  return ok;
 }
 
 void ResourceTable::setBool(uint32_t id, bool v) {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
   auto* e = upsert(id);
-  if (!e) return;
-  if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
-  e->kind = ResourceValueKind::Bool;
-  e->value.boolValue = v;
-  _generation += 1;
+  if (e) {
+    if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
+    e->kind = ResourceValueKind::Bool;
+    e->value.boolValue = v;
+    _generation += 1;
+  }
+  xSemaphoreGive(_mutex);
 }
 
 void ResourceTable::setInt(uint32_t id, int32_t v) {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
   auto* e = upsert(id);
-  if (!e) return;
-  if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
-  e->kind = ResourceValueKind::Int;
-  e->value.intValue = v;
-  _generation += 1;
+  if (e) {
+    if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
+    e->kind = ResourceValueKind::Int;
+    e->value.intValue = v;
+    _generation += 1;
+  }
+  xSemaphoreGive(_mutex);
 }
 
 void ResourceTable::setUint(uint32_t id, uint32_t v) {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
   auto* e = upsert(id);
-  if (!e) return;
-  if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
-  e->kind = ResourceValueKind::Uint;
-  e->value.uintValue = v;
-  _generation += 1;
+  if (e) {
+    if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
+    e->kind = ResourceValueKind::Uint;
+    e->value.uintValue = v;
+    _generation += 1;
+  }
+  xSemaphoreGive(_mutex);
 }
 
 void ResourceTable::setFloat(uint32_t id, float v) {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
   auto* e = upsert(id);
-  if (!e) return;
-  if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
-  e->kind = ResourceValueKind::Float;
-  e->value.floatValue = v;
-  _generation += 1;
+  if (e) {
+    if (usesBlobStorage(e->kind)) releaseBlobSlot(*e);
+    e->kind = ResourceValueKind::Float;
+    e->value.floatValue = v;
+    _generation += 1;
+  }
+  xSemaphoreGive(_mutex);
 }
 
 void ResourceTable::setString(uint32_t id, const char* s) {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
   auto* e = upsert(id);
-  if (!e) return;
-  const uint8_t slot = ensureBlobSlot(*e);
-  if (slot == kNoBlobSlot) return;
-  const char* value = s ? s : "";
-  const size_t n = strnlen(value, kMaxStringLen);
-  memcpy(_blobSlots[slot].data, value, n);
-  _blobSlots[slot].data[n] = '\0';
-  e->kind = ResourceValueKind::String;
-  e->blobLength = static_cast<uint8_t>(n);
-  _generation += 1;
+  if (e) {
+    const uint8_t slot = ensureBlobSlot(*e);
+    if (slot != kNoBlobSlot) {
+      const char* value = s ? s : "";
+      const size_t n = strnlen(value, kMaxStringLen);
+      memcpy(_blobSlots[slot].data, value, n);
+      _blobSlots[slot].data[n] = '\0';
+      e->kind = ResourceValueKind::String;
+      e->blobLength = static_cast<uint8_t>(n);
+      _generation += 1;
+    }
+  }
+  xSemaphoreGive(_mutex);
 }
 
 void ResourceTable::setBytes(uint32_t id, const uint8_t* data, size_t len) {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
   auto* e = upsert(id);
-  if (!e) return;
-  const uint8_t slot = ensureBlobSlot(*e);
-  if (slot == kNoBlobSlot) return;
-  const size_t n = len > kMaxBytesLen ? kMaxBytesLen : len;
-  if (n > 0 && data) memcpy(_blobSlots[slot].data, data, n);
-  e->kind = ResourceValueKind::Bytes;
-  e->blobLength = static_cast<uint8_t>(n);
-  _generation += 1;
+  if (e) {
+    const uint8_t slot = ensureBlobSlot(*e);
+    if (slot != kNoBlobSlot) {
+      const size_t n = len > kMaxBytesLen ? kMaxBytesLen : len;
+      if (n > 0 && data) memcpy(_blobSlots[slot].data, data, n);
+      e->kind = ResourceValueKind::Bytes;
+      e->blobLength = static_cast<uint8_t>(n);
+      _generation += 1;
+    }
+  }
+  xSemaphoreGive(_mutex);
 }
 
 bool ResourceTable::at(size_t index, ResourceValue& out) const {
-  if (index >= _count) return false;
-  return fillValue(_entries[index], out);
+  xSemaphoreTake(_mutex, portMAX_DELAY);
+  const bool ok = (index < _count) && fillValue(_entries[index], out);
+  xSemaphoreGive(_mutex);
+  return ok;
+}
+
+uint32_t ResourceTable::generation() const {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
+  const uint32_t g = _generation;
+  xSemaphoreGive(_mutex);
+  return g;
+}
+
+size_t ResourceTable::size() const {
+  xSemaphoreTake(_mutex, portMAX_DELAY);
+  const size_t n = _count;
+  xSemaphoreGive(_mutex);
+  return n;
 }
 
 } // namespace
