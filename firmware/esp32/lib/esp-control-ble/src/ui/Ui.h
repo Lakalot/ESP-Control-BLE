@@ -115,6 +115,22 @@ public:
   virtual void  widgetOnSetString(int /*nh*/, std::function<void(const char*)> /*fn*/) {}
   virtual void  widgetOnSetVoid(int /*nh*/, std::function<void()> /*fn*/) {}
 
+  // ---- value hooks (Res<T> routes through these). Default no-op: EmitterUi
+  //      ignores them; RuntimeUi overrides them to write the table + publish. ----
+  virtual void uiWrite(uint32_t /*id*/, bool /*v*/) {}
+  virtual void uiWrite(uint32_t /*id*/, int32_t /*v*/) {}
+  virtual void uiWrite(uint32_t /*id*/, uint32_t /*v*/) {}
+  virtual void uiWrite(uint32_t /*id*/, float /*v*/) {}
+  virtual void uiWrite(uint32_t /*id*/, const char* /*v*/) {}
+  virtual bool        uiReadBool(uint32_t /*id*/)   { return false; }
+  virtual int32_t     uiReadInt(uint32_t /*id*/)    { return 0; }
+  virtual uint32_t    uiReadUint(uint32_t /*id*/)   { return 0u; }
+  virtual float       uiReadFloat(uint32_t /*id*/)  { return 0.0f; }
+  virtual const char* uiReadString(uint32_t /*id*/) { return ""; }
+  // resolve a (possibly slot-tagged) handle to its final resource id. Default
+  // pass-through; RuntimeUi overrides this in a later task.
+  virtual uint32_t uiResolveId(uint32_t idOrSlot) { return idOrSlot; }
+
   // ===== Fluent entry points (defined out-of-line below; return builders) =====
   void  requireCapability(const std::string& feature)  { recordCapability(feature, true); }
   void  optionalCapability(const std::string& feature) { recordCapability(feature, false); }
