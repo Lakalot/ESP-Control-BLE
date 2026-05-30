@@ -13,8 +13,10 @@ interface FixtureRuntimeOptions {
 }
 
 /**
- * In-memory runtime used for tests, Storybook, and the pilot's dev harness.
- * Plan C will ship `BleRuntime` implementing the same interface over NimBLE.
+ * In-memory runtime used for tests, Storybook, and the dev harness. It implements
+ * the same `ManifestRuntime` interface as the real transports (`BleRuntime` over
+ * BLE, `SppDevice` over Bluetooth Classic), so screens render identically against
+ * a bundled manifest with no hardware.
  */
 export class FixtureRuntime implements ManifestRuntime {
   private manifest: RuntimeManifest | null = null;

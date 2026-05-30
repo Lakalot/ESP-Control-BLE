@@ -315,12 +315,13 @@ static const uint8_t kOracleFull[] = {
   0x0a, 0x08, 0x08, 0x41, 0x10, 0x42, 0x18, 0x41, 0x20, 0x02,
 };
 
-// Reconstruct the WHOLE device manifest via the fluent Ui API, mirroring
-// firmware/esp32/src/manifest.yaml exactly: 11 resources, 8 actions (declared in
-// YAML order so the string table interns them in that order), an appShell navBar
-// (3 items), and 3 views (home/stats/settings) of widgets + containers.
+// Reconstruct a full-surface manifest via the fluent Ui API: 11 resources,
+// 8 actions (declared in a fixed order so the string table interns them in that
+// order), an appShell navBar (3 items), and 3 views (home/stats/settings) of
+// widgets + containers. This is the frozen description the kOracleFull bytes above
+// were generated from.
 //
-// Actions are declared UP FRONT in YAML order via ui.action(...): this pins their
+// Actions are declared UP FRONT in that fixed order via ui.action(...): this pins their
 // string-table positions (risk #1 -- otherwise widget-binding order would shift
 // every downstream index). Each action carries its EXACT inputSchema via a schema
 // selector (risk #2): valueless()/boolean()/integerRange()/stringLen()/stringEnum().
