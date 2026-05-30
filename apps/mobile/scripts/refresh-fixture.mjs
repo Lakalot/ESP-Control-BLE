@@ -5,13 +5,14 @@ import { mkdirSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
-const TOOL_DIR = resolve(ROOT, '../tools/manifest');
+// ROOT is apps/mobile, so the tools package is two levels up (apps/mobile -> apps -> repo root).
+const TOOL_DIR = resolve(ROOT, '../../tools/manifest');
 const SOURCE_MANIFEST = resolve(TOOL_DIR, 'tests/fixtures/demo.manifest.ts');
 const TARGET_PB = resolve(ROOT, 'assets/manifest_demo.pb');
 
 mkdirSync(dirname(TARGET_PB), { recursive: true });
 
-console.log('Compiling v5 demo fixture...');
+console.log('Compiling demo fixture...');
 // Use npx tsx directly
 const result = spawnSync('npx', [
   'tsx',
