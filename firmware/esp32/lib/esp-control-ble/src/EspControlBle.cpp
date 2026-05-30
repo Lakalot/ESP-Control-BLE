@@ -35,8 +35,8 @@ void EspControl::sendBle(void* context, const uint8_t* data, size_t len) {
   static_cast<EspControl*>(context)->_bleTransport.send(data, len);
 }
 
-void EspControl::registerAction(uint32_t actionId, ecb::ActionHandler h) {
-  _actionRegistry.registerAction(actionId, h);
+bool EspControl::registerAction(uint32_t actionId, ecb::ActionHandler h) {
+  return _actionRegistry.registerAction(actionId, h);
 }
 
 void EspControl::publishDelta(uint32_t resourceId) {

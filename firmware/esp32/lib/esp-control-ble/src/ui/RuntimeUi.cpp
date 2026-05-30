@@ -4,6 +4,7 @@
 
 #include "EspControlBle.h"  // full EspControl + ecb::ActionContext / ResourceTable
 #include "ui/HwHal.h"
+#include "support/EcbLogging.h"
 
 namespace ecb { namespace ui {
 
@@ -411,12 +412,14 @@ void RuntimeUi::commit() {
     if (ai < 0 || ai >= static_cast<int>(actions_.size())) continue;
     uint32_t aid = actIds_.idOf(actions_[ai].slug);
     if (aid == 0u) continue;
+    bool ok = false;
     switch (p.kind) {
-      case HandlerKind::Uint:   control_->registerAction(aid, makeUintHandler(p.fnUint)); break;
-      case HandlerKind::Bool:   control_->registerAction(aid, makeBoolHandler(p.fnBool)); break;
-      case HandlerKind::String: control_->registerAction(aid, makeStringHandler(p.fnString)); break;
-      case HandlerKind::Void:   control_->registerAction(aid, makeVoidHandler(p.fnVoid)); break;
+      case HandlerKind::Uint:   ok = control_->registerAction(aid, makeUintHandler(p.fnUint)); break;
+      case HandlerKind::Bool:   ok = control_->registerAction(aid, makeBoolHandler(p.fnBool)); break;
+      case HandlerKind::String: ok = control_->registerAction(aid, makeStringHandler(p.fnString)); break;
+      case HandlerKind::Void:   ok = control_->registerAction(aid, makeVoidHandler(p.fnVoid)); break;
     }
+    if (!ok) { ECB_LOGF("[ECB] action registry full; dropped action %u\n", aid); }
   }
 
   // Short-form DEFAULT setters: for each node tagged by installDefault*Setter that
@@ -440,11 +443,13 @@ void RuntimeUi::commit() {
       hw.pwmPin = r.pwmPin; hw.gpioPin = r.gpioPin;
       hw.pwmRangeMax = r.pwmRangeMax; hw.invert = r.invert; hw.onApply = r.onApply;
     }
+    bool ok = false;
     switch (nd.defaultSetterKind) {
-      case 1: control_->registerAction(aid, makeDefaultUintSetter(control_, resId, hw)); break;
-      case 2: control_->registerAction(aid, makeDefaultBoolSetter(control_, resId, hw)); break;
-      case 3: control_->registerAction(aid, makeDefaultStringSetter(control_, resId, hw)); break;
+      case 1: ok = control_->registerAction(aid, makeDefaultUintSetter(control_, resId, hw)); break;
+      case 2: ok = control_->registerAction(aid, makeDefaultBoolSetter(control_, resId, hw)); break;
+      case 3: ok = control_->registerAction(aid, makeDefaultStringSetter(control_, resId, hw)); break;
     }
+    if (!ok) { ECB_LOGF("[ECB] action registry full; dropped action %u\n", aid); }
   }
 }
 

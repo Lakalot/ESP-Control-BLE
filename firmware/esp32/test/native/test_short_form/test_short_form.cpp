@@ -63,7 +63,35 @@ static void test_short_form_default_onset_writes() {
   TEST_ASSERT_TRUE(control.resources().get(rt.resourceId("light.brightness"), v));
   TEST_ASSERT_EQUAL_UINT32(60u, v.uintValue);
 }
+static void test_short_form_user_onset_suppresses_default() {
+  EspControl control("TestDev", "123456");
+  RuntimeUi rt(control);
+  static uint8_t captured; captured = 0;
+  rt.view("home", "Home").content(
+    rt.sliderShort("light.brightness", "Brightness", 0, 100)
+      .onSet([](uint8_t v){ captured = v; })
+  );
+  rt.commit();
+  // Pre-seed the resource to a sentinel so we can detect whether the default wrote it.
+  uint32_t rid = rt.resourceId("light.brightness");
+  control.resources().setUint(rid, 7u);
+  uint32_t aid = rt.actionId("light.brightness.set");
+  const ecb::ActionHandler* h = control.actions().find(aid);
+  TEST_ASSERT_NOT_NULL(h);
+  ecb::ActionContext ctx; bool replied=false; ecb::ActionStatus st=ecb::ActionStatus::Unspecified;
+  uint8_t rb[8]; size_t rl=0;
+  ctx.valueKind=ecb::ActionValueKind::Uint; ctx.uintValue=88u;
+  ctx.replied=&replied; ctx.status=&st; ctx.replyBuf=rb; ctx.replyCap=sizeof(rb); ctx.replyLen=&rl;
+  (*h)(ctx);
+  // User handler ran:
+  TEST_ASSERT_EQUAL_UINT8(88u, captured);
+  // Default did NOT run -> resource still holds sentinel 7 (NOT 88):
+  ecb::ResourceValue v;
+  TEST_ASSERT_TRUE(control.resources().get(rid, v));
+  TEST_ASSERT_EQUAL_UINT32(7u, v.uintValue);
+}
 int main(int,char**){ UNITY_BEGIN();
   RUN_TEST(test_short_equals_long_bytes);
   RUN_TEST(test_short_form_default_onset_writes);
+  RUN_TEST(test_short_form_user_onset_suppresses_default);
   return UNITY_END(); }
