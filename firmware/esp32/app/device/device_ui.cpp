@@ -1,8 +1,8 @@
 // Single-source device UI description. This ONE buildUi(...) is visited twice:
 //   * EmitterUi (host, via tools/ui_emit_main.cpp) -> normalized UiModel -> nanopb
 //     -> src/manifest_data.h (the embedded manifest the tablet reads).
-//   * RuntimeUi (ESP, a later wiring task) -> registers resources + the typed
-//     .onSet handlers below.
+//   * RuntimeUi (ESP, wired in runtime/AppRuntime.cpp) -> registers resources +
+//     the typed .onSet handlers below.
 //
 // Mirrors firmware/esp32/src/manifest.yaml EXACTLY (11 resources, 8 actions, an
 // appShell navBar of 3 items, 3 views of widgets/containers) so the emitted
@@ -10,20 +10,18 @@
 // is the former test_ui_emitter_full.cpp describeFullDevice(), now the real
 // authoring source, plus .onSet(...) handler lambdas.
 //
-// Handlers capture `rt` and mutate DeviceState through AppRuntime's inline
-// helpers (host-portable: no Arduino). EmitterUi IGNORES .onSet entirely, so they
-// never run at emit time and do not affect the emitted bytes. RuntimeUi will run
-// them on the device; the resource publish/sync side that needs Arduino still
-// lives in DeviceActions and is wired separately.
+// Handlers capture `rt` and forward the decoded value to AppRuntime, which mutates
+// DeviceState and publishes the change (this file stays host-portable: only rt.*,
+// no Arduino/EspControl). EmitterUi IGNORES .onSet entirely, so they never run at
+// emit time and do not affect the emitted bytes. RuntimeUi runs them on the device,
+// where AppRuntime's ActionSink reaches the wire + hardware.
 
-#include "ui/Ui.h"
+#include "device/device_ui.h"  // buildUi(...) prototype, shared with ui_emit_main.cpp
 
 #include "runtime/AppRuntime.h"
+#include "ui/Ui.h"
 
 using namespace ecb::ui;
-
-// Forward-declared in tools/ui_emit_main.cpp (host) and the ESP runtime wiring.
-void buildUi(Ui& ui, app::AppRuntime& rt);
 
 void buildUi(Ui& ui, app::AppRuntime& rt) {
   // -- capabilities (required, in order) --
@@ -85,10 +83,7 @@ void buildUi(Ui& ui, app::AppRuntime& rt) {
       ui.text("home.banner", "ESP Control").text("BLE-connected device dashboard."),
       ui.section("lighting.section", "Lighting").children({
           ui.toggle("lighting.toggle", "Main Power", relayAuto).bindAction("relay.toggle")
-              .onSet([&rt](bool /*on*/) {
-                rt.toggleRelay();
-                if (rt.state().relayEnabled && rt.state().brightness == 0) rt.setBrightness(100u);
-              }),
+              .onSet([&rt](bool /*on*/) { rt.toggleRelay(); }),
           ui.slider("lighting.slider", "Brightness", lightBrightness, 0, 100)
               .bindAction("light.set_brightness").formatHint("percent")
               .onSet([&rt](uint8_t value) { rt.setBrightness(static_cast<uint32_t>(value)); }),
@@ -120,14 +115,14 @@ void buildUi(Ui& ui, app::AppRuntime& rt) {
           ui.textInput("settings.rename", "Rename Device", deviceName).bindAction("device.rename")
               .onSet([&rt](const char* name) { rt.setDeviceName(name); }),
           ui.button("settings.restart", "Restart").bindAction("system.restart")
-              .onSet([]() { /* device restart handled by DeviceActions wiring */ }),
+              .onSet([&rt]() { rt.onRestart(); }),
       }),
       ui.section("advanced.section", "Advanced").children({
           ui.toggle("advanced.debug", "Debug Mode", deviceDebug).bindAction("device.set_debug")
               .onSet([&rt](bool enabled) { rt.setDebugEnabled(enabled); }),
           ui.text("advanced.note").text("Advanced settings"),
           ui.button("advanced.reset", "Factory Reset").bindAction("system.factory_reset")
-              .onSet([]() { /* factory reset handled by DeviceActions wiring */ }),
+              .onSet([&rt]() { rt.onFactoryReset(); }),
       }),
   });
 

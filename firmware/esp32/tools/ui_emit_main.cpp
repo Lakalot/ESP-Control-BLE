@@ -25,7 +25,7 @@
 #include "runtime/AppRuntime.h"  // proves AppRuntime.h is host-portable; never invoked
 
 // The single device description (firmware/esp32/app/device/device_ui.cpp).
-void buildUi(ecb::ui::Ui& ui, app::AppRuntime& rt);
+#include "device/device_ui.h"
 
 namespace {
 
