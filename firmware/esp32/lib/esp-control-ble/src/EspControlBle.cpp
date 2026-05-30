@@ -31,7 +31,7 @@ void logManifestSummary(const uint8_t* manifestData, uint16_t manifestLen) {
 } // namespace
 
 EspControl::EspControl(const char* deviceName, const char* pin)
-  : _deviceName(deviceName), _pin(pin) {}
+  : _deviceName(deviceName), _pin(pin), _runtimeUi(*this) {}
 
 void EspControl::sendBle(void* context, const uint8_t* data, size_t len) {
   static_cast<EspControl*>(context)->_bleTransport.send(data, len);
@@ -51,9 +51,12 @@ void EspControl::tick() {
 }
 
 void EspControl::beginUi(void (*buildFn)(ecb::ui::Ui&), const uint8_t* manifestData, uint16_t manifestLen) {
-  ecb::ui::RuntimeUi rt(*this);
-  buildFn(rt);
-  rt.commit();
+  // Build + commit through the long-lived _runtimeUi member, NOT a stack local:
+  // buildFn stores Res<T> handles (e.g. the app's dev:: globals) that keep a
+  // pointer to this RuntimeUi. A local would be destroyed on return, leaving those
+  // handles dangling and every later .set() a use-after-free.
+  buildFn(_runtimeUi);
+  _runtimeUi.commit();
   begin(manifestData, manifestLen);
 }
 

@@ -296,6 +296,37 @@ static void test_stored_res_writes_after_commit() {
   TEST_ASSERT_EQUAL_UINT32(2u, relay.id());
 }
 
+// (UAF regression) EspControl owns its RuntimeUi (a by-value member), so a Res<T>
+// handle captured during the build function -- like the app's dev:: globals set
+// inside buildUi -- stays valid for writes AFTER the build function returns. The
+// previous beginUi built through a STACK-LOCAL RuntimeUi that died on return,
+// leaving every such handle dangling (use-after-free on the next .set()).
+//
+// We can't call beginUi() here (begin() sets up a static ManifestStore and isn't
+// unit-safe), so we reproduce the exact lifetime contract beginUi now relies on:
+// the RuntimeUi must OUTLIVE the build function. buildSink() captures into a global
+// Res (the dev:: stand-in) and returns; the RuntimeUi lives on in this scope (as
+// the EspControl member does). A write through the captured handle after the build
+// scope must still reach the table. Under the old stack-local design this handle
+// would point at freed memory.
+static ecb::ui::Res<float> g_uafTelemetry;  // stands in for a dev:: global
+static void buildSink(ecb::ui::Ui& ui) {
+  g_uafTelemetry = ui.resourceF("env.temperature", ecb::ui::ValueType::Float);
+}
+static void test_espcontrol_runtimeui_outlives_build() {
+  EspControl control("TestDev", "123456");
+  // RuntimeUi lives as long as `control` would own it -- the build function below
+  // returns while it stays alive, exactly as EspControl::_runtimeUi outlives buildFn.
+  ecb::ui::RuntimeUi rt(control);
+  buildSink(rt);   // captures g_uafTelemetry, then returns (its frame is gone)
+  rt.commit();
+  // The captured handle still writes after the build function returned.
+  g_uafTelemetry.set(21.5f);
+  ecb::ResourceValue v;
+  TEST_ASSERT_TRUE(control.resources().get(g_uafTelemetry.id(), v));
+  TEST_ASSERT_EQUAL_FLOAT(21.5f, v.floatValue);
+}
+
 // (DX-T3) Recording is idempotent by slug: requesting the same resource twice
 // records it ONCE, so both handles resolve to the same id (two slots, one
 // resource). A later task relies on this so res<T>(slug) + a short-form widget
@@ -364,6 +395,7 @@ int main(int, char**) {
   RUN_TEST(test_runtime_ui_registers_resource);
   RUN_TEST(test_runtimeui_value_hooks_write_table);
   RUN_TEST(test_stored_res_writes_after_commit);
+  RUN_TEST(test_espcontrol_runtimeui_outlives_build);
   RUN_TEST(test_idempotent_resource_recording);
   RUN_TEST(test_pwm_pin_applies_on_set);
   RUN_TEST(test_lookup_by_slug);

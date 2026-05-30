@@ -8,10 +8,11 @@
 #include "transport/ble/DataBleTransport.h"   // ProtocolEngine
 #include "transport/ble/BleTransport.h"
 #include "transport/spp/SppTransport.h"
-
-// Forward-declare to keep this header light (ui/Ui.h + ui/RuntimeUi.h are only
-// needed in EspControlBle.cpp where beginUi() is implemented).
-namespace ecb { namespace ui { class Ui; } }
+// RuntimeUi is held BY VALUE as a member (see _runtimeUi below), so its complete
+// type is required here. It is lightweight: it forward-declares EspControl and
+// pulls in only ui/Ui.h + ui/Res.h + ui/IdAssignment.h + ui/HwHal.h (no transport
+// headers), so there is no include cycle. ecb::ui::Ui is complete via this include.
+#include "ui/RuntimeUi.h"
 
 class EspControl {
 public:
@@ -44,4 +45,11 @@ private:
   ecb::ProtocolEngine*    _engine = nullptr;
   BleTransport            _bleTransport;
   ecb::SppTransport       _sppTransport;
+
+  // Long-lived UI runtime. beginUi() builds + commits through THIS member (not a
+  // stack local), so every Res<T> handle the build function stores keeps a pointer
+  // into a member of this forever-lived EspControl -- no use-after-free once
+  // beginUi() returns. Constructed with *this in the ctor init list, which only
+  // stores the address (RuntimeUi's ctor touches nothing of EspControl).
+  ecb::ui::RuntimeUi      _runtimeUi;
 };

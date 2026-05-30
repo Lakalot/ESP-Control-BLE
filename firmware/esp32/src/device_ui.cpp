@@ -64,7 +64,8 @@ void buildUi(Ui& ui) {
       });
 
   // Brightness slider: writes its resource AND drives the LED. Custom onSet, so it
-  // writes `bright` itself (the default setter is suppressed).
+  // writes `bright` itself (the default setter is suppressed). The LED PWM is mapped
+  // manually here (0..100% -> 0..255 duty) inside the handler.
   SliderBuilder brightness = ui.sliderShort("light.brightness", "Brightness", 0, 100)
       .formatHint("percent")
       .onSet([bright](uint8_t v) {
@@ -80,10 +81,21 @@ void buildUi(Ui& ui) {
   ToggleBuilder debug = ui.toggleShort("device.debug", "Debug Mode");
   TextInputBuilder rename = ui.textInputShort("device.name", "Rename Device");
 
-  // Valueless buttons (no resource / default setter). Device restart/reset is an app
-  // concern; here they just reply Ok (an empty .onSet keeps a valueless handler).
-  ButtonBuilder restart = ui.buttonShort("system.restart", "Restart").onSet([]() {});
-  ButtonBuilder factoryReset = ui.buttonShort("system.factory_reset", "Factory Reset").onSet([]() {});
+  // Destructive buttons: declared LONG-FORM so each carries a danger level + a
+  // confirm string. The mobile app reads these from the manifest and shows a
+  // confirmation dialog before sending the action (the short form can't express
+  // danger/confirm). The valueless action is declared up front, then a button node
+  // binds it by slug. Device restart/reset is an app concern; the empty .onSet
+  // keeps a valueless handler that just replies Ok.
+  ui.action("system.restart", "Restart")
+      .danger(Danger::Dangerous).confirm("Restart the device now?").valueless();
+  ButtonBuilder restart = ui.button("settings.restart", "Restart")
+      .bindAction("system.restart").onSet([]() {});
+
+  ui.action("system.factory_reset", "Factory Reset")
+      .danger(Danger::Dangerous).confirm("This will erase all settings. Continue?").valueless();
+  ButtonBuilder factoryReset = ui.button("advanced.reset", "Factory Reset")
+      .bindAction("system.factory_reset").onSet([]() {});
 
   // ---- telemetry (display-only) -- recorded via the long-form ui.resource(...) so
   //      the display widgets can bind to the ResourceRef, AND grabbed again as typed

@@ -30,14 +30,16 @@ void loop() {
   control.tick();
 
   const uint32_t now = millis();
+  // The constants below (humidity/rssi/load) are demo placeholders -- replace each
+  // with a real sensor read. temperatureRead() is the ESP32's on-die temperature.
   if (tempSched.shouldPublish(now)) {
     dev::temperature.set(temperatureRead());
-    dev::humidity.set(45.0f);
+    dev::humidity.set(45.0f);  // demo placeholder -- replace with a real sensor read
   }
   if (loadSched.shouldPublish(now)) {
-    dev::rssi.set(-58);
+    dev::rssi.set(-58);        // demo placeholder -- replace with a real WiFi.RSSI()
     dev::uptime.set(now);
-    dev::load.set(0u);
+    dev::load.set(0u);         // demo placeholder -- replace with a real load metric
   }
 
   vTaskDelay(pdMS_TO_TICKS(50));
