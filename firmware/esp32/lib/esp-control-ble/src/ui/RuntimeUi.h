@@ -117,6 +117,13 @@ public:
   virtual void installDefaultBoolSetter(int nh, const std::string& resourceSlug);
   virtual void installDefaultStringSetter(int nh, const std::string& resourceSlug);
 
+  // declarative HW from a widget builder: map the widget's node handle to its
+  // resource slug (node slug == resource slug for short-form widgets) and forward
+  // to the existing slug-keyed setPwmPin/setGpioPin/setInvert recorders.
+  virtual void widgetPwmPin(int nh, uint8_t pin, int rangeMax);
+  virtual void widgetGpioPin(int nh, uint8_t pin);
+  virtual void widgetInvertHw(int nh);
+
   // value hooks (override the no-op base; route to control_->resources() + publish).
   virtual void uiWrite(uint32_t id, bool v);
   virtual void uiWrite(uint32_t id, int32_t v);

@@ -257,6 +257,24 @@ void RuntimeUi::installDefaultStringSetter(int nh, const std::string& resourceSl
   nodes_[nh].defaultSetterKind = 3;
 }
 
+// --------------------- declarative HW from a widget builder -----------------
+// A WidgetBuilder carries only its node handle. The HW config is per-RESOURCE
+// (keyed by slug). For a short-form widget the node slug IS the resource slug
+// (sliderShort records the resource and the widget under the same slug), so map
+// node handle -> node slug -> the existing slug-keyed recorders.
+void RuntimeUi::widgetPwmPin(int nh, uint8_t pin, int rangeMax) {
+  if (nh < 0 || nh >= static_cast<int>(nodes_.size())) return;
+  setPwmPin(nodes_[nh].slug, pin, rangeMax);
+}
+void RuntimeUi::widgetGpioPin(int nh, uint8_t pin) {
+  if (nh < 0 || nh >= static_cast<int>(nodes_.size())) return;
+  setGpioPin(nodes_[nh].slug, pin);
+}
+void RuntimeUi::widgetInvertHw(int nh) {
+  if (nh < 0 || nh >= static_cast<int>(nodes_.size())) return;
+  setInvert(nodes_[nh].slug);
+}
+
 // --------------------------------- commit -----------------------------------
 
 namespace {

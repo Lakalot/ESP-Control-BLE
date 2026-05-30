@@ -18,6 +18,7 @@
 #include "ui/EmitterUi.h"
 #include "ui/RuntimeUi.h"
 #include "ui/UiModelEncoder.h"
+#include "ui/HwHal.h"
 #include "EspControlBle.h"
 using namespace ecb::ui;
 void setUp() {} void tearDown() {}
@@ -90,8 +91,38 @@ static void test_short_form_user_onset_suppresses_default() {
   TEST_ASSERT_TRUE(control.resources().get(rid, v));
   TEST_ASSERT_EQUAL_UINT32(7u, v.uintValue);
 }
+// A short-form slider's .pwmPin(pin,rangeMax) (a WidgetBuilder method) must route
+// through to the resource's HW config so the DEFAULT setter (no user .onSet) drives
+// the HAL on set(): write resource -> applyDefaultHw -> halAnalogWrite(pin, duty).
+static int g_dpin=-1, g_dval=-1;
+static void dFakeAnalog(uint8_t pin, int val){ g_dpin=pin; g_dval=val; }
+static void test_builder_pwmpin_drives_hal() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  ecb::ui::setAnalogWriteForTest(&dFakeAnalog);
+  // short-form slider WITH .pwmPin(2,100). No custom .onSet -> default setter writes
+  // the resource, and the captured HW config drives the declared PWM.
+  rt.view("home","Home").content(
+    rt.sliderShort("light.brightness","Brightness",0,100).pwmPin(2, 100)
+  );
+  rt.commit();
+  g_dpin=-1; g_dval=-1;
+  // invoke the default action handler with uint 50 -> resource set -> applyHw -> HAL
+  uint32_t aid = rt.actionId("light.brightness.set");
+  const ecb::ActionHandler* h = control.actions().find(aid);
+  TEST_ASSERT_NOT_NULL(h);
+  ecb::ActionContext ctx; bool replied=false; ecb::ActionStatus st=ecb::ActionStatus::Unspecified;
+  uint8_t rb[8]; size_t rl=0;
+  ctx.valueKind=ecb::ActionValueKind::Uint; ctx.uintValue=50u;
+  ctx.replied=&replied; ctx.status=&st; ctx.replyBuf=rb; ctx.replyCap=sizeof(rb); ctx.replyLen=&rl;
+  (*h)(ctx);
+  TEST_ASSERT_EQUAL_INT(2, g_dpin);
+  TEST_ASSERT_EQUAL_INT(127, g_dval);   // map(50,0,100,0,255)=127
+  ecb::ui::setAnalogWriteForTest(nullptr);
+}
 int main(int,char**){ UNITY_BEGIN();
   RUN_TEST(test_short_equals_long_bytes);
   RUN_TEST(test_short_form_default_onset_writes);
   RUN_TEST(test_short_form_user_onset_suppresses_default);
+  RUN_TEST(test_builder_pwmpin_drives_hal);
   return UNITY_END(); }

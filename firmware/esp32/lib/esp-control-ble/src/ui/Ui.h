@@ -138,6 +138,12 @@ public:
   virtual void  installDefaultBoolSetter(int /*nh*/, const std::string& /*resourceSlug*/) {}
   virtual void  installDefaultStringSetter(int /*nh*/, const std::string& /*resourceSlug*/) {}
 
+  // Declarative hardware for a widget's bound resource (no-op on EmitterUi;
+  // RuntimeUi maps it onto the resource's HW config). nh = the widget node handle.
+  virtual void widgetPwmPin(int /*nh*/, uint8_t /*pin*/, int /*rangeMax*/) {}
+  virtual void widgetGpioPin(int /*nh*/, uint8_t /*pin*/) {}
+  virtual void widgetInvertHw(int /*nh*/) {}
+
   // ---- value hooks (Res<T> routes through these). Default no-op: EmitterUi
   //      ignores them; RuntimeUi overrides them to write the table + publish. ----
   virtual void uiWrite(uint32_t /*id*/, bool /*v*/) {}
@@ -174,7 +180,7 @@ public:
   // -- SHORT-FORM widget builders -- one call bundles resource + action "<slug>.set"
   // + widget bound to it + a DEFAULT .onSet (writes the decoded value into the
   // resource). Returns the same builder type as the long form, so .formatHint /
-  // .pwmPin (via Res) / a user .onSet (overriding the default) still chain. (button
+  // .pwmPin / .gpioPin / a user .onSet (overriding the default) still chain. (button
   // is valueless: action slug == slug, NO resource, NO default setter.)
   class SliderBuilder    sliderShort(const std::string& slug, const std::string& title, int min, int max);
   class ToggleBuilder    toggleShort(const std::string& slug, const std::string& title);
@@ -287,6 +293,14 @@ public:
   Self& tone(const std::string& v)        { ui_->nodeTone(node_, v); return self(); }
   Self& text(const std::string& v)        { ui_->nodeText(node_, v); return self(); }
   Self& formatHint(const std::string& v)  { ui_->nodeFormatHint(node_, v); return self(); }
+
+  // Declarative hardware: drive a pin from this widget's resource value. The
+  // library applies it on every set() (PWM maps the resource's range -> 0..255).
+  // No-op on EmitterUi (HW is not in the manifest); RuntimeUi maps it onto the
+  // resource's HW config (node slug == resource slug for short-form widgets).
+  Self& pwmPin(uint8_t pin, int rangeMax = 255) { ui_->widgetPwmPin(node_, pin, rangeMax); return self(); }
+  Self& gpioPin(uint8_t pin)                    { ui_->widgetGpioPin(node_, pin); return self(); }
+  Self& invertHw()                              { ui_->widgetInvertHw(node_); return self(); }
 
   // Declare + bind an action; the impl derives its inputSchema from this widget.
   // (Backward-compatible convenience for simple widgets like a lone slider.)

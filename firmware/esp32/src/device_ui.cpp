@@ -5,16 +5,16 @@
 //     .onSet handlers + the default value-setters below.
 //
 // This file is HOST-PORTABLE: it is compiled by tools/emit_ui.py with the same host
-// g++ the native tests use (-DECB_HOST_EMIT, NO Arduino, NO EspControl). The only
-// "hardware" call allowed is ecb::ui::halAnalogWrite / halDigitalWrite (declared in
-// the portable ui/HwHal.h; the .cpp guards Arduino so the host build is a no-op and
-// the device build drives the real pin). EmitterUi ignores .onSet entirely, so the
-// handlers never run at emit time and do not affect the emitted bytes.
+// g++ the native tests use (-DECB_HOST_EMIT, NO Arduino, NO EspControl). It needs no
+// "hardware" calls at all: the brightness slider declares its on-board LED pin via
+// .pwmPin(...), and the library drives that pin on every set() (host build is a no-op).
+// EmitterUi ignores both .onSet and .pwmPin (HW is not in the manifest), so they never
+// run at emit time and do not affect the emitted bytes.
 //
 // The device is a demo "smart light": a relay (Main Power), a brightness slider
-// (drives the on-board LED via PWM), color + fan presets, a debug toggle, a device
-// rename field, restart/factory-reset buttons, and display-only telemetry
-// (temperature/humidity/load/wifi rssi/uptime) pushed from loop().
+// (declares the on-board LED via .pwmPin, so the library PWMs it), color + fan presets,
+// a debug toggle, a device rename field, restart/factory-reset buttons, and display-only
+// telemetry (temperature/humidity/load/wifi rssi/uptime) pushed from loop().
 //
 // Each widget is declared ONCE (short forms bundle resource + "<slug>.set" action +
 // widget + a default value-setter) and the resulting builder is placed into a view's
@@ -22,12 +22,13 @@
 // that needs custom logic also writes its own resource.
 
 #include "device_ui.h"
-#include "ui/HwHal.h"
 
 using namespace ecb::ui;
 
 namespace {
-// On-board LED used as the dimmable "light" output (PWM, 0..100% -> 0..255 duty).
+// On-board LED used as the dimmable "light" output. Declared on the brightness
+// slider via .pwmPin(kLedPin, 100): the library maps 0..100% -> 0..255 duty and
+// writes the pin whenever the brightness resource is set.
 const uint8_t kLedPin = 2u;
 }  // namespace
 
@@ -54,24 +55,25 @@ void buildUi(Ui& ui) {
   // records the same resource). Widget builders carry no .unit().
   ui.resource("light.brightness", ValueType::Uint).unit("%");
 
-  // Main Power relay: writes its resource; turning it on from a dark state brings
-  // brightness up to 100% and refreshes the LED. Custom onSet -> writes both itself.
+  // Main Power relay: writes its own resource and steers the LED through the
+  // brightness resource (whose .pwmPin drives the pin). Custom onSet, so it writes
+  // `relayH` itself; setting `bright` re-drives the LED via the declarative PWM:
+  //   off       -> brightness 0 (LED off)
+  //   on (dark) -> brightness 100 (full)
+  //   on        -> re-set current brightness to refresh the LED
   ToggleBuilder relay = ui.toggleShort("relay.auto", "Main Power")
       .onSet([relayH, bright](bool on) {
         relayH.set(on);
-        if (on && bright.get() == 0u) bright.set(100u);
-        ecb::ui::halAnalogWrite(kLedPin, on ? (int)((long)bright.get() * 255 / 100) : 0);
+        if (!on) bright.set(0u);
+        else bright.set(bright.get() == 0u ? 100u : bright.get());
       });
 
-  // Brightness slider: writes its resource AND drives the LED. Custom onSet, so it
-  // writes `bright` itself (the default setter is suppressed). The LED PWM is mapped
-  // manually here (0..100% -> 0..255 duty) inside the handler.
+  // Brightness slider: DECLARATIVE PWM. .pwmPin(kLedPin, 100) makes the library map
+  // 0..100% -> 0..255 duty and write the LED on every set(). No custom .onSet -> the
+  // short form's default setter writes the resource AND drives the declared pin.
   SliderBuilder brightness = ui.sliderShort("light.brightness", "Brightness", 0, 100)
       .formatHint("percent")
-      .onSet([bright](uint8_t v) {
-        bright.set((uint32_t)v);
-        ecb::ui::halAnalogWrite(kLedPin, (int)((long)v * 255 / 100));
-      });
+      .pwmPin(kLedPin, 100);
 
   // Presets / flags / rename: no custom logic -> the short form's default setter
   // writes the resource automatically.
