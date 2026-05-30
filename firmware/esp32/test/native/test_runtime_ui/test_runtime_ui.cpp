@@ -334,6 +334,29 @@ static void test_pwm_pin_applies_on_set() {
   ecb::ui::setAnalogWriteForTest(nullptr);
 }
 
+// (DX-T6) lookupF returns a real-id Res<float> after commit; set() writes the table.
+static void test_lookup_by_slug() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  rt.resourceF("env.temperature", ecb::ui::ValueType::Float);   // record it (DX-T3 creator)
+  rt.commit();
+  ecb::ui::Res<float> t = rt.lookupF("env.temperature");        // lookup
+  t.set(23.5f);
+  ecb::ResourceValue v;
+  TEST_ASSERT_TRUE(control.resources().get(rt.resourceId("env.temperature"), v));
+  TEST_ASSERT_EQUAL_FLOAT(23.5f, v.floatValue);
+}
+
+// (DX-T6) lookupF on an unknown slug returns an inert id-0 handle; set() must not crash.
+static void test_lookup_unknown_is_inert() {
+  EspControl control("TestDev", "123456");
+  ecb::ui::RuntimeUi rt(control);
+  rt.commit();
+  ecb::ui::Res<float> t = rt.lookupF("nope.missing");           // unknown
+  t.set(1.0f);                                                  // must not crash
+  TEST_ASSERT_EQUAL_UINT32(0u, t.id());                         // unknown -> id 0
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_runtime_ui_ids_match_emitter);
@@ -343,5 +366,7 @@ int main(int, char**) {
   RUN_TEST(test_stored_res_writes_after_commit);
   RUN_TEST(test_idempotent_resource_recording);
   RUN_TEST(test_pwm_pin_applies_on_set);
+  RUN_TEST(test_lookup_by_slug);
+  RUN_TEST(test_lookup_unknown_is_inert);
   return UNITY_END();
 }

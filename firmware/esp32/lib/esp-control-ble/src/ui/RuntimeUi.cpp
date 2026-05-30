@@ -456,6 +456,12 @@ void RuntimeUi::commit() {
 uint32_t RuntimeUi::resourceId(const std::string& slug) const { return resIds_.idOf(slug); }
 uint32_t RuntimeUi::actionId(const std::string& slug) const { return actIds_.idOf(slug); }
 
+Res<bool>        RuntimeUi::lookupB(const std::string& slug)   { return Res<bool>(this, resIds_.idOf(slug)); }
+Res<uint32_t>    RuntimeUi::lookupU32(const std::string& slug) { return Res<uint32_t>(this, resIds_.idOf(slug)); }
+Res<int32_t>     RuntimeUi::lookupI32(const std::string& slug) { return Res<int32_t>(this, resIds_.idOf(slug)); }
+Res<float>       RuntimeUi::lookupF(const std::string& slug)   { return Res<float>(this, resIds_.idOf(slug)); }
+Res<const char*> RuntimeUi::lookupS(const std::string& slug)   { return Res<const char*>(this, resIds_.idOf(slug)); }
+
 // ----------------------------- value hooks ----------------------------------
 
 void RuntimeUi::uiWrite(uint32_t id, bool v) {

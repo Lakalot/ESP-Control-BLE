@@ -9,6 +9,10 @@
 #include "transport/ble/BleTransport.h"
 #include "transport/spp/SppTransport.h"
 
+// Forward-declare to keep this header light (ui/Ui.h + ui/RuntimeUi.h are only
+// needed in EspControlBle.cpp where beginUi() is implemented).
+namespace ecb { namespace ui { class Ui; } }
+
 class EspControl {
 public:
   EspControl(const char* deviceName, const char* pin);
@@ -22,6 +26,10 @@ public:
   void tick();
 
   void begin(const uint8_t* manifestData, uint16_t manifestLen);
+
+  // One-call setup: build the UI description with RuntimeUi, commit (registers
+  // resources + handlers), then begin() with the embedded manifest.
+  void beginUi(void (*buildFn)(ecb::ui::Ui&), const uint8_t* manifestData, uint16_t manifestLen);
 
 private:
   static void sendBle(void* context, const uint8_t* data, size_t len);

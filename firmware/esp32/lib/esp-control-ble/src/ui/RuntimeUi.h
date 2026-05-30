@@ -45,6 +45,14 @@ public:
   uint32_t resourceId(const std::string& slug) const;
   uint32_t actionId(const std::string& slug) const;
 
+  // Slug lookup (valid AFTER commit): a real-id handle for an already-recorded
+  // resource, or an inert id-0 handle if the slug is unknown.
+  Res<bool>        lookupB(const std::string& slug);
+  Res<uint32_t>    lookupU32(const std::string& slug);
+  Res<int32_t>     lookupI32(const std::string& slug);
+  Res<float>       lookupF(const std::string& slug);
+  Res<const char*> lookupS(const std::string& slug);
+
   // ---- Ui hooks ----
   virtual void recordCapability(const std::string& feature, bool required);
 

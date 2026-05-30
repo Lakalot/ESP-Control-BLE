@@ -1,4 +1,6 @@
 #include "EspControlBle.h"
+#include "ui/Ui.h"
+#include "ui/RuntimeUi.h"
 #include "protocol/manifest/ManifestStore.h"
 #include "support/EcbLogging.h"
 
@@ -46,6 +48,13 @@ void EspControl::publishDelta(uint32_t resourceId) {
 void EspControl::tick() {
   _sppTransport.poll();
   if (_engine) _engine->tick();
+}
+
+void EspControl::beginUi(void (*buildFn)(ecb::ui::Ui&), const uint8_t* manifestData, uint16_t manifestLen) {
+  ecb::ui::RuntimeUi rt(*this);
+  buildFn(rt);
+  rt.commit();
+  begin(manifestData, manifestLen);
 }
 
 void EspControl::begin(const uint8_t* manifestData, uint16_t manifestLen) {
